@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jaden's Math Quest!</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center;
+      padding: 12px 12px 24px;
+      gap: 12px;
+    }
+
+    /* ── STARS ── */
+    .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
+    .star  { position:absolute; border-radius:50%; background:white; animation:twinkle 3s infinite alternate; }
+    @keyframes twinkle { from{opacity:.12} to{opacity:.8} }
+
+    /* ── DOMAIN NAV ── */
+    #domain-nav {
+      position: relative; z-index: 10;
+      width: 100%; max-width: 760px;
+      background: rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 20px;
+      padding: 8px;
+      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+    }
+    .nav-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 1px;
+      padding: 8px 14px; border: none; border-radius: 14px;
+      cursor: pointer; font-weight: 700; transition: all .2s;
+      background: transparent; color: rgba(255,255,255,.7);
+      min-width: 68px;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,.15); color: white; }
+    .nav-btn.active {
+      background: white; color: #0f3460;
+      box-shadow: 0 4px 14px rgba(0,0,0,.25);
+      transform: translateY(-1px);
+    }
+    .nav-icon  { font-size: 1.3rem; line-height: 1; }
+    .nav-label { font-size: .68rem; line-height: 1; letter-spacing: .3px; }
+    .nav-code  { font-size: .72rem; font-weight: 800; line-height: 1; }
+    .nav-count {
+      font-size: .6rem; font-weight: 700; line-height: 1;
+      background: rgba(0,0,0,.12); border-radius: 6px;
+      padding: 1px 5px; margin-top: 1px;
+    }
+    .nav-btn.active .nav-count { background: rgba(15,52,96,.15); }
+
+    /* ── CARD ── */
+    .card {
+      position: relative; z-index: 1;
+      background: rgba(255,255,255,.97);
+      border-radius: 24px; padding: 26px 22px;
+      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      width: 100%; max-width: 760px;
+    }
+
+    /* ── START SCREEN ── */
+    #start-screen { text-align: center; }
+    .rocket { font-size: 64px; animation: float 2s ease-in-out infinite alternate; display: block; margin-bottom: 10px; }
+    @keyframes float { from{transform:translateY(0)} to{transform:translateY(-10px)} }
+    #start-screen h1 { font-size: 2rem; color: #0f3460; margin-bottom: 6px; }
+    .domain-banner {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 8px 20px; border-radius: 30px; margin: 10px 0 14px;
+      font-weight: 800; font-size: 1rem;
+    }
+    #start-screen p { font-size: .95rem; color: #555; margin-bottom: 18px; line-height: 1.6; }
+    .start-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+    /* ── BUTTONS ── */
+    .btn { display:inline-block; padding:12px 28px; border:none; border-radius:50px; font-size:.97rem; font-weight:700; cursor:pointer; transition:transform .15s, box-shadow .15s; }
+    .btn:hover { transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.22); }
+    .btn:active { transform:translateY(0); }
+    .btn-primary { background:linear-gradient(135deg,#e94560,#c41a43); color:white; }
+    .btn-next    { background:linear-gradient(135deg,#0f3460,#1a6bb5); color:white; margin-top:12px; }
+    .btn-check   { background:linear-gradient(135deg,#27ae60,#1e8449); color:white; margin-top:12px; }
+    .btn-shuffle { background:linear-gradient(135deg,#f59e0b,#d97706); color:white; }
+
+    /* ── HUD ── */
+    .hud { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px; }
+    .hud-left  { display:flex; flex-direction:column; gap:3px; }
+    .hud-score { font-size:.97rem; font-weight:700; color:#0f3460; }
+    .hud-score span { color:#e94560; font-size:1.2rem; }
+    .streak-badge { font-size:.72rem; font-weight:700; color:#f59e0b; background:#fef3c7; padding:2px 8px; border-radius:10px; display:inline-block; }
+    .hud-domain { font-size:.7rem; font-weight:700; color:#888; letter-spacing:.5px; text-transform:uppercase; }
+    .progress-wrap { flex:1; min-width:100px; background:#e0e0e0; border-radius:10px; height:10px; overflow:hidden; }
+    .progress-bar  { height:100%; border-radius:10px; background:linear-gradient(90deg,#e94560,#ffd700); transition:width .4s ease; }
+    .q-counter { font-size:.82rem; color:#777; font-weight:600; white-space:nowrap; }
+
+    /* ── CATEGORY CHIP ── */
+    .cat-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:20px; font-size:.73rem; font-weight:700; margin-bottom:8px; }
+
+    /* ── QUESTION ── */
+    .q-text { font-size:1.08rem; color:#1a1a2e; font-weight:600; line-height:1.6; margin-bottom:16px; }
+    .q-note { font-size:.83rem; color:#888; font-style:italic; margin-top:-8px; margin-bottom:12px; }
+
+    /* ── OPTIONS ── */
+    .options { display:flex; flex-direction:column; gap:8px; }
+    .option {
+      display:flex; align-items:center; gap:11px;
+      padding:12px 15px; border:2.5px solid #ddd; border-radius:13px;
+      cursor:pointer; transition:border-color .15s, background .15s;
+      font-size:.95rem; color:#222;
+    }
+    .option:hover:not(.disabled) { border-color:#0f3460; background:#f0f4ff; }
+    .option.selected { border-color:#0f3460; background:#e8f0fe; }
+    .option.correct  { border-color:#27ae60; background:#eafaf1; }
+    .option.wrong    { border-color:#e74c3c; background:#fdf0ef; }
+    .option.disabled { cursor:default; }
+    .opt-letter { width:28px; height:28px; border-radius:50%; background:#f0f0f0; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.87rem; flex-shrink:0; transition:background .15s, color .15s; }
+    .option.selected .opt-letter { background:#0f3460; color:white; }
+    .option.correct  .opt-letter { background:#27ae60; color:white; }
+    .option.wrong    .opt-letter { background:#e74c3c; color:white; }
+
+    /* ── NUMERIC ── */
+    .numeric-wrap { display:flex; gap:10px; align-items:center; margin-top:6px; }
+    .numeric-input { padding:12px 14px; font-size:1.4rem; border:2.5px solid #ddd; border-radius:13px; width:120px; text-align:center; font-weight:700; color:#0f3460; outline:none; transition:border-color .15s; }
+    .numeric-input:focus  { border-color:#0f3460; }
+    .numeric-input.correct{ border-color:#27ae60; background:#eafaf1; }
+    .numeric-input.wrong  { border-color:#e74c3c; background:#fdf0ef; }
+
+    /* ── FEEDBACK ── */
+    .feedback { margin-top:12px; padding:13px 16px; border-radius:13px; font-size:.93rem; font-weight:600; line-height:1.5; display:none; }
+    .feedback.show { display:block; }
+    .feedback.correct-fb { background:#eafaf1; border:2px solid #27ae60; color:#1e8449; }
+    .feedback.wrong-fb   { background:#fdf0ef; border:2px solid #e74c3c; color:#c0392b; }
+    .fb-icon   { font-size:1.2rem; margin-right:5px; }
+    .hint-text { color:#555; font-weight:400; margin-top:5px; font-size:.85rem; }
+
+    /* ── STREAK POPUP ── */
+    .streak-popup { position:fixed; top:20px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg,#f59e0b,#d97706); color:white; padding:10px 24px; border-radius:30px; font-size:1.05rem; font-weight:800; z-index:999; pointer-events:none; animation:streakIn .4s ease forwards; display:none; }
+    @keyframes streakIn { 0%{opacity:0;top:-20px} 30%{opacity:1;top:70px} 80%{opacity:1;top:66px} 100%{opacity:0;top:40px} }
+
+    /* ── BAR CHART ── */
+    .bar-chart-wrap { margin:10px 0; }
+    .chart-title { font-size:.82rem; font-weight:700; color:#333; margin-bottom:5px; }
+    .bar-chart { border-left:3px solid #333; border-bottom:3px solid #333; display:flex; align-items:flex-end; gap:12px; height:100px; padding-left:8px; }
+    .bar-group { display:flex; flex-direction:column; align-items:center; gap:3px; }
+    .bar { width:32px; border-radius:4px 4px 0 0; background:linear-gradient(180deg,#e94560,#c41a43); }
+    .bar-label { font-size:.65rem; font-weight:600; color:#444; text-align:center; max-width:40px; }
+    .bar-val   { font-size:.72rem; font-weight:700; color:#0f3460; }
+
+    /* ── END SCREEN ── */
+    #end-screen { text-align:center; }
+    .trophy { font-size:64px; display:block; margin-bottom:10px; animation:bounce .6s infinite alternate; }
+    @keyframes bounce { from{transform:scale(1)} to{transform:scale(1.08)} }
+    #end-screen h2 { font-size:1.8rem; color:#0f3460; margin-bottom:6px; }
+    .final-score { font-size:2.8rem; font-weight:900; color:#e94560; margin:8px 0; }
+    .final-msg   { font-size:.95rem; color:#555; margin-bottom:10px; line-height:1.6; }
+    .stars-row   { font-size:1.9rem; margin-bottom:10px; letter-spacing:3px; }
+    .stats-row   { display:flex; justify-content:center; gap:20px; margin-bottom:18px; flex-wrap:wrap; }
+    .stat-box    { background:#f0f4ff; border-radius:12px; padding:9px 16px; text-align:center; }
+    .stat-num    { font-size:1.5rem; font-weight:800; color:#0f3460; }
+    .stat-label  { font-size:.72rem; color:#666; font-weight:600; }
+
+    /* ── CONFETTI ── */
+    .confetti-piece { position:fixed; top:-10px; width:10px; height:14px; border-radius:2px; animation:confettiFall linear forwards; z-index:999; pointer-events:none; }
+    @keyframes confettiFall { to{transform:translateY(110vh) rotate(720deg);opacity:0} }
+
+    .hidden { display:none !important; }
+    .text-center { text-align:center; }
+    .mt-10 { margin-top:10px; }
+  </style>
+</head>
+<body>
+
+<div class="stars" id="stars"></div>
+
+<!-- ══ DOMAIN NAV ══ -->
+<nav id="domain-nav"></nav>
+
+<div id="app">
+  <!-- START SCREEN -->
+  <div id="start-screen" class="card">
+    <span class="rocket">🚀</span>
+    <h1>Jaden's Math Quest!</h1>
+    <div class="domain-banner" id="domain-banner"></div>
+    <p id="start-desc"></p>
+    <div class="start-btns">
+      <button class="btn btn-primary" onclick="startGame(false)">▶ Start in Order</button>
+      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle &amp; Play</button>
+    </div>
+  </div>
+
+  <!-- QUESTION SCREEN -->
+  <div id="question-screen" class="card hidden">
+    <div class="hud">
+      <div class="hud-left">
+        <div class="hud-score">⭐ <span id="score-display">0</span> stars</div>
+        <div id="streak-display" class="streak-badge hidden">🔥 Streak: <span id="streak-count">0</span></div>
+        <div class="hud-domain" id="hud-domain"></div>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
+      <div class="q-counter" id="q-counter"></div>
+    </div>
+    <div class="cat-chip" id="cat-chip"></div>
+    <div class="q-text" id="q-text"></div>
+    <div class="q-note hidden" id="q-note"></div>
+    <div id="chart-area"></div>
+    <div class="options" id="options-area"></div>
+    <div class="numeric-wrap hidden" id="numeric-area">
+      <input class="numeric-input" id="numeric-input" type="number" placeholder="?" autocomplete="off">
+      <button class="btn btn-check" onclick="checkNumeric()">Check!</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="text-center">
+      <button class="btn btn-check hidden" id="check-btn" onclick="checkMulti()">Check My Answers!</button>
+      <button class="btn btn-next  hidden" id="next-btn"  onclick="nextQuestion()">Next Question →</button>
+    </div>
+  </div>
+
+  <!-- END SCREEN -->
+  <div id="end-screen" class="card hidden">
+    <span class="trophy" id="trophy-icon">🏆</span>
+    <h2>Quest Complete!</h2>
+    <div class="stars-row" id="stars-row"></div>
+    <div class="final-score" id="final-score"></div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="stat-num" id="stat-pct"></div><div class="stat-label">Accuracy</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-streak"></div><div class="stat-label">Best Streak</div></div>
+      <div class="stat-box"><div class="stat-num" id="stat-domain"></div><div class="stat-label">Topic</div></div>
+    </div>
+    <div class="final-msg" id="final-msg"></div>
+    <div class="start-btns mt-10">
+      <button class="btn btn-primary" onclick="startGame(false)">▶ Play Again</button>
+      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle</button>
+    </div>
+  </div>
+</div>
+
+<div class="streak-popup" id="streak-popup"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════
+//  DOMAIN DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════
+const DOMAINS = [
+  { id:'All', label:'All Topics',     code:'ALL', icon:'🚀', bg:'#1a1a2e', fg:'white'  },
+  { id:'OA',  label:'Operations & Algebraic Thinking', code:'OA', icon:'✖️', bg:'#fde68a', fg:'#78350f' },
+  { id:'NBT', label:'Number & Operations in Base Ten', code:'NBT',icon:'🔢', bg:'#bfdbfe', fg:'#1e3a5f' },
+  { id:'NF',  label:'Number & Operations—Fractions',   code:'NF', icon:'🍕', bg:'#fce7f3', fg:'#9d174d' },
+  { id:'MD',  label:'Measurement & Data',              code:'MD', icon:'📐', bg:'#d1fae5', fg:'#065f46' },
+  { id:'G',   label:'Geometry',                        code:'G',  icon:'🔷', bg:'#ede9fe', fg:'#4c1d95' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  CAT STYLE (sub-category chips shown on each question)
+// ═══════════════════════════════════════════════════════════════════
+const CAT_STYLE = {
+  'Multiplication':            { bg:'#fde68a', fg:'#78350f' },
+  'Division':                  { bg:'#fef3c7', fg:'#92400e' },
+  'Mult & Division Reasoning': { bg:'#ddd6fe', fg:'#4c1d95' },
+  'Addition & Subtraction':    { bg:'#bbf7d0', fg:'#14532d' },
+  'Rounding':                  { bg:'#fed7aa', fg:'#7c2d12' },
+  'Fractions':                 { bg:'#fce7f3', fg:'#9d174d' },
+  'Measurement & Time':        { bg:'#bfdbfe', fg:'#1e3a5f' },
+  'Area':                      { bg:'#d1fae5', fg:'#065f46' },
+  'Perimeter':                 { bg:'#ccfbf1', fg:'#134e4a' },
+  'Word Problems':             { bg:'#fef9c3', fg:'#713f12' },
+  'Data & Graphs':             { bg:'#e0f2fe', fg:'#0c4a6e' },
+  'Geometry':                  { bg:'#ede9fe', fg:'#4c1d95' },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  ALL QUESTIONS  (domain = OA | NBT | NF | MD | G)
+// ═══════════════════════════════════════════════════════════════════
+const ALL_QUESTIONS = [
+
+  // ── OA · MULTIPLICATION ─────────────────────────────────────────
+  { domain:'OA', cat:'Multiplication',
+    text:'A teacher wrote a word problem for the expression 8 × 2. Which of these could be the teacher\'s word problem?',
+    type:'single',
+    options:['There were 8 baskets with 2 apples in each basket. How many apples total?',
+             'There were 8 apples divided equally into 2 baskets. How many in each basket?',
+             'There were 8 apples. A student added 2 more. How many apples now?',
+             'There were 8 apples. A chef used 2 of them. How many are left?'],
+    correct:['A'],
+    hint:'8 × 2 means 8 equal groups of 2. Option A has 8 groups (baskets) of 2 — perfect for multiplication!' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'A music teacher placed students in 4 rows to sing in a concert. There were 20 students in each row. What was the TOTAL number of students?',
+    type:'numeric', correct:80,
+    hint:'4 rows × 20 students each = 4 × 20 = 80.' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'What is 9 × 6?',
+    type:'numeric', correct:54,
+    hint:'Think: 10 × 6 = 60, then subtract one 6 → 60 − 6 = 54!' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'What number makes this equation true?\n8 × □ = 48',
+    type:'numeric', correct:6,
+    hint:'Use the opposite: 48 ÷ 8 = 6. So □ = 6!' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'A baker made 5 trays of cookies with 8 cookies on each tray. How many cookies are there in all?',
+    type:'numeric', correct:40,
+    hint:'5 × 8 = 40. Five groups of eight!' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'A farmer has 4 rows of apple trees with 9 trees in each row. Which expression finds the TOTAL number of trees?',
+    type:'single',
+    options:['9 + 4','9 × 4','9 − 4','9 ÷ 4'],
+    correct:['B'],
+    hint:'4 equal groups of 9 = 4 × 9 = 9 × 4 = 36.' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'Which expression shows the total number of marbles in 4 jars with 8 marbles each?',
+    type:'single',
+    options:['4 × 8','4 + 8','4 + 4 + 4 + 4','8+8+8+8+8+8+8+8'],
+    correct:['A'],
+    hint:'4 equal groups of 8 = 4 × 8. That\'s multiplication!' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'Christy bought 9 bottles of lemonade. Each bottle contains 2 liters. How many liters total?',
+    type:'numeric', correct:18,
+    hint:'9 × 2 = 18 liters.' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'What is 7 × 2?',
+    type:'numeric', correct:14,
+    hint:'7 × 2 = 14. Or think: 7 + 7 = 14.' },
+
+  { domain:'OA', cat:'Multiplication',
+    text:'A student arranged pennies in 4 rows of 5. What is the total number of pennies?',
+    type:'numeric', correct:20,
+    hint:'4 rows × 5 pennies = 4 × 5 = 20.' },
+
+  // ── OA · DIVISION ───────────────────────────────────────────────
+  { domain:'OA', cat:'Division',
+    text:'What number makes this equation true?\n30 ÷ □ = 5',
+    type:'numeric', correct:6,
+    hint:'□ × 5 = 30 → 30 ÷ 5 = 6!' },
+
+  { domain:'OA', cat:'Division',
+    text:'What number makes this equation true?\n45 ÷ □ = 5',
+    type:'numeric', correct:9,
+    hint:'□ × 5 = 45 → 45 ÷ 5 = 9!' },
+
+  { domain:'OA', cat:'Division',
+    text:'Find the quotient:  28 ÷ 4 = ?',
+    type:'single', options:['6','7','8','9'], correct:['B'],
+    hint:'4 × 7 = 28, so 28 ÷ 4 = 7!' },
+
+  { domain:'OA', cat:'Division',
+    text:'A division equation is shown: 70 ÷ 10 = ?\nWhich multiplication equation could help solve it?',
+    type:'single',
+    options:['? = 10 × 70','10 = ? × 7','? × 10 = 7','10 × ? = 70'],
+    correct:['D'],
+    hint:'Division and multiplication are opposites! 70 ÷ 10 = ? means 10 × ? = 70.' },
+
+  { domain:'OA', cat:'Division',
+    text:'Riley has 63 coins and places the SAME number in each of 9 containers. Which statement represents 63 ÷ 9?',
+    type:'single',
+    options:['Riley gives his sister 9 coins.','Riley\'s friend gives him 9 more coins.','Riley places coins equally into 9 containers.','Riley places different amounts in 9 containers.'],
+    correct:['C'],
+    hint:'Division = splitting into equal groups. 63 ÷ 9 = 7 per container.' },
+
+  { domain:'OA', cat:'Division',
+    text:'There are 63 cars parked in 7 equal rows. How many cars are in each row?',
+    type:'numeric', correct:9,
+    hint:'63 ÷ 7 = 9. Check: 7 × 9 = 63 ✓' },
+
+  { domain:'OA', cat:'Division',
+    text:'A teacher arranged 42 bottle caps into 7 rows with the same number in each row. Which expression finds the caps per row?',
+    type:'single', options:['42 ÷ 7','42 ÷ 6','42 × 7','42 × 6'], correct:['A'],
+    hint:'Splitting 42 equally into 7 rows → 42 ÷ 7 = 6.' },
+
+  { domain:'OA', cat:'Division',
+    text:'If 9 × 6 = 54, what is 54 ÷ 9?',
+    type:'numeric', correct:6,
+    hint:'Multiplication and division are fact families! 9 × 6 = 54 means 54 ÷ 9 = 6.' },
+
+  { domain:'OA', cat:'Division',
+    text:'Which division equation is CORRECT?',
+    type:'single',
+    options:['30 ÷ 6 = 5','27 ÷ 3 = 8','36 ÷ 6 = 7','45 ÷ 5 = 8'],
+    correct:['A'],
+    hint:'6 × 5 = 30 ✓. Check the others: 3×8=24, 6×7=42, 5×8=40 — all wrong!' },
+
+  { domain:'OA', cat:'Division',
+    text:'A teacher has 56 pencils to split equally into 8 buckets. Which TWO equations find the number of pencils per bucket?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['56 ÷ 8 = □','56 − 8 = □','56 + 8 = □','8 × □ = 56','8 + □ = 56'],
+    correct:['A','D'],
+    hint:'Division 56 ÷ 8 = □ and related multiplication 8 × □ = 56 are both correct!' },
+
+  // ── OA · REASONING ──────────────────────────────────────────────
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'Which TWO equations could be used to find the result of 9 × 8?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['8 ÷ 72 = 9','9 ÷ 72 = 8','72 ÷ 9 = 8','8+8+8+8+8+8+8+8 = 72','9+9+9+9+9+9+9+9 = 72'],
+    correct:['C','E'],
+    hint:'9×8=72. Check: 72÷9=8 ✓ (division fact). 9 added 8 times = 72 ✓ (repeated addition).' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'Which statement is TRUE about even and odd numbers?',
+    type:'single',
+    options:['When 6 is added to an odd number, the sum is always even.',
+             'When 7 is added to an even number, the sum is always odd.',
+             'When 5 is multiplied by an odd number, the product is always even.',
+             'When 4 is multiplied by an even number, the product is always odd.'],
+    correct:['B'],
+    hint:'Even + odd = odd. Try it: 4 + 7 = 11 (odd ✓).' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'A student makes a number pattern starting with an EVEN number. The rule is: subtract 14 each time. Which list could be the pattern?',
+    type:'single',
+    options:['81, 67, 63, 49, 45, ...','88, 75, 62, 49, 36, ...','93, 79, 65, 51, 37, ...','96, 82, 68, 54, 40, ...'],
+    correct:['D'],
+    hint:'Start even, subtract 14 (even). 96−14=82, 82−14=68, 68−14=54 ✓. All even!' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'Karen is solving 19 × 3. She breaks 19 into 10 and 9. Which expression shows this strategy?',
+    type:'single',
+    options:['(10+3)+(9+3)','(10+9)+(10+3)','(10×3)+(9×3)','(10×9)+(10×3)'],
+    correct:['C'],
+    hint:'Distributive: (10+9)×3 = (10×3)+(9×3) = 30+27 = 57 = 19×3 ✓' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'3 × 10 = 30. Which TWO expressions also equal 30?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['3 × (2+5)','3 × (5+5)','(3×2)+(3×5)','(3×5)+(3×5)','(3×5)×(3×5)'],
+    correct:['B','D'],
+    hint:'B: 3×10=30 ✓. D: 15+15=30 ✓. A: 3×7=21. C: 6+15=21. E: 225.' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'A student says only 7 and 5 can be used to write 7 × 5. Which TWO expressions prove this WRONG?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['5 × 7','(4+5)×(3+5)','(4×5)+(3×5)','(7+3)×(7+2)','(7×3)+(7×2)'],
+    correct:['C','E'],
+    hint:'7×5=35. C: 20+15=35 ✓. E: 21+14=35 ✓. Both use different numbers but still equal 35!' },
+
+  { domain:'OA', cat:'Mult & Division Reasoning',
+    text:'Which THREE equations are true?',
+    type:'multi', note:'Select THREE correct answers.',
+    options:['64 = 8 × 8','64 = 8 × 9','7 = 63 ÷ 8','7 = 63 ÷ 9','35 ÷ 7 = 5','35 ÷ 7 = 6'],
+    correct:['A','D','E'],
+    hint:'A: 8×8=64 ✓. D: 63÷9=7 ✓. E: 35÷7=5 ✓. Check the others and they don\'t work.' },
+
+  // ── OA · WORD PROBLEMS ──────────────────────────────────────────
+  { domain:'OA', cat:'Word Problems',
+    text:'A teacher worked with 4 students and gave each student 9 sheets of paper. Which question can ONLY be answered with this information?',
+    type:'single',
+    options:['How many sheets are left in the package?',
+             'How many total sheets did the teacher give out?',
+             'How many students did NOT receive sheets?',
+             'How many sheets were in the package before it was opened?'],
+    correct:['B'],
+    hint:'We know: 4 × 9 = 36 sheets given. That\'s the only complete answer we can find!' },
+
+  { domain:'OA', cat:'Word Problems',
+    text:'A student has 10 pieces of gum and gave 2 pieces to friends. Which expression finds how many are LEFT?',
+    type:'single', options:['10 + 2','10 × 2','10 − 2','10 ÷ 2'], correct:['C'],
+    hint:'Giving away = subtracting. 10 − 2 = 8 pieces left.' },
+
+  { domain:'OA', cat:'Word Problems',
+    text:'A student made 20 necklaces with 5 beads on each. Which thinking correctly finds the TOTAL beads?',
+    type:'single',
+    options:['20 necklaces ÷ 10 beads per pack = 2',
+             '20 necklaces × 10 beads per pack = 200',
+             '20 necklaces ÷ 5 beads each = 4',
+             '20 necklaces × 5 beads each = 100'],
+    correct:['D'],
+    hint:'Total beads = necklaces × beads each = 20 × 5 = 100!' },
+
+  { domain:'OA', cat:'Word Problems',
+    text:'A gym teacher puts 6 soccer balls in each bag. What OTHER information is needed to find the number of BAGS?',
+    type:'single',
+    options:['Total number of students in gym class',
+             'Total number of players on the soccer team',
+             'Total number of soccer balls taken to the field',
+             'Number of soccer balls each group of students gets'],
+    correct:['C'],
+    hint:'Bags = total balls ÷ 6 per bag. We need the total balls!' },
+
+  { domain:'OA', cat:'Word Problems',
+    text:'A student is making 5 treat bags. She has 3 packages of candy with 20 pieces each and puts 9 pieces in each bag. How many pieces are LEFT over?\n(Hint — Step 1: 3×20=60, Step 2: 5×9=45, Step 3: 60−45=?)',
+    type:'numeric', correct:15,
+    hint:'60 total − 45 used = 15 pieces left over!' },
+
+  { domain:'OA', cat:'Word Problems',
+    text:'John has 24 pieces of candy to share equally with 3 teachers. How many pieces does each teacher get?',
+    type:'single', options:['6 pieces','8 pieces','21 pieces','27 pieces'], correct:['B'],
+    hint:'24 ÷ 3 = 8 pieces per teacher.' },
+
+  // ── NBT · ADDITION & SUBTRACTION ────────────────────────────────
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'Find the difference:  $900 − $631 = ?',
+    type:'single', options:['$231','$269','$331','$369'], correct:['B'],
+    hint:'$900−$600=$300, then $300−$31=$269. Check: $269+$631=$900 ✓' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'Find the difference:  501 − 196 = ?',
+    type:'single', options:['305','314','405','495'], correct:['A'],
+    hint:'Try: 501−200=301, then +4 (we subtracted 4 too many) → 305. Check: 305+196=501 ✓' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'A zookeeper needs 876 kg of food but only has 287 kg. How much MORE food does she need?',
+    type:'single', options:['287 kg','589 kg','599 kg','611 kg'], correct:['B'],
+    hint:'876−287: try 876−300=576, add back 13 → 589. Check: 589+287=876 ✓' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is the value of 353 + 294?',
+    type:'numeric', correct:647,
+    hint:'Hundreds: 300+200=500. Tens: 50+90=140. Ones: 3+4=7. Total: 647.' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'Bailey takes $42 to the movies. She spends $8 on a ticket and $7 on snacks. How much money does she have LEFT?',
+    type:'numeric', correct:27,
+    hint:'Spent: $8+$7=$15. Left: $42−$15=$27.' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'There are 87 cars in a large lot and 42 cars in a small lot. Which expression gives the CLOSEST estimate of the total?',
+    type:'single', options:['80 + 40','90 + 40','90 + 50','100 + 50'], correct:['B'],
+    hint:'Round to nearest 10: 87→90, 42→40. Best estimate: 90+40=130.' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'A school wants to collect 900 box tops. Two grades collected 248 and 202 box tops so far. How many MORE box tops do they still need?',
+    type:'numeric', correct:450,
+    hint:'Collected: 248+202=450. Still needed: 900−450=450!' },
+
+  // ── NBT · ROUNDING ──────────────────────────────────────────────
+  { domain:'NBT', cat:'Rounding',
+    text:'The price of a computer, rounded to the nearest HUNDRED, is $500. Which TWO prices could be the actual price?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['$482','$557','$427','$525','$449'],
+    correct:['A','D'],
+    hint:'Numbers rounding to 500 are between 450–549. $482 ✓, $525 ✓. Others round to 400 or 600.' },
+
+  { domain:'NBT', cat:'Rounding',
+    text:'Which number rounds to 300 when rounded to the nearest hundred?',
+    type:'single', options:['216','241','349','384'], correct:['C'],
+    hint:'349 → tens digit is 4 → round DOWN to 300. 384 → tens digit is 8 → rounds UP to 400.' },
+
+  { domain:'NBT', cat:'Rounding',
+    text:'Which number rounds to 60 when rounded to the nearest ten?',
+    type:'single', options:['48','55','65','67'], correct:['B'],
+    hint:'55 → ones digit is 5 → round UP to 60 ✓. 65 rounds to 70. 48 rounds to 50.' },
+
+  // ── NF · FRACTIONS ──────────────────────────────────────────────
+  { domain:'NF', cat:'Fractions',
+    text:'A figure is divided into 6 EQUAL parts. What fraction of the total area does ONE part represent?',
+    type:'single', options:['0/6','1/6','3/6','6/6'], correct:['B'],
+    hint:'1 part out of 6 equal parts = 1/6.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'Billy drew a circle and divided it into 8 EQUAL pieces. What fraction does each piece represent?',
+    type:'single', options:['1/8','7/8','1','8'], correct:['A'],
+    hint:'8 equal pieces → each = 1 out of 8 = 1/8.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A large triangle is divided into 4 EQUAL smaller triangles. What fraction of the whole does each small triangle represent?',
+    type:'single', options:['3/4','2/3','1/3','1/4'], correct:['D'],
+    hint:'4 equal parts → each is 1/4.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A rectangle is divided into 3 equal parts. 2 parts are shaded. What fraction is shaded?',
+    type:'single', options:['1/3','1/2','2/3','2/1'], correct:['C'],
+    hint:'2 shaded out of 3 total equal parts = 2/3.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'What number makes this equation true?\n2/3 = □/6',
+    type:'numeric', correct:4,
+    hint:'Multiply top and bottom by 2: 2×2=4, 3×2=6. Answer: 4.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'Which fraction is equivalent to the whole number 2?',
+    type:'single', options:['0/2','1/2','2/1','2/2'], correct:['C'],
+    hint:'2/1 = 2 ÷ 1 = 2. Any whole number n = n/1!' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'How does 2/4 compare to 2/6 and 2/8?',
+    type:'single',
+    options:['2/4 < 2/6  and  2/8 < 2/4','2/4 > 2/6  and  2/8 < 2/4','2/4 < 2/6  and  2/8 > 2/4','2/4 > 2/6  and  2/8 > 2/4'],
+    correct:['B'],
+    hint:'Same numerator → bigger denominator = SMALLER fraction. So 2/4 > 2/6 > 2/8.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'Model A: rectangle split into 8 equal parts with 4 shaded.\nModel B: rectangle split into 6 equal parts with 3 shaded.\nWhich equation correctly compares these two fractions?',
+    type:'single', options:['4/8 = 3/6','4/4 = 3/3','3/6 = 7/14','4/8 = 7/14'], correct:['A'],
+    hint:'4/8 = 1/2 and 3/6 = 1/2. They\'re equal! So 4/8 = 3/6 ✓' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A piece of a model represents 2/6 of the whole. How many such pieces make up the WHOLE model?',
+    type:'single', options:['2','3','4','6'], correct:['B'],
+    hint:'Count up: 2/6 + 2/6 + 2/6 = 6/6 = 1 whole. So 3 pieces!' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A number line from 0 to 1 is divided into 6 EQUAL parts. A point is at the FIRST mark after 0. What fraction does this point represent?',
+    type:'single', options:['5/6','2/6','1/6','6/6'], correct:['C'],
+    hint:'6 equal jumps; 1st mark = 1/6.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A number line from 0 to 1 is divided into 8 EQUAL parts. A point is at the THIRD mark after 0. What fraction does this point represent?',
+    type:'single', options:['2/8','3/8','5/8','6/8'], correct:['B'],
+    hint:'8 equal jumps; 3rd mark = 3/8.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'A number line from 0 to 1 is divided into 8 EQUAL parts. A point is at the SECOND mark after 0. What fraction does this point represent?',
+    type:'single', options:['2/8','1/4','1/8','3/8'], correct:['A'],
+    hint:'8 equal jumps; 2nd mark = 2/8.' },
+
+  { domain:'NF', cat:'Fractions',
+    text:'Taylor\'s pizza is cut into 4 slices. Lee\'s pizza is cut into 8 slices. Taylor eats 3/4 of her pizza. Lee wants to eat the SAME amount. What fraction of his pizza should he eat?',
+    type:'single', options:['3/8','2/4','6/8','8/4'], correct:['C'],
+    hint:'3/4 = 6/8 (multiply top and bottom by 2). Lee should eat 6/8.' },
+
+  // ── MD · MEASUREMENT & TIME ─────────────────────────────────────
+  { domain:'MD', cat:'Measurement & Time',
+    text:'When a puppy was 5 weeks old, it weighed 4 kg. Now it weighs 19 kg MORE than that. How much does the puppy weigh now?',
+    type:'single', options:['19 kg','23 kg','28 kg','34 kg'], correct:['B'],
+    hint:'4 + 19 = 23 kg.' },
+
+  { domain:'MD', cat:'Measurement & Time',
+    text:'Two trains each take 40 minutes. Train 1 starts at 7:15. Train 2 starts at 8:30. Which shows the correct END times for BOTH trains?',
+    type:'single',
+    options:['Train 1: 7:55  and  Train 2: 9:10','Train 1: 7:45  and  Train 2: 9:10','Train 1: 7:55  and  Train 2: 9:00','Train 1: 7:45  and  Train 2: 9:00'],
+    correct:['A'],
+    hint:'7:15 + 40 min = 7:55 ✓. 8:30 + 40 min = 9:10 ✓.' },
+
+  { domain:'MD', cat:'Measurement & Time',
+    text:'The team bus left at 3:40 p.m. and arrived at the field 12 minutes later. What time did the bus arrive?',
+    type:'single', options:['3:28 p.m.','3:30 p.m.','3:52 p.m.','3:55 p.m.'], correct:['C'],
+    hint:'3:40 + 12 min = 3:52 p.m.' },
+
+  { domain:'MD', cat:'Measurement & Time',
+    text:'Sam starts making cookies at 3:30 p.m. Mixing takes 10 minutes, baking takes 30 minutes. What time will the cookies be done?',
+    type:'single', options:['4:00 p.m.','4:10 p.m.','4:30 p.m.','4:40 p.m.'], correct:['B'],
+    hint:'Total time = 10 + 30 = 40 min. 3:30 + 40 = 4:10 p.m.' },
+
+  { domain:'MD', cat:'Measurement & Time',
+    text:'Friends spent 90 minutes at the beach: 40 min swimming, 30 min building a sandcastle, and the rest resting. Which pair of equations finds m (minutes resting)?',
+    type:'single',
+    options:['40 − 30 = 10, then 10 + m = 90','40 + 30 = 70, then 90 − 70 = m','90 − 40 = 50, then 50 + 30 = m','90 + 30 = 120, then 120 − 40 = m'],
+    correct:['B'],
+    hint:'Activity time: 40+30=70 min. Resting: 90−70=20 min.' },
+
+  // ── MD · AREA ────────────────────────────────────────────────────
+  { domain:'MD', cat:'Area',
+    text:'Taylor drew a rectangle with length = 8 cm and width = 4 cm. What is the AREA?',
+    type:'single', options:['12 sq cm','24 sq cm','32 sq cm','48 sq cm'], correct:['C'],
+    hint:'Area = length × width = 8 × 4 = 32 sq cm.' },
+
+  { domain:'MD', cat:'Area',
+    text:'The floor of a school hallway is a rectangle with length = 8 feet and width = 6 feet. What is the AREA?',
+    type:'single', options:['14 sq ft','28 sq ft','48 sq ft','56 sq ft'], correct:['C'],
+    hint:'Area = 8 × 6 = 48 sq ft.' },
+
+  { domain:'MD', cat:'Area',
+    text:'A rectangle is 9 inches long. Its width is made of a 2-inch section and a 3-inch section. Which expression uses the distributive property to find the area?',
+    type:'single',
+    options:['(9 × 2) + 3','2 × 3 × 9','(9 × 2) + (9 × 3)','(2 + 9) × (3 + 9)'],
+    correct:['C'],
+    hint:'9 × (2+3) = (9×2)+(9×3) = 18+27 = 45 sq in. That\'s the distributive property!' },
+
+  { domain:'MD', cat:'Area',
+    text:'A floor is covered with 5 squares, each with a side length of 10 feet. Which explains the CORRECT total area?',
+    type:'single',
+    options:['5 × 10 = 50 sq ft','5 × 40 = 200 sq ft','5 × 5 = 25 sq ft','5 × 100 = 500 sq ft'],
+    correct:['D'],
+    hint:'Area of ONE square = 10 × 10 = 100 sq ft. Five squares = 5 × 100 = 500 sq ft.' },
+
+  { domain:'MD', cat:'Area',
+    text:'A garden is made of two rectangles. Rectangle 1 is 6 ft × 3 ft. Rectangle 2 is 9 ft × 6 ft. What is the TOTAL area of the garden?',
+    type:'single', options:['38 sq ft','61 sq ft','72 sq ft','90 sq ft'], correct:['C'],
+    hint:'R1: 6×3=18. R2: 9×6=54. Total: 18+54=72 sq ft.' },
+
+  { domain:'MD', cat:'Area',
+    text:'Kelly arranged carpet squares on her bedroom floor in 7 rows with 10 squares in each row. Each square = 1 sq ft. What is the area of Kelly\'s floor?',
+    type:'single', options:['60 sq ft','63 sq ft','70 sq ft','83 sq ft'], correct:['C'],
+    hint:'7 × 10 = 70 squares = 70 sq ft.' },
+
+  // ── MD · PERIMETER ───────────────────────────────────────────────
+  { domain:'MD', cat:'Perimeter',
+    text:'Student 1\'s rectangle: length = 6 in, width = 4 in. Student 2\'s rectangle has the SAME perimeter but width = 7 in. What is the length of Student 2\'s rectangle?',
+    type:'single', options:['3 inches','6 inches','13 inches','17 inches'], correct:['A'],
+    hint:'Perimeter #1 = 2×(6+4)=20. For #2: 2×(L+7)=20 → L+7=10 → L=3 in.' },
+
+  { domain:'MD', cat:'Perimeter',
+    text:'A rectangle has a length of 8 cm and a width of 4 cm. What is its PERIMETER?',
+    type:'numeric', correct:24,
+    hint:'Perimeter = 2 × (length + width) = 2 × (8+4) = 2 × 12 = 24 cm.' },
+
+  // ── MD · DATA ────────────────────────────────────────────────────
+  { domain:'MD', cat:'Data & Graphs',
+    text:'Teachers voted for their favorite sport:\n• Volleyball: 4 votes  • Swimming: 6 votes  • Golf: 2 votes\n• Track: 8 votes  • Baseball: 5 votes\n\nHow many MORE teachers voted for Track than for Volleyball and Golf COMBINED?',
+    type:'single', options:['1','2','4','6'], correct:['B'],
+    hint:'Track=8. Volleyball+Golf=4+2=6. More for Track: 8−6=2!',
+    chart:true },
+
+  // ── G · GEOMETRY ─────────────────────────────────────────────────
+  { domain:'G', cat:'Geometry',
+    text:'Which TWO shapes are quadrilaterals (exactly 4 sides)?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['Circle','Triangle','Hexagon','Rhombus','Trapezoid'],
+    correct:['D','E'],
+    hint:'Circle=0 sides, Triangle=3, Hexagon=6, Rhombus=4 ✓, Trapezoid=4 ✓.' },
+
+  { domain:'G', cat:'Geometry',
+    text:'Two shapes are shown — one is a square and one is a rectangle. Which term describes BOTH shapes?',
+    type:'single', options:['Triangle','Square','Rhombus','Rectangle'], correct:['D'],
+    hint:'A square IS a special rectangle (4 right angles, opposite sides equal). "Rectangle" fits both!' },
+
+  { domain:'G', cat:'Geometry',
+    text:'A shape has 4 right angles and all 4 sides are the same length. What shape is it?',
+    type:'single', options:['Rectangle','Triangle','Square','Trapezoid'], correct:['C'],
+    hint:'4 right angles + all sides equal = square! A rectangle can have different-length sides.' },
+
+  { domain:'G', cat:'Geometry',
+    text:'How many sides does a hexagon have?',
+    type:'single', options:['4','5','6','8'], correct:['C'],
+    hint:'"Hex" means 6. A hexagon has 6 sides — like a honeycomb cell!' },
+
+  { domain:'G', cat:'Geometry',
+    text:'A shape has 3 sides and 3 angles. What is the name of this shape?',
+    type:'single', options:['Square','Triangle','Rectangle','Hexagon'], correct:['B'],
+    hint:'"Tri" means 3. Three sides = triangle!' },
+
+  { domain:'G', cat:'Geometry',
+    text:'A large square is cut into 4 equal smaller squares. Each smaller square is 1 square unit. What is the area of the LARGE square?',
+    type:'single', options:['1 sq unit','2 sq units','4 sq units','8 sq units'], correct:['C'],
+    hint:'4 equal pieces × 1 sq unit each = 4 sq units total.' },
+
+  { domain:'G', cat:'Geometry',
+    text:'Which statement about a rectangle is ALWAYS true?',
+    type:'single',
+    options:['All 4 sides are the same length.',
+             'It has exactly 4 right angles.',
+             'It has 3 sides.',
+             'It is always smaller than a square.'],
+    correct:['B'],
+    hint:'A rectangle ALWAYS has 4 right angles (90° corners). But its sides don\'t have to be equal.' },
+
+  { domain:'G', cat:'Geometry',
+    text:'A shape is partitioned into 3 equal parts. Which fraction represents each equal part?',
+    type:'single', options:['1/2','1/3','2/3','3/3'], correct:['B'],
+    hint:'3 equal parts → each part = 1 out of 3 = 1/3.' },
+
+  { domain:'G', cat:'Geometry',
+    text:'Which TWO shapes have at least one pair of parallel sides?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['Triangle','Rectangle','Trapezoid','Circle','Pentagon'],
+    correct:['B','C'],
+    hint:'Rectangle: top & bottom parallel, left & right parallel ✓. Trapezoid: one pair of parallel sides ✓.' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  NAV SETUP
+// ═══════════════════════════════════════════════════════════════════
+let activeDomain = 'All';
+
+function buildNav() {
+  const nav = document.getElementById('domain-nav');
+  nav.innerHTML = '';
+  const counts = {};
+  ALL_QUESTIONS.forEach(q => { counts[q.domain] = (counts[q.domain]||0)+1; });
+  const total = ALL_QUESTIONS.length;
+
+  DOMAINS.forEach(d => {
+    const cnt = d.id==='All' ? total : (counts[d.id]||0);
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn' + (d.id===activeDomain ? ' active' : '');
+    btn.innerHTML = `<span class="nav-icon">${d.icon}</span><span class="nav-code">${d.code}</span><span class="nav-count">${cnt}q</span>`;
+    btn.title = d.label;
+    btn.onclick = () => switchDomain(d.id);
+    nav.appendChild(btn);
+  });
+}
+
+function switchDomain(id) {
+  activeDomain = id;
+  buildNav();
+  updateStartScreen();
+  // If mid-game, go back to start screen for the new domain
+  show('start-screen');
+}
+
+function updateStartScreen() {
+  const d = DOMAINS.find(x=>x.id===activeDomain);
+  const banner = document.getElementById('domain-banner');
+  banner.style.background = d.bg;
+  banner.style.color = d.fg;
+  const qs = filteredQuestions();
+  banner.textContent = `${d.icon}  ${d.label}`;
+
+  const desc = document.getElementById('start-desc');
+  if (activeDomain==='All') {
+    desc.innerHTML = `<strong>${qs.length} questions</strong> covering all 5 Grade 3 MCAP math topics!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
+  } else {
+    desc.innerHTML = `<strong>${qs.length} questions</strong> focused on <em>${d.label}</em>.<br>Get 3 correct in a row for a 🔥 streak bonus!`;
+  }
+}
+
+function filteredQuestions() {
+  if (activeDomain==='All') return [...ALL_QUESTIONS];
+  return ALL_QUESTIONS.filter(q=>q.domain===activeDomain);
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  GAME STATE & LOGIC
+// ═══════════════════════════════════════════════════════════════════
+let questions=[], currentQ=0, score=0, streak=0, bestStreak=0, selected=new Set(), answered=false;
+
+function show(id) {
+  ['start-screen','question-screen','end-screen'].forEach(s=>
+    document.getElementById(s).classList.toggle('hidden', s!==id));
+}
+
+function startGame(shuffle) {
+  questions = filteredQuestions();
+  if (shuffle) {
+    for (let i=questions.length-1;i>0;i--) {
+      const j=Math.floor(Math.random()*(i+1));
+      [questions[i],questions[j]]=[questions[j],questions[i]];
+    }
+  }
+  currentQ=0; score=0; streak=0; bestStreak=0;
+  show('question-screen');
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = questions[currentQ];
+  answered=false; selected=new Set();
+
+  document.getElementById('score-display').textContent = score;
+  document.getElementById('q-counter').textContent = `${currentQ+1} / ${questions.length}`;
+  document.getElementById('progress-bar').style.width = `${(currentQ/questions.length)*100}%`;
+
+  const sd = document.getElementById('streak-display');
+  if (streak>=2) { sd.classList.remove('hidden'); document.getElementById('streak-count').textContent=streak; }
+  else sd.classList.add('hidden');
+
+  const d = DOMAINS.find(x=>x.id===q.domain);
+  document.getElementById('hud-domain').textContent = d ? d.label : '';
+
+  // category chip
+  const chip = document.getElementById('cat-chip');
+  const cs = CAT_STYLE[q.cat]||{bg:'#eee',fg:'#333'};
+  chip.style.background=cs.bg; chip.style.color=cs.fg;
+  chip.textContent = q.cat;
+
+  document.getElementById('q-text').innerHTML = q.text.replace(/\n/g,'<br>');
+
+  const noteEl = document.getElementById('q-note');
+  if (q.note) { noteEl.textContent=q.note; noteEl.classList.remove('hidden'); }
+  else noteEl.classList.add('hidden');
+
+  // chart
+  const ca = document.getElementById('chart-area');
+  ca.innerHTML='';
+  if (q.chart) {
+    ca.innerHTML=`<div class="bar-chart-wrap"><div class="chart-title">📊 Favorite Sport</div><div class="bar-chart">${
+      [['Volleyball',4],['Swimming',6],['Golf',2],['Track',8],['Baseball',5]].map(([n,v])=>`
+      <div class="bar-group"><div class="bar-val">${v}</div><div class="bar" style="height:${v*10}px"></div><div class="bar-label">${n}</div></div>`).join('')
+    }</div></div>`;
+  }
+
+  // reset
+  const fb=document.getElementById('feedback');
+  fb.className='feedback'; fb.innerHTML='';
+  document.getElementById('check-btn').classList.add('hidden');
+  document.getElementById('next-btn').classList.add('hidden');
+
+  const oa=document.getElementById('options-area');
+  const na=document.getElementById('numeric-area');
+  const ni=document.getElementById('numeric-input');
+  oa.innerHTML=''; na.classList.add('hidden');
+  ni.value=''; ni.className='numeric-input'; ni.disabled=false;
+
+  const L='ABCDEFGHIJ';
+  if (q.type==='numeric') {
+    na.classList.remove('hidden');
+    ni.onkeydown = e=>{ if(e.key==='Enter') checkNumeric(); };
+    setTimeout(()=>ni.focus(),50);
+  } else {
+    q.options.forEach((opt,i)=>{
+      const letter=L[i];
+      const div=document.createElement('div');
+      div.className='option'; div.dataset.letter=letter;
+      div.innerHTML=`<div class="opt-letter">${letter}</div><div>${opt}</div>`;
+      div.addEventListener('click',()=>selectOption(div,letter,q.type));
+      oa.appendChild(div);
+    });
+    if (q.type==='multi') document.getElementById('check-btn').classList.remove('hidden');
+  }
+}
+
+function selectOption(el,letter,type) {
+  if (answered) return;
+  if (type==='single') {
+    document.querySelectorAll('.option').forEach(o=>o.classList.remove('selected'));
+    el.classList.add('selected');
+    selected=new Set([letter]);
+    revealSingle(letter);
+  } else {
+    if (selected.has(letter)){ selected.delete(letter); el.classList.remove('selected'); }
+    else { selected.add(letter); el.classList.add('selected'); }
+  }
+}
+
+function revealSingle(chosen) {
+  const q=questions[currentQ]; answered=true;
+  const ok=q.correct.includes(chosen);
+  document.querySelectorAll('.option').forEach(o=>{
+    o.classList.add('disabled');
+    if(q.correct.includes(o.dataset.letter)) o.classList.add('correct');
+    else if(o.dataset.letter===chosen&&!ok) o.classList.add('wrong');
+  });
+  updateScore(ok); showFeedback(ok,q);
+  document.getElementById('next-btn').classList.remove('hidden');
+}
+
+function checkMulti() {
+  const q=questions[currentQ];
+  if(selected.size===0) return;
+  answered=true;
+  const cs=new Set(q.correct);
+  const ok=selected.size===cs.size&&[...selected].every(l=>cs.has(l));
+  document.querySelectorAll('.option').forEach(o=>{
+    o.classList.add('disabled');
+    if(cs.has(o.dataset.letter)) o.classList.add('correct');
+    else if(selected.has(o.dataset.letter)) o.classList.add('wrong');
+  });
+  updateScore(ok); showFeedback(ok,q);
+  document.getElementById('check-btn').classList.add('hidden');
+  document.getElementById('next-btn').classList.remove('hidden');
+}
+
+function checkNumeric() {
+  const q=questions[currentQ];
+  const ni=document.getElementById('numeric-input');
+  const val=parseInt(ni.value,10);
+  if(isNaN(val)) return;
+  answered=true;
+  const ok=val===q.correct;
+  ni.className='numeric-input '+(ok?'correct':'wrong');
+  ni.disabled=true;
+  updateScore(ok); showFeedback(ok,q);
+  document.getElementById('next-btn').classList.remove('hidden');
+}
+
+function updateScore(ok) {
+  if(ok){
+    score++; streak++;
+    if(streak>bestStreak) bestStreak=streak;
+    document.getElementById('score-display').textContent=score;
+    const sd=document.getElementById('streak-display');
+    document.getElementById('streak-count').textContent=streak;
+    if(streak>=2) sd.classList.remove('hidden');
+    if([3,5,7,10].includes(streak)) showStreakPopup(streak);
+  } else {
+    streak=0;
+    document.getElementById('streak-display').classList.add('hidden');
+  }
+}
+
+const CORRECT_MSGS=['Awesome! You nailed it! 🌟','Fantastic! 🎉','Math superstar! ⭐','Boom! Correct! 🚀','Yes! Exactly right! 🎯','Incredible! 💥','Brilliant! 🧠'];
+const WRONG_MSGS  =['Almost! Here\'s the trick:','Not quite — let\'s learn this:','Good try! Here\'s how:','No worries! Here\'s the answer:'];
+
+function showFeedback(ok,q) {
+  const fb=document.getElementById('feedback');
+  const msg=ok?CORRECT_MSGS[Math.floor(Math.random()*CORRECT_MSGS.length)]:WRONG_MSGS[Math.floor(Math.random()*WRONG_MSGS.length)];
+  const correctLabel=q.type==='numeric'?`Answer: <strong>${q.correct}</strong>`:`Correct: <strong>${q.correct.join(', ')}</strong>`;
+  fb.className=`feedback show ${ok?'correct-fb':'wrong-fb'}`;
+  fb.innerHTML=`<span class="fb-icon">${ok?'✅':'❌'}</span> ${msg}${!ok?`<br>${correctLabel}`:''}<div class="hint-text">💡 ${q.hint}</div>`;
+  if(ok) launchConfetti();
+}
+
+function showStreakPopup(n) {
+  const p=document.getElementById('streak-popup');
+  const msgs={3:'🔥 3 in a row!',5:'🔥🔥 5 streak! On fire!',7:'💥 7 streak! Unstoppable!',10:'🏆 10 streak! LEGEND!'};
+  p.textContent=msgs[n]||`🔥 ${n} streak!`;
+  p.style.display='block';
+  p.style.animation='none'; void p.offsetWidth;
+  p.style.animation='streakIn 1.6s ease forwards';
+  setTimeout(()=>p.style.display='none',1600);
+}
+
+function nextQuestion() {
+  currentQ++;
+  if(currentQ>=questions.length) showEndScreen();
+  else renderQuestion();
+}
+
+function showEndScreen() {
+  document.getElementById('progress-bar').style.width='100%';
+  const total=questions.length, pct=score/total;
+  let trophy,starsHtml,msg;
+  if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg='PERFECT SCORE! You are an absolute math champion, Jaden! 🎉 Totally ready for the MCAP!'; }
+  else if(pct>=.85) { trophy='🥇'; starsHtml='⭐⭐⭐⭐✨'; msg='Amazing job! You really know your stuff! Review the ones you missed and you\'ll be unbeatable! 💪'; }
+  else if(pct>=.7)  { trophy='🥈'; starsHtml='⭐⭐⭐✨✨'; msg='Great work! You\'re getting stronger every practice! Keep going! 🌟'; }
+  else if(pct>=.5)  { trophy='🌟'; starsHtml='⭐⭐✨✨✨'; msg='Good effort! Every practice makes you better. Play again and watch your score climb! 💫'; }
+  else              { trophy='🚀'; starsHtml='⭐✨✨✨✨'; msg='Keep going! Math takes practice. You\'ve totally got this! 🚀'; }
+
+  const d=DOMAINS.find(x=>x.id===activeDomain);
+  document.getElementById('trophy-icon').textContent=trophy;
+  document.getElementById('stars-row').textContent=starsHtml;
+  document.getElementById('final-score').textContent=`${score} / ${total}`;
+  document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
+  document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
+  document.getElementById('stat-domain').textContent=d?d.icon+' '+d.code:'ALL';
+  document.getElementById('final-msg').textContent=msg;
+  show('end-screen');
+  if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
+}
+
+function launchConfetti() { for(let i=0;i<16;i++) setTimeout(launchConfettiPiece,i*35); }
+function launchConfettiPiece() {
+  const cols=['#e94560','#ffd700','#27ae60','#3498db','#9b59b6','#f39c12'];
+  const el=document.createElement('div');
+  el.className='confetti-piece';
+  el.style.cssText=`left:${Math.random()*100}%;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${.8+Math.random()*1.2}s;transform:rotate(${Math.random()*360}deg)`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),2000);
+}
+
+// ── STARS BG ───────────────────────────────────────────────────────
+(function(){
+  const c=document.getElementById('stars');
+  for(let i=0;i<80;i++){
+    const s=document.createElement('div'); s.className='star';
+    const sz=Math.random()*3+1;
+    s.style.cssText=`width:${sz}px;height:${sz}px;top:${Math.random()*100}%;left:${Math.random()*100}%;animation-delay:${Math.random()*3}s;animation-duration:${2+Math.random()*3}s`;
+    c.appendChild(s);
+  }
+})();
+
+// ── INIT ───────────────────────────────────────────────────────────
+buildNav();
+updateStartScreen();
+show('start-screen');
+</script>
+</body>
+</html>
