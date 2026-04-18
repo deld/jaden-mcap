@@ -3,8 +3,48 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jaden's Math Quest!</title>
+  <title>Jaden's MCAP Quest!</title>
   <style>
+    /* ── LOCK SCREEN ── */
+    #lock-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 18px;
+    }
+    .lock-card {
+      background: rgba(255,255,255,.97); border-radius: 28px;
+      padding: 36px 32px; width: 90%; max-width: 380px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5); text-align: center;
+    }
+    .lock-icon { font-size: 56px; display: block; margin-bottom: 8px; }
+    .lock-title { font-size: 1.6rem; font-weight: 900; color: #0f3460; margin-bottom: 4px; }
+    .lock-sub   { font-size: .9rem; color: #666; margin-bottom: 20px; }
+    .lock-input {
+      width: 100%; padding: 14px 18px; font-size: 1.1rem; font-weight: 600;
+      border: 2.5px solid #ddd; border-radius: 14px; outline: none;
+      text-align: center; letter-spacing: 2px; color: #0f3460;
+      transition: border-color .2s; margin-bottom: 12px;
+    }
+    .lock-input:focus { border-color: #0f3460; }
+    .lock-input.shake { animation: shake .35s ease; }
+    @keyframes shake {
+      0%,100%{transform:translateX(0)}
+      20%{transform:translateX(-8px)}
+      40%{transform:translateX(8px)}
+      60%{transform:translateX(-5px)}
+      80%{transform:translateX(5px)}
+    }
+    .lock-btn {
+      width: 100%; padding: 14px; border: none; border-radius: 14px;
+      background: linear-gradient(135deg,#e94560,#c41a43); color: white;
+      font-size: 1rem; font-weight: 800; cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .lock-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(233,69,96,.4); }
+    .lock-btn:active { transform: translateY(0); }
+    .lock-err { font-size: .82rem; color: #e94560; font-weight: 700; min-height: 18px; }
+  </style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -12,13 +52,35 @@
       min-height: 100vh;
       display: flex; flex-direction: column; align-items: center;
       padding: 12px 12px 24px;
-      gap: 12px;
+      gap: 10px;
     }
 
     /* ── STARS ── */
     .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
     .star  { position:absolute; border-radius:50%; background:white; animation:twinkle 3s infinite alternate; }
     @keyframes twinkle { from{opacity:.12} to{opacity:.8} }
+
+    /* ── SUBJECT TOGGLE ── */
+    #subject-toggle {
+      position: relative; z-index: 12;
+      display: flex; gap: 6px;
+      background: rgba(255,255,255,.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 50px;
+      padding: 5px;
+    }
+    .subject-btn {
+      padding: 8px 24px; border: none; border-radius: 40px;
+      font-size: .95rem; font-weight: 800; cursor: pointer;
+      transition: all .2s; color: rgba(255,255,255,.75);
+      background: transparent; letter-spacing: .3px;
+    }
+    .subject-btn.active {
+      background: white; color: #0f3460;
+      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .subject-btn:hover:not(.active) { background: rgba(255,255,255,.2); color: white; }
 
     /* ── DOMAIN NAV ── */
     #domain-nav {
@@ -65,7 +127,7 @@
 
     /* ── START SCREEN ── */
     #start-screen { text-align: center; }
-    .rocket { font-size: 64px; animation: float 2s ease-in-out infinite alternate; display: block; margin-bottom: 10px; }
+    .subject-icon { font-size: 64px; animation: float 2s ease-in-out infinite alternate; display: block; margin-bottom: 10px; }
     @keyframes float { from{transform:translateY(0)} to{transform:translateY(-10px)} }
     #start-screen h1 { font-size: 2rem; color: #0f3460; margin-bottom: 6px; }
     .domain-banner {
@@ -98,6 +160,19 @@
 
     /* ── CATEGORY CHIP ── */
     .cat-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:20px; font-size:.73rem; font-weight:700; margin-bottom:8px; }
+
+    /* ── PASSAGE CONTEXT BOX ── */
+    .passage-box {
+      background: #f0f4ff; border-left: 4px solid #0f3460;
+      border-radius: 0 12px 12px 0; padding: 12px 15px;
+      margin-bottom: 14px; font-size: .88rem; color: #334155;
+      line-height: 1.65;
+    }
+    .passage-label {
+      font-size: .68rem; font-weight: 800; color: #0f3460;
+      text-transform: uppercase; letter-spacing: .6px;
+      margin-bottom: 5px; display: block;
+    }
 
     /* ── QUESTION ── */
     .q-text { font-size:1.08rem; color:#1a1a2e; font-weight:600; line-height:1.6; margin-bottom:16px; }
@@ -173,7 +248,27 @@
 </head>
 <body>
 
+<!-- ══ LOCK SCREEN ══ -->
+<div id="lock-screen">
+  <div class="lock-card">
+    <span class="lock-icon">🔐</span>
+    <div class="lock-title">Jaden's MCAP Quest</div>
+    <div class="lock-sub">Enter the password to play!</div>
+    <input id="lock-input" class="lock-input" type="password"
+           placeholder="••••••••" autocomplete="off"
+           onkeydown="if(event.key==='Enter') checkPassword()">
+    <div class="lock-err" id="lock-err">&nbsp;</div>
+    <button class="lock-btn" onclick="checkPassword()">🚀 Let's Go!</button>
+  </div>
+</div>
+
 <div class="stars" id="stars"></div>
+
+<!-- ══ SUBJECT TOGGLE ══ -->
+<div id="subject-toggle">
+  <button class="subject-btn active" id="btn-math" onclick="switchSubject('Math')">🔢 Math</button>
+  <button class="subject-btn" id="btn-reading" onclick="switchSubject('Reading')">📚 Reading</button>
+</div>
 
 <!-- ══ DOMAIN NAV ══ -->
 <nav id="domain-nav"></nav>
@@ -181,8 +276,8 @@
 <div id="app">
   <!-- START SCREEN -->
   <div id="start-screen" class="card">
-    <span class="rocket">🚀</span>
-    <h1>Jaden's Math Quest!</h1>
+    <span class="subject-icon" id="subject-icon">🚀</span>
+    <h1 id="start-title">Jaden's Math Quest!</h1>
     <div class="domain-banner" id="domain-banner"></div>
     <p id="start-desc"></p>
     <div class="start-btns">
@@ -203,6 +298,10 @@
       <div class="q-counter" id="q-counter"></div>
     </div>
     <div class="cat-chip" id="cat-chip"></div>
+    <div class="passage-box hidden" id="passage-box">
+      <span class="passage-label">📖 Story Context</span>
+      <span id="passage-text"></span>
+    </div>
     <div class="q-text" id="q-text"></div>
     <div class="q-note hidden" id="q-note"></div>
     <div id="chart-area"></div>
@@ -221,7 +320,7 @@
   <!-- END SCREEN -->
   <div id="end-screen" class="card hidden">
     <span class="trophy" id="trophy-icon">🏆</span>
-    <h2>Quest Complete!</h2>
+    <h2 id="end-title">Quest Complete!</h2>
     <div class="stars-row" id="stars-row"></div>
     <div class="final-score" id="final-score"></div>
     <div class="stats-row">
@@ -241,9 +340,43 @@
 
 <script>
 // ═══════════════════════════════════════════════════════════════════
-//  DOMAIN DEFINITIONS
+//  PASSWORD  ← change "jaden2026" to whatever you want
 // ═══════════════════════════════════════════════════════════════════
-const DOMAINS = [
+const APP_PASSWORD = 'jaden2026';
+
+(function () {
+  // Already unlocked this session? Skip the lock screen.
+  if (sessionStorage.getItem('mcap_unlocked') === '1') {
+    document.getElementById('lock-screen').style.display = 'none';
+  } else {
+    // Prevent body scroll while locked
+    document.body.style.overflow = 'hidden';
+  }
+})();
+
+function checkPassword() {
+  const input = document.getElementById('lock-input');
+  const err   = document.getElementById('lock-err');
+  if (input.value === APP_PASSWORD) {
+    sessionStorage.setItem('mcap_unlocked', '1');
+    document.body.style.overflow = '';
+    document.getElementById('lock-screen').style.display = 'none';
+    input.value = '';
+  } else {
+    err.textContent = 'Wrong password — try again!';
+    input.classList.remove('shake');
+    void input.offsetWidth; // restart animation
+    input.classList.add('shake');
+    input.value = '';
+    input.focus();
+    setTimeout(() => { err.textContent = '\u00a0'; }, 2000);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  MATH DOMAIN DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════
+const MATH_DOMAINS = [
   { id:'All', label:'All Topics',     code:'ALL', icon:'🚀', bg:'#1a1a2e', fg:'white'  },
   { id:'OA',  label:'Operations & Algebraic Thinking', code:'OA', icon:'✖️', bg:'#fde68a', fg:'#78350f' },
   { id:'NBT', label:'Number & Operations in Base Ten', code:'NBT',icon:'🔢', bg:'#bfdbfe', fg:'#1e3a5f' },
@@ -253,9 +386,20 @@ const DOMAINS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
-//  CAT STYLE (sub-category chips shown on each question)
+//  ELA DOMAIN DEFINITIONS
+// ═══════════════════════════════════════════════════════════════════
+const ELA_DOMAINS = [
+  { id:'All', label:'All Reading',         code:'ALL', icon:'📚', bg:'#1a1a2e', fg:'white'  },
+  { id:'RL',  label:'Literary Text',       code:'RL',  icon:'📖', bg:'#fce7f3', fg:'#9d174d' },
+  { id:'RI',  label:'Informational Text',  code:'RI',  icon:'📰', bg:'#dbeafe', fg:'#1e3a5f' },
+  { id:'L',   label:'Language',            code:'L',   icon:'🔤', bg:'#d1fae5', fg:'#065f46' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  CAT STYLE (colored chip per sub-category)
 // ═══════════════════════════════════════════════════════════════════
 const CAT_STYLE = {
+  // Math
   'Multiplication':            { bg:'#fde68a', fg:'#78350f' },
   'Division':                  { bg:'#fef3c7', fg:'#92400e' },
   'Mult & Division Reasoning': { bg:'#ddd6fe', fg:'#4c1d95' },
@@ -268,12 +412,17 @@ const CAT_STYLE = {
   'Word Problems':             { bg:'#fef9c3', fg:'#713f12' },
   'Data & Graphs':             { bg:'#e0f2fe', fg:'#0c4a6e' },
   'Geometry':                  { bg:'#ede9fe', fg:'#4c1d95' },
+  // ELA
+  'Literary Text':             { bg:'#fce7f3', fg:'#9d174d' },
+  'Informational Text':        { bg:'#dbeafe', fg:'#1e3a5f' },
+  'Vocabulary':                { bg:'#d1fae5', fg:'#065f46' },
+  'Word Study':                { bg:'#fef3c7', fg:'#92400e' },
 };
 
 // ═══════════════════════════════════════════════════════════════════
-//  ALL QUESTIONS  (domain = OA | NBT | NF | MD | G)
+//  MATH QUESTIONS  (domain = OA | NBT | NF | MD | G)
 // ═══════════════════════════════════════════════════════════════════
-const ALL_QUESTIONS = [
+const MATH_QUESTIONS = [
 
   // ── OA · MULTIPLICATION ─────────────────────────────────────────
   { domain:'OA', cat:'Multiplication',
@@ -755,18 +904,417 @@ const ALL_QUESTIONS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════
+//  ELA QUESTIONS  (domain = RL | RI | L)
+// ═══════════════════════════════════════════════════════════════════
+const ELA_QUESTIONS = [
+
+  // ── RL · NICO THE NIFTY ─────────────────────────────────────────
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," Sam learned to juggle at camp and shows his younger brother Nico. In paragraph 5: "I still mess up a lot," Sam admitted as one of the scarves drifted to the floor.',
+    text:'What does the word "drifted" mean as it is used in paragraph 5?',
+    type:'single',
+    options:['swayed','tumbled','turned','floated'],
+    correct:['D'],
+    hint:'"Drifted" means floated gently downward — like a leaf falling slowly off a tree!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," Nico watches his older brother Sam juggle and then tries to learn himself.',
+    text:'What do paragraphs 14 and 18 tell the reader about Nico?',
+    type:'single',
+    options:['He wants to be a great juggler.','He is very imaginative.','He is a quick learner.','He wants to make Sam feel bad.'],
+    correct:['C'],
+    hint:'Nico picks up juggling very quickly after just a little practice — that shows he is a fast learner!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In paragraph 16 of "Nico the Nifty," after Nico successfully juggles all three scarves, Sam says: "You\'re a natural, Nico."',
+    text:'What is the meaning of the phrase "you\'re a natural"?',
+    type:'single',
+    options:['to use things from outside','to practice something','to make a good choice','to have the talent to succeed'],
+    correct:['D'],
+    hint:'Being a "natural" at something means you have a gift or talent for it — you don\'t have to work as hard to be good!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," Sam says "You\'re a natural, Nico" — meaning Nico has a talent for juggling.',
+    text:'Which sentence from the passage BEST supports the idea that Nico is a natural?',
+    type:'single',
+    options:['"...Sam taught Nico how to throw two scarves in an X shape..." (paragraph 9)',
+             '"But it didn\'t take Nico long at all." (paragraph 13)',
+             '"He began to juggle—slowly at first, then faster." (paragraph 14)',
+             '"...Nico hurried out of the house with his magician\'s hat." (paragraph 20)'],
+    correct:['B'],
+    hint:'"It didn\'t take Nico long at all" shows he learned quickly — that\'s the strongest proof of natural talent!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'From paragraph 24 of "Nico the Nifty": "So what? Juggling is silly." Sam spun the basketball on his index finger, something Nico had never been able to do.',
+    text:'Why does the author include these sentences about Sam spinning the basketball?',
+    type:'single',
+    options:['He hopes Nico will admire him even though he cannot juggle.',
+             'He is not sure where to place his basketball while talking to Nico.',
+             'He does not want Nico to fall behind with his basketball skills.',
+             'He wants to prove to Nico that he also has a special talent.'],
+    correct:['D'],
+    hint:'Sam shows off his basketball trick right after Nico\'s juggling success — Sam wants to prove HE is talented too!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," after Nico finds success juggling, Sam says "Try to do that, little brother" while spinning the basketball (paragraph 26).',
+    text:'Which detail from the passage BEST supports why Sam spins the basketball?',
+    type:'single',
+    options:['"...Sam\'s scarves and beanbags and balls kept drifting and falling..." (paragraph 19)',
+             '"\'I\'m a good juggler.\'" (paragraph 23)',
+             '"After Nico ran inside, Sam dribbled a few times and took aim." (paragraph 26)',
+             '"\'Try to do that, little brother,\' he muttered." (paragraph 26)'],
+    correct:['D'],
+    hint:'"Try to do that, little brother" — Sam is challenging Nico to match his basketball skill. That proves he wants to show his own talent!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," paragraphs 35–38 show what Sam does after watching Nico struggle with something.',
+    text:'Which TWO statements explain what paragraphs 35–38 show about Sam?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['They show how well Sam played during an important basketball game.',
+             'They show that Sam feels guilty about the way he has treated Nico.',
+             'They show the reasons Sam was unable to play in a basketball game.',
+             'They show how Sam uses his memory of a similar feeling to help Nico.',
+             'They show that Sam wishes he could perform in the talent show with Nico.'],
+    correct:['B','D'],
+    hint:'Sam feels guilty about being jealous (B), then remembers when HE needed support and uses that to help Nico (D)!' },
+
+  { domain:'RL', cat:'Vocabulary',
+    passage:'In paragraph 41 of "Nico the Nifty," Sam stood glumly watching Nico prepare for the talent show.',
+    text:'Which word means the SAME as "glumly" as used in paragraph 41?',
+    type:'single',
+    options:['calmly','sadly','angrily','quietly'],
+    correct:['B'],
+    hint:'"Glumly" means with a sad, gloomy, disappointed feeling. Sam felt bad about how he had been acting!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," brothers Sam and Nico help each other. Sam teaches Nico to juggle, feels jealous of Nico\'s success, but eventually overcomes his jealousy and cheers for Nico at the talent show.',
+    text:'What is a CENTRAL MESSAGE of "Nico the Nifty"?',
+    type:'single',
+    options:['Children should work together to learn new skills.',
+             'Everyone should find a hobby they enjoy doing.',
+             'Family members should support the interests and talents of each other.',
+             'Family members can help each other by sharing their opinions and ideas.'],
+    correct:['C'],
+    hint:'The whole story is about brothers — Sam overcoming jealousy to truly support Nico. Family should support each other!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Nico the Nifty," Sam overcomes his jealousy and cheers for Nico at the school talent show (paragraph 46).',
+    text:'Which evidence from the passage BEST supports the central message of family support?',
+    type:'single',
+    options:['"\'Watch this,\' he told his younger brother, Nico, one day." (paragraph 2)',
+             '"\'Presenting Nico the Nifty!\' he announced..." (paragraph 14)',
+             '"After breakfast, Sam shot hoops outside while Nico practiced one last time." (paragraph 32)',
+             '"\'Way to go!\' Sam called. For once he was happy for Nico, not jealous." (paragraph 46)'],
+    correct:['D'],
+    hint:'"For once he was happy for Nico, not jealous" — Sam is truly supporting his brother! This shows the message in action.' },
+
+  // ── RL · HOBBY FRIDAY ───────────────────────────────────────────
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," Chris\'s teacher announces a Hobby Friday project. Chris\'s real hobby is designing clothes, but no one except his family knows. In paragraphs 1–3, Chris groans when the assignment is announced.',
+    text:'Which statement BEST describes how Chris feels in paragraphs 1–3?',
+    type:'single',
+    options:['curious about what his classmates will share',
+             'afraid of having to speak in front of others',
+             'embarrassed about what he most enjoys doing',
+             'unsure about what the teacher expects of him'],
+    correct:['C'],
+    hint:'Chris doesn\'t want anyone to know his real hobby — he\'s embarrassed about it and doesn\'t want to share it!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," Chris is embarrassed about his real hobby (designing clothes). When deciding what to bring for Hobby Friday, he takes action.',
+    text:'What does this feeling FIRST cause Chris to do?',
+    type:'single',
+    options:['call his grandmother for help',
+             'look through his baseball cards',
+             'talk to his family about the project',
+             'collect his supplies to take to school'],
+    correct:['B'],
+    hint:'Chris decides to bring baseball cards INSTEAD of his real hobby — hiding what he truly loves to avoid embarrassment!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," paragraphs 12–16 show Chris sitting at the kitchen table, thinking of Grandma, and then suddenly having a realization about what he needs to do.',
+    text:'Why are paragraphs 12–16 IMPORTANT to the story?',
+    type:'single',
+    options:['They show that Chris wants to try a new hobby with his grandmother.',
+             'They show that Chris is pleased with the hobby samples he brought to class.',
+             'They show that Chris wishes he would have already shared his hobby with others.',
+             'They show that Chris has decided to share his real favorite hobby with the class.'],
+    correct:['D'],
+    hint:'These paragraphs are the turning point — Chris makes the brave decision to be honest about his real hobby!' },
+
+  { domain:'RL', cat:'Vocabulary',
+    passage:'In paragraph 18 of "Hobby Friday," Chris walks nervously to the front of the classroom and tells himself: "Don\'t let them see you sweat."',
+    text:'When Chris tells himself "Don\'t let them see you sweat," he means that he feels:',
+    type:'single',
+    options:['proud','surprised','foolish','worried'],
+    correct:['D'],
+    hint:'"Don\'t let them see you sweat" is an idiom meaning don\'t let people know you\'re nervous or worried. Chris is very anxious!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," Chris walks to the front of the class. From paragraph 16: "His heart was pounding, and his legs felt shaky."',
+    text:'Which evidence from the passage BEST supports that Chris feels worried when presenting?',
+    type:'single',
+    options:['"Suddenly, Chris knew what he had to do." (paragraph 13)',
+             '"Everyone in the class turned to look at him." (paragraph 15)',
+             '"His heart was pounding, and his legs felt shaky." (paragraph 16)',
+             '"There were a few snickers, even though Mrs. Griswell was shaking her head." (paragraph 20)'],
+    correct:['C'],
+    hint:'A pounding heart and shaky legs are physical signs of nervousness and worry — that\'s the strongest evidence!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," Chris\'s real hobby is designing clothes and accessories. He got interested because of Grandma. From paragraph 7: "his real hobby let him express things from his imagination, and that\'s what he liked most."',
+    text:'What does Chris LIKE MOST about designing clothes?',
+    type:'single',
+    options:['He can work with his grandmother.',
+             'He can improve his drawing skills.',
+             'He can amaze his classmates.',
+             'He can share his new ideas.'],
+    correct:['D'],
+    hint:'Chris loves that designing lets him express things from his imagination — sharing his own creative new ideas!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'Chris loves designing clothes most of all. He explains his feelings in paragraph 7 of "Hobby Friday."',
+    text:'Which evidence from the passage BEST supports what Chris likes most about his hobby?',
+    type:'single',
+    options:['"But his real hobby let him express things from his imagination..." (paragraph 7)',
+             '"She was the reason he\'d gotten interested in his hobby in the first place." (paragraph 12)',
+             '"He brought out his sketchbook and flipped through pages..." (paragraph 19)',
+             '"A few of the other girls nodded enthusiastically." (paragraph 24)'],
+    correct:['A'],
+    hint:'"Express things from his imagination" = sharing his own new ideas through design. This directly supports the answer!' },
+
+  // ── RL · PAINT THE MORNING ──────────────────────────────────────
+  { domain:'RL', cat:'Vocabulary',
+    passage:'In paragraph 3 of "Paint the Morning," Malia is painting when her brother comes into her room: "He peered at her paper. \'I didn\'t know you liked art.\'"',
+    text:'What does the word "peered" mean as used in paragraph 3?',
+    type:'single',
+    options:['grabbed quickly','looked closely','laughed loudly','smiled happily'],
+    correct:['B'],
+    hint:'"Peered" means to look closely and carefully at something — like leaning in to examine it carefully!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Paint the Morning," Malia hangs a sign on her bedroom door in paragraph 9. The next paragraph (10) says: "The footsteps faded away."',
+    text:'How is paragraph 10 IMPORTANT to the passage?',
+    type:'single',
+    options:['It shows that Malia finishes her painting.',
+             'It shows that Malia is bothered by the noise.',
+             'It shows that Malia\'s idea is successful.',
+             'It shows that Malia\'s family walks quietly.'],
+    correct:['C'],
+    hint:'The sign worked — footsteps go away, no more interruptions! This shows Malia\'s plan to get quiet painting time was a success.' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Paint the Morning," every time a family member interrupts Malia\'s painting, she politely says "Thanks!" but puts their suggestions aside and picks up her paintbrush again.',
+    text:'Based on "Paint the Morning," which sentence BEST describes Malia?',
+    type:'single',
+    options:['Malia gets upset because she forgets what she wants to paint.',
+             'Malia wants to be left alone so she can paint.',
+             'Malia is thankful for the ideas her family shares.',
+             'Malia is satisfied with her final painting.'],
+    correct:['B'],
+    hint:'Every time someone interrupts, Malia waits for them to leave and picks up her paintbrush — she just wants quiet time to paint!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Paint the Morning," Malia wants to paint without interruptions. In paragraph 9: "She worked quickly on the little sign and hung it outside her bedroom door."',
+    text:'Which detail from the passage BEST supports that Malia wants to be left alone to paint?',
+    type:'single',
+    options:['"She closed her eyes to try to remember the morning..." (paragraph 7)',
+             '"Malia leafed through the brochure and saw \'Art: Pottery—Pinch and Coil Pots.\'" (paragraph 8)',
+             '"She worked quickly on the little sign and hung it outside her bedroom door." (paragraph 9)',
+             '"Malia smiled and picked up her paintbrush." (paragraph 11)'],
+    correct:['C'],
+    hint:'Making a "Do Not Disturb" sign proves Malia needs privacy to paint. That\'s the clearest evidence she wants to be left alone!' },
+
+  { domain:'RL', cat:'Literary Text',
+    passage:'In "Hobby Friday," Chris overcomes his embarrassment to share his true passion — fashion design. In "Paint the Morning," Malia creates a sign so she can paint without interruptions.',
+    text:'What are TWO ways that Chris from "Hobby Friday" and Malia from "Paint the Morning" are ALIKE?',
+    type:'multi', note:'Select TWO correct answers.',
+    options:['Both characters think of a way to solve a problem.',
+             'Both characters show their finished project to others.',
+             'Both characters like doing more than one activity.',
+             'Both characters ask for help from family members.',
+             'Both characters are satisfied with a choice they make.'],
+    correct:['A','E'],
+    hint:'Both Chris and Malia figure out how to solve a problem (A ✓), and both end up satisfied with the choices they make (E ✓)!' },
+
+  // ── RI · TINY TREES ─────────────────────────────────────────────
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees" (an article about bonsai — miniature trees grown as art): "Before a bonsai is planted in its pot, its roots are trimmed." (paragraph 2)',
+    text:'What does the word "trimmed" mean as used in paragraph 2?',
+    type:'single',
+    options:['cut shorter','decorated','carefully arranged','removed'],
+    correct:['A'],
+    hint:'To trim roots means to cut them shorter — just like getting a haircut to shorten your hair!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From the last sentence of paragraph 2 of "Tiny Trees": "Some you can hold in your hand, while others are so big they need a forklift to move."',
+    text:'What is the PURPOSE of this sentence?',
+    type:'single',
+    options:['It helps the reader understand that bonsai can be many different sizes.',
+             'It helps the reader understand that bonsai can be displayed in different locations.',
+             'It helps the reader understand the differences between the types of trees used.',
+             'It helps the reader understand why it is important to grow bonsai in pots.'],
+    correct:['A'],
+    hint:'The sentence shows two extremes — tiny enough to hold vs. huge enough to need a forklift — showing bonsai come in ALL sizes!' },
+
+  { domain:'RI', cat:'Vocabulary',
+    passage:'From "Tiny Trees" paragraph 5: "Artists train the branches of a bonsai tree using wire."',
+    text:'Which definition BEST matches how the word "train" is used in paragraph 5?',
+    type:'single',
+    options:['to drag behind','to practice or prepare','to teach another person','to form or guide'],
+    correct:['D'],
+    hint:'"Train" here means to guide or shape — bending branches with wire to form them into a certain shape!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees": Paragraph 4 talks about the "story" bonsai artists want to tell. Paragraphs 5 and 6 then explain how artists use wire and trimming techniques.',
+    text:'How does the author use paragraphs 5 and 6 to BUILD ON the information in paragraph 4?',
+    type:'single',
+    options:['by listing the reasons that bonsai trees may appear a certain age',
+             'by sharing some of the stories that bonsai artists may want to tell',
+             'by explaining how artists are able to make bonsai look a certain way',
+             'by describing some objects in nature that bonsai trees might look like'],
+    correct:['C'],
+    hint:'Paragraph 4 says artists create a look — paragraphs 5 and 6 explain exactly HOW they do it (wire and careful trimming)!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees," paragraphs 7 and 8 discuss what keeps bonsai roots healthy.',
+    text:'According to paragraphs 7 and 8, what will CAUSE the roots of a bonsai tree to stay in good condition?',
+    type:'single',
+    options:['using a certain kind of soil','cutting off the larger roots','wrapping the roots with tape','choosing a pot of the correct size'],
+    correct:['A'],
+    hint:'The right type of soil lets water drain properly and provides the nutrients the roots need to stay healthy!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees," paragraph 8 discusses what happens to bonsai roots and what causes it to happen.',
+    text:'Which statement BEST describes how the sentences in paragraph 8 are related?',
+    type:'single',
+    options:['They show the difference between two ideas.',
+             'They show the order of importance.',
+             'They support a popular opinion.',
+             'They explain a cause and an effect.'],
+    correct:['D'],
+    hint:'One thing CAUSES another thing to happen. That\'s a cause-and-effect relationship — like: good care → healthy roots!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees": "...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1). The whole article explains how bonsai become works of art.',
+    text:'What is the MAIN IDEA of the passage "Tiny Trees"?',
+    type:'single',
+    options:['Bonsai have been enjoyed as art for many years.',
+             'Bonsai can be made to look like other things in nature.',
+             'Bonsai are trees that show how the seasons can change plants.',
+             'Bonsai are trees that are used to become special works of art.'],
+    correct:['D'],
+    hint:'The whole article is about how bonsai become special living works of art through an artist\'s careful skill!' },
+
+  { domain:'RI', cat:'Informational Text',
+    passage:'From "Tiny Trees" paragraph 1: "...bonsai artists create beautiful living sculptures from trees or shrubs."',
+    text:'Which evidence from the passage BEST supports the main idea of "Tiny Trees"?',
+    type:'single',
+    options:['"...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1)',
+             '"The wires stay on for a few months, until the shape holds." (paragraph 5)',
+             '"But bonsai grown from tropical trees need to come inside for the winter." (paragraph 9)',
+             '"...if they\'re well-tended, they can live for hundreds of years." (paragraph 10)'],
+    correct:['A'],
+    hint:'"Beautiful living sculptures" directly describes bonsai as art — this sentence perfectly captures the main idea!' },
+
+  // ── L · GRAMMAR & WORD STUDY ────────────────────────────────────
+  { domain:'L', cat:'Word Study',
+    text:'Which word means "most bold"?',
+    type:'single',
+    options:['bolder','boldly','boldness','boldest'],
+    correct:['D'],
+    hint:'Add "-est" to short adjectives to show "the most." Bold → boldest. (Like: fast → fastest, smart → smartest!)' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word means "to fold again"?',
+    type:'single',
+    options:['unfold','refold','misfold','overfold'],
+    correct:['B'],
+    hint:'The prefix "re-" means "again." So re + fold = refold = to fold again! (Like: redo = do again, reread = read again!)' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "des\u200btroy" (the -oy sound)?',
+    type:'single',
+    options:['going','country','noise','donkey'],
+    correct:['C'],
+    hint:'"Destroy" has the /oy/ sound (like "boy"). "Noise" also has the /oi/ sound — same sound, different spelling!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "\u200bg\u200biant" (the soft-g sound)?',
+    type:'single',
+    options:['gather','goldfish','giving','gentle'],
+    correct:['D'],
+    hint:'The "g" in "giant" makes a soft /j/ sound (g before i). "Gentle" also has the soft g — it sounds like a "j" too!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "\u200bea\u200bsily" (the long-e sound)?',
+    type:'single',
+    options:['climbing','lucky','leader','yellow'],
+    correct:['C'],
+    hint:'"Easily" has the long /ee/ sound in "ea." "Leader" also has the long /ee/ sound in "ea." Same sound!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined letter in "\u200bc\u200bircle" (the soft-c sound)?',
+    type:'single',
+    options:['safety','cotton','bucket','backward'],
+    correct:['A'],
+    hint:'The "c" in "circle" makes a soft /s/ sound (c before i). "Safety" also starts with the /s/ sound — they match!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "\u200bbe\u200bfore" (the beginning e-sound)?',
+    type:'single',
+    options:['shepherd','eighty','mother','enough'],
+    correct:['D'],
+    hint:'The "e" in "be-fore" makes the short /ih/ sound. "Enough" starts with the same /ih/ sound — they both begin alike!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "w\u200bon\u200bder" (the -on- sound)?',
+    type:'single',
+    options:['tumble','closet','enjoy','ruler'],
+    correct:['A'],
+    hint:'"Wonder" has the /uh/ sound in "won." "Tumble" has the same /uh/ sound in "tum." They sound alike!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined part of "\u200baw\u200bful" (the aw-sound)?',
+    type:'single',
+    options:['tower','caught','nation','knew'],
+    correct:['B'],
+    hint:'"Awful" has the /aw/ sound. "Caught" has the same /aw/ sound — spelled differently (au) but sounds the same!' },
+
+  { domain:'L', cat:'Word Study',
+    text:'Which word has the SAME sound as the underlined letter in "midd\u200ble" (the short-i sound)?',
+    type:'single',
+    options:['listen','finest','pilot','excite'],
+    correct:['A'],
+    hint:'The "i" in "mi-ddle" makes the short /ih/ sound. "Listen" also has the short /ih/ sound in "li-sten." Match!' },
+];
+
+// ═══════════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════════
+let activeSubject = 'Math';
+let activeDomain  = 'All';
+
+function currentDomains()   { return activeSubject === 'Math' ? MATH_DOMAINS   : ELA_DOMAINS; }
+function currentQuestions() { return activeSubject === 'Math' ? MATH_QUESTIONS : ELA_QUESTIONS; }
+
+// ═══════════════════════════════════════════════════════════════════
 //  NAV SETUP
 // ═══════════════════════════════════════════════════════════════════
-let activeDomain = 'All';
-
 function buildNav() {
+  // Update subject toggle buttons
+  document.getElementById('btn-math').classList.toggle('active', activeSubject === 'Math');
+  document.getElementById('btn-reading').classList.toggle('active', activeSubject === 'Reading');
+
   const nav = document.getElementById('domain-nav');
   nav.innerHTML = '';
+  const domains = currentDomains();
+  const qs = currentQuestions();
   const counts = {};
-  ALL_QUESTIONS.forEach(q => { counts[q.domain] = (counts[q.domain]||0)+1; });
-  const total = ALL_QUESTIONS.length;
+  qs.forEach(q => { counts[q.domain] = (counts[q.domain]||0)+1; });
+  const total = qs.length;
 
-  DOMAINS.forEach(d => {
+  domains.forEach(d => {
     const cnt = d.id==='All' ? total : (counts[d.id]||0);
     const btn = document.createElement('button');
     btn.className = 'nav-btn' + (d.id===activeDomain ? ' active' : '');
@@ -777,33 +1325,52 @@ function buildNav() {
   });
 }
 
+function switchSubject(subj) {
+  activeSubject = subj;
+  activeDomain  = 'All';
+  buildNav();
+  updateStartScreen();
+  show('start-screen');
+}
+
 function switchDomain(id) {
   activeDomain = id;
   buildNav();
   updateStartScreen();
-  // If mid-game, go back to start screen for the new domain
   show('start-screen');
 }
 
 function updateStartScreen() {
-  const d = DOMAINS.find(x=>x.id===activeDomain);
+  const d = currentDomains().find(x => x.id === activeDomain);
   const banner = document.getElementById('domain-banner');
   banner.style.background = d.bg;
   banner.style.color = d.fg;
+
   const qs = filteredQuestions();
   banner.textContent = `${d.icon}  ${d.label}`;
 
+  // Title & icon based on subject + domain
+  if (activeSubject === 'Math') {
+    document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '🚀' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'🚀'}).icon;
+    document.getElementById('start-title').textContent = 'Jaden\'s Math Quest!';
+  } else {
+    document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '📚' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'📚'}).icon;
+    document.getElementById('start-title').textContent = 'Jaden\'s Reading Quest!';
+  }
+
   const desc = document.getElementById('start-desc');
-  if (activeDomain==='All') {
-    desc.innerHTML = `<strong>${qs.length} questions</strong> covering all 5 Grade 3 MCAP math topics!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
+  const domainName = activeSubject === 'Math' ? 'Grade 3 MCAP math topics' : 'Grade 3 MCAP reading skills';
+  if (activeDomain === 'All') {
+    desc.innerHTML = `<strong>${qs.length} questions</strong> covering all ${domainName}!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   } else {
     desc.innerHTML = `<strong>${qs.length} questions</strong> focused on <em>${d.label}</em>.<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   }
 }
 
 function filteredQuestions() {
-  if (activeDomain==='All') return [...ALL_QUESTIONS];
-  return ALL_QUESTIONS.filter(q=>q.domain===activeDomain);
+  const qs = currentQuestions();
+  if (activeDomain === 'All') return [...qs];
+  return qs.filter(q => q.domain === activeDomain);
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -841,7 +1408,7 @@ function renderQuestion() {
   if (streak>=2) { sd.classList.remove('hidden'); document.getElementById('streak-count').textContent=streak; }
   else sd.classList.add('hidden');
 
-  const d = DOMAINS.find(x=>x.id===q.domain);
+  const d = currentDomains().find(x=>x.id===q.domain);
   document.getElementById('hud-domain').textContent = d ? d.label : '';
 
   // category chip
@@ -849,6 +1416,16 @@ function renderQuestion() {
   const cs = CAT_STYLE[q.cat]||{bg:'#eee',fg:'#333'};
   chip.style.background=cs.bg; chip.style.color=cs.fg;
   chip.textContent = q.cat;
+
+  // passage context box (ELA questions)
+  const pb = document.getElementById('passage-box');
+  const pt = document.getElementById('passage-text');
+  if (q.passage) {
+    pt.textContent = q.passage;
+    pb.classList.remove('hidden');
+  } else {
+    pb.classList.add('hidden');
+  }
 
   document.getElementById('q-text').innerHTML = q.text.replace(/\n/g,'<br>');
 
@@ -965,7 +1542,7 @@ function updateScore(ok) {
   }
 }
 
-const CORRECT_MSGS=['Awesome! You nailed it! 🌟','Fantastic! 🎉','Math superstar! ⭐','Boom! Correct! 🚀','Yes! Exactly right! 🎯','Incredible! 💥','Brilliant! 🧠'];
+const CORRECT_MSGS=['Awesome! You nailed it! 🌟','Fantastic! 🎉','Superstar! ⭐','Boom! Correct! 🚀','Yes! Exactly right! 🎯','Incredible! 💥','Brilliant! 🧠'];
 const WRONG_MSGS  =['Almost! Here\'s the trick:','Not quite — let\'s learn this:','Good try! Here\'s how:','No worries! Here\'s the answer:'];
 
 function showFeedback(ok,q) {
@@ -997,19 +1574,21 @@ function showEndScreen() {
   document.getElementById('progress-bar').style.width='100%';
   const total=questions.length, pct=score/total;
   let trophy,starsHtml,msg;
-  if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg='PERFECT SCORE! You are an absolute math champion, Jaden! 🎉 Totally ready for the MCAP!'; }
+  const isReading = activeSubject === 'Reading';
+  if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg=isReading ? 'PERFECT SCORE! You are an absolute reading champion, Jaden! 🎉 Ready for MCAP ELA!' : 'PERFECT SCORE! You are an absolute math champion, Jaden! 🎉 Totally ready for the MCAP!'; }
   else if(pct>=.85) { trophy='🥇'; starsHtml='⭐⭐⭐⭐✨'; msg='Amazing job! You really know your stuff! Review the ones you missed and you\'ll be unbeatable! 💪'; }
   else if(pct>=.7)  { trophy='🥈'; starsHtml='⭐⭐⭐✨✨'; msg='Great work! You\'re getting stronger every practice! Keep going! 🌟'; }
   else if(pct>=.5)  { trophy='🌟'; starsHtml='⭐⭐✨✨✨'; msg='Good effort! Every practice makes you better. Play again and watch your score climb! 💫'; }
-  else              { trophy='🚀'; starsHtml='⭐✨✨✨✨'; msg='Keep going! Math takes practice. You\'ve totally got this! 🚀'; }
+  else              { trophy='🚀'; starsHtml='⭐✨✨✨✨'; msg='Keep going! This takes practice. You\'ve totally got this! 🚀'; }
 
-  const d=DOMAINS.find(x=>x.id===activeDomain);
+  const d = currentDomains().find(x=>x.id===activeDomain);
   document.getElementById('trophy-icon').textContent=trophy;
   document.getElementById('stars-row').textContent=starsHtml;
   document.getElementById('final-score').textContent=`${score} / ${total}`;
   document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
   document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
   document.getElementById('stat-domain').textContent=d?d.icon+' '+d.code:'ALL';
+  document.getElementById('end-title').textContent = isReading ? 'Reading Quest Complete!' : 'Math Quest Complete!';
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
