@@ -5,46 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Jaden's MCAP Quest!</title>
   <style>
-    /* ── LOCK SCREEN ── */
-    #lock-screen {
-      position: fixed; inset: 0; z-index: 9999;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-      display: flex; align-items: center; justify-content: center;
-      flex-direction: column; gap: 18px;
-    }
-    .lock-card {
-      background: rgba(255,255,255,.97); border-radius: 28px;
-      padding: 36px 32px; width: 90%; max-width: 380px;
-      box-shadow: 0 24px 64px rgba(0,0,0,.5); text-align: center;
-    }
-    .lock-icon { font-size: 56px; display: block; margin-bottom: 8px; }
-    .lock-title { font-size: 1.6rem; font-weight: 900; color: #0f3460; margin-bottom: 4px; }
-    .lock-sub   { font-size: .9rem; color: #666; margin-bottom: 20px; }
-    .lock-input {
-      width: 100%; padding: 14px 18px; font-size: 1.1rem; font-weight: 600;
-      border: 2.5px solid #ddd; border-radius: 14px; outline: none;
-      text-align: center; letter-spacing: 2px; color: #0f3460;
-      transition: border-color .2s; margin-bottom: 12px;
-    }
-    .lock-input:focus { border-color: #0f3460; }
-    .lock-input.shake { animation: shake .35s ease; }
-    @keyframes shake {
-      0%,100%{transform:translateX(0)}
-      20%{transform:translateX(-8px)}
-      40%{transform:translateX(8px)}
-      60%{transform:translateX(-5px)}
-      80%{transform:translateX(5px)}
-    }
-    .lock-btn {
-      width: 100%; padding: 14px; border: none; border-radius: 14px;
-      background: linear-gradient(135deg,#e94560,#c41a43); color: white;
-      font-size: 1rem; font-weight: 800; cursor: pointer;
-      transition: transform .15s, box-shadow .15s;
-    }
-    .lock-btn:hover  { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(233,69,96,.4); }
-    .lock-btn:active { transform: translateY(0); }
-    .lock-err { font-size: .82rem; color: #e94560; font-weight: 700; min-height: 18px; }
-  </style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -248,20 +208,6 @@
 </head>
 <body>
 
-<!-- ══ LOCK SCREEN ══ -->
-<div id="lock-screen">
-  <div class="lock-card">
-    <span class="lock-icon">🔐</span>
-    <div class="lock-title">Jaden's MCAP Quest</div>
-    <div class="lock-sub">Enter the password to play!</div>
-    <input id="lock-input" class="lock-input" type="password"
-           placeholder="••••••••" autocomplete="off"
-           onkeydown="if(event.key==='Enter') checkPassword()">
-    <div class="lock-err" id="lock-err">&nbsp;</div>
-    <button class="lock-btn" onclick="checkPassword()">🚀 Let's Go!</button>
-  </div>
-</div>
-
 <div class="stars" id="stars"></div>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
@@ -339,40 +285,6 @@
 <div class="streak-popup" id="streak-popup"></div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════════
-//  PASSWORD  ← change "jaden2026" to whatever you want
-// ═══════════════════════════════════════════════════════════════════
-const APP_PASSWORD = 'jaden2026';
-
-(function () {
-  // Already unlocked this session? Skip the lock screen.
-  if (sessionStorage.getItem('mcap_unlocked') === '1') {
-    document.getElementById('lock-screen').style.display = 'none';
-  } else {
-    // Prevent body scroll while locked
-    document.body.style.overflow = 'hidden';
-  }
-})();
-
-function checkPassword() {
-  const input = document.getElementById('lock-input');
-  const err   = document.getElementById('lock-err');
-  if (input.value === APP_PASSWORD) {
-    sessionStorage.setItem('mcap_unlocked', '1');
-    document.body.style.overflow = '';
-    document.getElementById('lock-screen').style.display = 'none';
-    input.value = '';
-  } else {
-    err.textContent = 'Wrong password — try again!';
-    input.classList.remove('shake');
-    void input.offsetWidth; // restart animation
-    input.classList.add('shake');
-    input.value = '';
-    input.focus();
-    setTimeout(() => { err.textContent = '\u00a0'; }, 2000);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════
 //  MATH DOMAIN DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════
