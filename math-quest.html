@@ -204,6 +204,54 @@
     .hidden { display:none !important; }
     .text-center { text-align:center; }
     .mt-10 { margin-top:10px; }
+
+    /* ── READING SCREEN ── */
+    #reading-screen { width:100%; max-width:760px; position:relative; z-index:10; }
+    .reading-header { margin-bottom:18px; }
+    .reading-title-text { font-size:1.5rem; font-weight:900; color:#0f3460; margin-bottom:3px; }
+    .reading-byline-text { font-size:.85rem; color:#666; font-style:italic; }
+    .reading-badge {
+      display:inline-flex; align-items:center; gap:6px;
+      background:#fef3c7; color:#92400e; border:1.5px solid #fcd34d;
+      border-radius:20px; padding:5px 14px; font-size:.78rem; font-weight:700;
+      margin-bottom:14px;
+    }
+    .reading-body {
+      background:#fffbf0; border:2px solid #e5e7eb; border-radius:14px;
+      padding:18px 20px; max-height:55vh; overflow-y:auto;
+      font-size:.97rem; line-height:1.85; color:#1a1a2e;
+      margin-bottom:20px; scroll-behavior:smooth;
+    }
+    .reading-body p { margin-bottom:10px; }
+    .para-num { font-weight:800; color:#0f3460; margin-right:6px; font-size:.85rem; }
+    .reading-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+    /* ── STORY MODAL (view story during questions) ── */
+    #story-modal {
+      display:none; position:fixed; top:0; left:0; width:100%; height:100%;
+      background:rgba(0,0,0,.7); z-index:999; overflow-y:auto;
+      padding:20px;
+    }
+    #story-modal.open { display:flex; align-items:flex-start; justify-content:center; }
+    .story-modal-inner {
+      background:white; border-radius:18px; padding:24px;
+      width:100%; max-width:700px; max-height:90vh; overflow-y:auto;
+      position:relative; margin:auto;
+    }
+    .modal-close {
+      position:sticky; top:0; float:right;
+      background:#ef4444; color:white; border:none;
+      border-radius:50%; width:34px; height:34px;
+      font-size:1.1rem; cursor:pointer; font-weight:800;
+      line-height:34px; text-align:center;
+    }
+    .story-btn {
+      display:inline-flex; align-items:center; gap:5px;
+      background:#eff6ff; color:#1d4ed8; border:1.5px solid #bfdbfe;
+      border-radius:20px; padding:5px 14px; font-size:.8rem;
+      font-weight:700; cursor:pointer; margin-bottom:10px;
+    }
+    .story-btn:hover { background:#dbeafe; }
   </style>
 </head>
 <body>
@@ -232,6 +280,19 @@
     </div>
   </div>
 
+  <!-- READING SCREEN -->
+  <div id="reading-screen" class="card hidden">
+    <div class="reading-header">
+      <div class="reading-badge">📖 Read the Story First</div>
+      <div class="reading-title-text" id="reading-title"></div>
+      <div class="reading-byline-text" id="reading-byline"></div>
+    </div>
+    <div class="reading-body" id="reading-body"></div>
+    <div class="reading-actions">
+      <button class="btn btn-primary" id="reading-start-btn" onclick="afterReading()">I Finished Reading → Start Questions!</button>
+    </div>
+  </div>
+
   <!-- QUESTION SCREEN -->
   <div id="question-screen" class="card hidden">
     <div class="hud">
@@ -244,6 +305,7 @@
       <div class="q-counter" id="q-counter"></div>
     </div>
     <div class="cat-chip" id="cat-chip"></div>
+    <button class="story-btn hidden" id="story-btn" onclick="openStoryModal()">📖 View Story Again</button>
     <div class="passage-box hidden" id="passage-box">
       <span class="passage-label">📖 Story Context</span>
       <span id="passage-text"></span>
@@ -278,6 +340,15 @@
     <div class="start-btns mt-10">
       <button class="btn btn-primary" onclick="startGame(false)">▶ Play Again</button>
       <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle</button>
+    </div>
+  </div>
+  <!-- STORY MODAL (view story during questions) -->
+  <div id="story-modal">
+    <div class="story-modal-inner">
+      <button class="modal-close" onclick="closeStoryModal()">✕</button>
+      <div id="modal-reading-title" style="font-size:1.3rem;font-weight:900;color:#0f3460;margin-bottom:4px;"></div>
+      <div id="modal-reading-byline" style="font-size:.85rem;color:#666;font-style:italic;margin-bottom:16px;"></div>
+      <div id="modal-reading-body" style="font-size:.95rem;line-height:1.85;color:#1a1a2e;"></div>
     </div>
   </div>
 </div>
@@ -329,6 +400,221 @@ const CAT_STYLE = {
   'Informational Text':        { bg:'#dbeafe', fg:'#1e3a5f' },
   'Vocabulary':                { bg:'#d1fae5', fg:'#065f46' },
   'Word Study':                { bg:'#fef3c7', fg:'#92400e' },
+};
+
+// ═══════════════════════════════════════════════════════════════════
+//  STORY PASSAGES  (used by ELA questions with passageId field)
+// ═══════════════════════════════════════════════════════════════════
+const PASSAGES = {
+  'nico-the-nifty': {
+    title: 'Nico the Nifty',
+    byline: 'by Sara Matson',
+    text: `1  Last summer, Sam had returned from camp with seven mosquito bites and three silk scarves.
+
+2  "Watch this," he told his younger brother, Nico, one day.
+
+3  Sam tossed the scarves into the air, one by one. As each fell, Sam grabbed it and tossed it up again in a slow-moving circle.
+
+4  "Wow!" Nico said. "You learned to juggle."
+
+5  "I still mess up a lot," Sam admitted as one of the scarves drifted to the floor.
+
+6  Nico picked it up. "Remember that juggler who performed at the library?"
+
+7  "He could juggle anything," Sam said, "even eggplants and cauliflower."
+
+8  "I want to juggle too," Nico said. "Will you teach me?"
+
+9  So after lunch, Sam taught Nico how to throw two scarves in an X shape—first the one in his right hand, then the one in his left.
+
+10  "Adding the third one is tricky," Sam said.
+
+11  "Like this?" Nico said. "Oops!"
+
+12  Sam smiled. "It takes time to catch on."
+
+13  But it didn't take Nico long at all. After supper, he marched into the family room wearing a magician's hat.
+
+14  "Presenting Nico the Nifty!" he announced, then pulled Sam's scarves out of his sleeve. He began to juggle—slowly at first, then faster.
+
+15  "Amazing!" Dad said.
+
+16  "You're a natural," said Mom.
+
+17  Sam was silent. How could Nico be the better juggler? Sam was older, and he'd been practicing longer. It wasn't fair.
+
+18  It took three days for Nico to learn to juggle beanbags and three more for tennis balls.
+
+19  At first, Sam worked as hard as Nico. But Sam's scarves and beanbags and balls kept drifting and falling and bouncing to the floor, while Nico's stayed in the air. Finally, Sam quit practicing. Juggling wasn't fun anymore.
+
+20  A few weeks later, as Sam played basketball in the driveway, Nico hurried out of the house with his magician's hat.
+
+21  "Guess what!" he said. "The community center is having a talent show in the park. I'm going to juggle water balloons. Isn't that a great idea?"
+
+22  It was. But Sam didn't want Nico to know he thought so. "Better wear your swim trunks," he warned. "You'll get wet when you drop the balloons."
+
+23  Nico put his hands on his hips. "I'm a good juggler."
+
+24  "So what? Juggling is silly." Sam spun the basketball on his index finger, something Nico had never been able to do.
+
+25  Nico scowled. "Yeah? Well, basketball is silly too!"
+
+26  After Nico ran inside, Sam dribbled a few times and took aim. The ball swished through the hoop without touching the backboard. "Try to do that, little brother," he muttered.
+
+27  On the morning of the talent show, Nico cut his waffle into pieces and built a tower with them. "What if I drop a balloon and everyone laughs?" he said.
+
+28  "You'll do great," Mom said. "Won't he, Sam?"
+
+29  "You are taking a towel, right?" Sam joked.
+
+30  "Sam!" said Mom.
+
+31  "Just kidding."
+
+32  After breakfast, Sam shot hoops outside while Nico practiced one last time. Sam had just made a three-pointer when he heard a splat.
+
+33  "Argh!"
+
+34  Colorful balloon bits were scattered around Nico's feet. "Do you think it's too late to cancel?" Nico moaned.
+
+35  Sam couldn't help feeling bad for his brother. "Probably."
+
+36  "Even if I'm sick?" Nico said. "My stomach sort of hurts."
+
+37  Sam remembered his basketball tournament last winter. Before the championship game, he'd felt so nervous that he almost wished he could catch a cold so he'd have a reason not to play. At the same time, he'd wanted to play to prove he could. Maybe Nico felt the same way.
+
+38  "You know what?" Sam said. "It's good you broke some balloons. If you do it now, you probably won't do it onstage. That's what my coach always says. Make your mistakes in practice, not during the game."
+
+39  Nico looked doubtful.
+
+40  Sam tried again. "You've practiced a ton."
+
+41  "I'll probably mess up," said Nico glumly.
+
+42  Finally, Sam told Nico the truth. "Look, you're the best juggler I know. Before you know it, you'll be as good as the one we saw at the library."
+
+43  "Really?" Nico said.
+
+44  "Yeah," Sam said. "I'm sorry I was mean to you before. Come on. I'll help you fill more balloons before we leave."
+
+45  Two hours later, Nico accepted his first-place trophy. He waved to Sam from the stage.
+
+46  "Way to go!" Sam called. For once he was happy for Nico, not jealous. It felt good.
+
+47  As they headed to the car, Sam had a thought. "We should ask Mom to stop at the store on the way home."
+
+48  "Why?"
+
+49  "Because I think it's time for Nico the Nifty to try juggling vegetables!"`
+  },
+
+  'tiny-trees': {
+    title: 'Tiny Trees: Would You Like a Pet Tree?',
+    byline: 'by Kevin Kohler',
+    text: `1  Bonsai is a Japanese word that means "potted tree." But a bonsai is far more than a plant in a pot. Inspired by nature, bonsai artists create beautiful living sculptures from trees or shrubs.
+
+2  Bonsai are not special small species of trees. They are regular full-sized trees, but grown in pots and trimmed to keep them small. While all bonsai are smaller than full-grown trees, they range greatly in size. Some you can hold in your hand, while others are so big they need a forklift to move.
+
+3  The Chinese first trained trees in pots more than 1,300 years ago. They called their miniature trees penjing. They would often create elaborate landscapes or animal shapes with trees.
+
+4  A good bonsai tells a story. Different styles are meant to look like trees growing in harsh winds (windswept), on cliffs (cascade), or in other natural settings. Bonsai from flowering bushes can look like trees in spring.
+
+5  Wires are wrapped around living branches to train them to grow into interesting shapes. The wires stay on for a few months, until the shape holds.
+
+6  Bonsai artists use scissors, clamps, and other small tools to shape the branches. Dramatic dead branches can make a tree look older.
+
+7  Once a tree is shaped, it's moved into a pot. The bonsai artist carefully chooses a pot that will look just right with the finished tree. Large roots, which don't feed the tree, are removed. The pot is filled with special soil to keep the roots healthy.
+
+8  In nature, some tree roots will tightly grip rocks. This is a popular style for bonsai. While a tree is still young, its roots are draped over a rock and wrapped with medical tape until the roots grip the rock on their own.
+
+9  Most bonsai like to live outdoors. They are real, living trees and need plenty of sun and rain. Many also need a cold season to stay healthy. But bonsai grown from tropical trees need to come inside for the winter.
+
+10  It can take many years to train a bonsai into just the right shape. Since they are living, growing plants, bonsai are never finished. They need daily care to stay healthy and keep looking their best. But if they're well-tended, they can live for hundreds of years. Anyone can grow bonsai. If you'd like to give it a try, check for a bonsai club near you or ask at your local arboretum.`
+  },
+
+  'hobby-friday': {
+    title: 'Hobby Friday',
+    byline: 'by Beverly J. Letchworth',
+    text: `1  Chris looked at the clock again. Only five more minutes before school let out.
+
+2  "On Friday," said his Creative Learning teacher, Mrs. Griswell, "be prepared to share your favorite hobby with the class. And please bring samples to show everyone!"
+
+3  Chris groaned. No way am I going to talk about my favorite hobby, he thought.
+
+4  After school, Chris's friend Nick plopped down beside him on the bus. "So what're you gonna do for that hobby thing?"
+
+5  "Uh, I guess I can show my baseball cards," Chris mumbled. No one except his family knew about his real hobby.
+
+6  "Cool," said Nick. "I'll bring in some of my hockey posters."
+
+7  At home, Chris pulled out his boxes of baseball cards. He liked baseball—even played some. But his real hobby let him express things from his imagination, and that's what he liked most.
+
+8  Sorting through his cards, Chris began choosing some of the best ones. He also thought about bringing in the ball that Albert Pujols had signed for him. And yet he didn't feel right about what he had decided.
+
+9  Tuesday passed. Chris gathered his baseball supplies and put them in a grocery bag marked "My Favorite Hobby." He was ready for Friday, but something still felt wrong. He walked out of his room, ignoring the sketchpad on his desk.
+
+10  Wednesday. After school Chris sat at the kitchen table with a cheese and ketchup sandwich and a glass of milk, but he wasn't hungry.
+
+11  Chris sighed. He didn't want to be fake, but he wasn't sure he had the guts to tell everyone his real hobby.
+
+12  He chewed his sandwich slowly, thinking of Grandma. She was the reason he'd gotten interested in his hobby in the first place. "You have talent," Grandma had told him proudly, admiring his work. And that felt really good.
+
+13  Suddenly, Chris knew what he had to do. He dropped his sandwich on the plate and sprinted to the phone.
+
+14  "Hi, Grandma, it's Chris. I need your help."
+
+15  Friday morning. "Are you ready, Chris?" Mrs. Griswell asked. Everyone in the class turned to look at him.
+
+16  Chris walked to the front of the classroom, clutching his grocery bag. His heart was pounding, and his legs felt shaky. I can't do this! he thought frantically.
+
+17  "Go ahead and tell us about your hobby," Mrs. Griswell said, smiling.
+
+18  Chris nodded. Get it over with, he told himself. Don't let them see you sweat. He remembered that from somewhere.
+
+19  So he began. "I design things. I mean . . . I design clothes and accessories. I'm a fashion designer." He brought out his sketchbook and flipped through pages showing his designs for jackets and caps, pants and shirts.
+
+20  "My grandma designs clothes, too," he explained. "She taught me all about patterns and sewing." There were a few snickers, even though Mrs. Griswell was shaking her head.
+
+21  But when Chris pulled a headband from his bag and put it on, the class became quiet.
+
+22  "This is one of my accessories for boys. I braided black and blue cording and attached a small flat stone." He heard Nick say, "Cool!"
+
+23  "For girls, the cording is pink and purple with a small seashell."
+
+24  "I love it!" exclaimed Amber. A few of the other girls nodded enthusiastically.
+
+25  Chris felt a burst of hope. "I made headbands for everyone," he said.
+
+26  The whole class buzzed with excitement. Chris grinned. Now things finally felt right!`
+  },
+
+  'paint-the-morning': {
+    title: 'Paint the Morning',
+    byline: 'by Sandi Takayama',
+    text: `1  Malia slipped quietly out of bed and out of the house. She sat still and silent on the back lanai as she watched the morning spread across the sky. She closed her eyes and felt the sunshine warming her body. She heard the wind whispering through her hair.
+(lanai: a Hawaiian word for a large, open porch that usually has a roof and is partially enclosed)
+
+2  Malia stood up slowly, holding the moment in her heart. Then she tiptoed excitedly back to her room. She wanted to paint the morning. To paint the colors of the sky, the warmth of the sun, and the sound of the wind.
+
+3  She had barely begun when her brother burst into the room. "Breakfast, Malia. Hey . . . what're you doing?" He peered at her paper. "I didn't know you liked art. I just borrowed a cool book from the library. You can use it if you want." He rushed to his room and back, then handed her the book. "It shows you how to draw all kinds of cool monsters and vampires and stuff. Just give it back by Wednesday, 'cause I have to return it."
+
+4  "Thanks!" said Malia. But she didn't want to draw monsters and vampires and stuff. When her brother left the room, she put the book down and picked up her paintbrush.
+
+5  A few minutes later her father walked into the room. "Makaio just told me you're interested in art. There's a great show on this afternoon. They're painting barns and weather vanes."
+
+6  "Thanks!" said Malia. But she didn't want to paint barns and weather vanes. When her father left the room, she picked up her paintbrush.
+
+7  She closed her eyes to try to remember the morning and almost had it in her mind when her mother came into the room. "Malia, your breakfast is getting cold. You know, it's so wonderful to hear you're interested in art. There's a program at the rec center this summer. I'll sign you up. Here, it's in this brochure."
+(brochure: a sheet of flat or folded paper used to advertise or share information)
+
+8  Malia leafed through the brochure and saw "Art: Pottery—Pinch and Coil Pots."
+
+9  "Thanks!" said Malia. But she didn't want to make pinch and coil pots. When her mother left the room, she put the brochure down and picked up her paintbrush. She was just about to start again when she heard more footsteps coming down the hall. Suddenly Malia knew there was something else she needed to paint. She worked quickly on the little sign and hung it outside her bedroom door.
+
+10  The footsteps faded away.
+
+11  Malia smiled and picked up her paintbrush. Then she painted the colors of the sky, the warmth of the sun, and the sound of the wind. Malia painted the morning.`
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1099,6 +1385,112 @@ const MATH_QUESTIONS = [
     type:'numeric', correct:237,
     hint:'Step 1: 265+198=463 collected. Step 2: 700−463=237 still needed!' },
 
+  // ── NBT · ORDERING 3-DIGIT NUMBERS (Jaden target skill) ─────────
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'Which list shows these numbers in order from LEAST to GREATEST?\n312,  231,  321,  213',
+    type:'single',
+    options:['213, 231, 312, 321','312, 321, 231, 213','231, 213, 312, 321','321, 312, 231, 213'],
+    correct:['A'],
+    hint:'Compare hundreds first: 2__ < 3__. For the two 2-hundreds: 213 < 231. For the two 3-hundreds: 312 < 321. Order: 213, 231, 312, 321.' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'Which list shows these numbers in order from GREATEST to LEAST?\n504,  540,  450,  405',
+    type:'single',
+    options:['540, 504, 450, 405','504, 540, 450, 405','405, 450, 504, 540','450, 540, 405, 504'],
+    correct:['A'],
+    hint:'Hundreds: 5__ > 4__. Among the 5s: 540 > 504. Among the 4s: 450 > 405. Greatest to least: 540, 504, 450, 405.' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'A teacher wrote these numbers on the board: 672, 627, 762, 726.\nWhich number is the LEAST?',
+    type:'single', options:['672','627','762','726'], correct:['B'],
+    hint:'Compare hundreds: 6__ < 7__. Between 672 and 627: same hundreds, compare tens → 2 < 7, so 627 is the least!' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'Which number makes this true?   ___ < 485',
+    type:'single', options:['493','512','485','479'], correct:['D'],
+    hint:'We need a number LESS than 485. 479 has the same hundreds digit (4) and fewer tens (7 < 8), so 479 < 485 ✓.' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'Order these numbers from least to greatest: 108, 180, 801, 810.',
+    type:'single',
+    options:['108, 180, 801, 810','180, 108, 810, 801','801, 810, 108, 180','810, 801, 180, 108'],
+    correct:['A'],
+    hint:'1__ < 8__. Among the 1s: 108 < 180. Among the 8s: 801 < 810. Least to greatest: 108, 180, 801, 810.' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'A town had 365 people in 2021, 356 people in 2022, and 375 people in 2023. Which year had the MOST people?',
+    type:'single', options:['2021','2022','2023','They were all the same'], correct:['C'],
+    hint:'Compare tens digits: 365 has 6 tens, 356 has 5 tens, 375 has 7 tens. 375 is largest → 2023 had the most!' },
+
+  { domain:'NBT', cat:'Ordering Numbers',
+    text:'Which comparison is CORRECT?',
+    type:'single', options:['247 > 274','399 < 399','521 > 512','608 < 598'], correct:['C'],
+    hint:'A: 247 < 274 (not >). B: 399 = 399 (not <). C: 521 vs 512 — same hundreds (5), compare tens: 2 tens > 1 ten, so 521 > 512 ✓. D: 608 > 598 (not <). Answer is C!' },
+
+  // ── NBT · REGROUPING ADDITION (Jaden target skill) ───────────────
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is 276 + 158?',
+    type:'numeric', correct:434,
+    hint:'Ones: 6+8=14 (write 4, carry 1). Tens: 7+5+1=13 (write 3, carry 1). Hundreds: 2+1+1=4. Answer: 434!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is 367 + 245?',
+    type:'numeric', correct:612,
+    hint:'Ones: 7+5=12 (write 2, carry 1). Tens: 6+4+1=11 (write 1, carry 1). Hundreds: 3+2+1=6. Answer: 612!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'A school collected 489 bottles one week and 364 bottles the next week. How many bottles in all?',
+    type:'numeric', correct:853,
+    hint:'489+364: Ones: 9+4=13 (carry 1). Tens: 8+6+1=15 (carry 1). Hundreds: 4+3+1=8. Total: 853!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is 538 + 174?',
+    type:'numeric', correct:712,
+    hint:'Ones: 8+4=12 (carry 1). Tens: 3+7+1=11 (carry 1). Hundreds: 5+1+1=7. Answer: 712!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'Maya read 195 pages of a book in March and 207 pages in April. How many pages did she read in all?',
+    type:'numeric', correct:402,
+    hint:'195+207: Ones: 5+7=12 (carry 1). Tens: 9+0+1=10 (carry 1). Hundreds: 1+2+1=4. Total: 402!' },
+
+  // ── NBT · REGROUPING SUBTRACTION (Jaden target skill) ────────────
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is 432 − 178?',
+    type:'numeric', correct:254,
+    hint:'Regroup! Ones: can\'t do 2−8, borrow from tens → 12−8=4. Tens: 2−1(borrowed)−7, borrow from hundreds → 12−1−7=4. Hundreds: 3−1=2. Answer: 254!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What is 605 − 238?',
+    type:'numeric', correct:367,
+    hint:'605−238: Ones: can\'t do 5−8, need to regroup. Tens place is 0, go to hundreds: 600 becomes 500+90+15. 15−8=7, 9−3=6, 5−2=3. Answer: 367!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'A store had 523 items on shelves. After a sale, only 189 items remained. How many items were sold?',
+    type:'numeric', correct:334,
+    hint:'523−189: Ones: 3−9, regroup → 13−9=4. Tens: 1(after borrow)−8, regroup → 11−8=3. Hundreds: 4−1=3. Answer: 334!' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'There are 700 students in a school. 342 students eat lunch in the first session. How many students are left for the second session?',
+    type:'numeric', correct:358,
+    hint:'700−342: Regroup to subtract. 700−342=358. Check: 358+342=700 ✓' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What number is 100 more than 475?',
+    type:'numeric', correct:575,
+    hint:'When you add 100, only the hundreds digit changes: 475 → 575.' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'What number is 10 less than 830?',
+    type:'numeric', correct:820,
+    hint:'When you subtract 10, only the tens digit changes: 830 → 820.' },
+
+  { domain:'NBT', cat:'Addition & Subtraction',
+    text:'Which TWO expressions equal 500? Select the TWO correct answers.',
+    type:'multi',
+    options:['200 + 300','600 − 100','400 + 200','700 − 100','350 + 250'],
+    correct:['A','B'],
+    hint:'A: 200+300=500 ✓. B: 600−100=500 ✓. C: 400+200=600 ✗. D: 700−100=600 ✗. E: 350+250=600 ✗.' },
+
   // ── NF · FRACTIONS (additional) ─────────────────────────────────
   { domain:'NF', cat:'Fractions',
     text:'A pizza is cut into 6 equal slices. Maria eats 1 slice. What fraction of the pizza did she eat?',
@@ -1483,7 +1875,7 @@ const ELA_QUESTIONS = [
 
   // ── RL · NICO THE NIFTY ─────────────────────────────────────────
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," Sam learned to juggle at camp and shows his younger brother Nico. In paragraph 5: "I still mess up a lot," Sam admitted as one of the scarves drifted to the floor.',
+    passageId:'nico-the-nifty',
     text:'What does the word "drifted" mean as it is used in paragraph 5?',
     type:'single',
     options:['swayed','tumbled','turned','floated'],
@@ -1491,7 +1883,7 @@ const ELA_QUESTIONS = [
     hint:'"Drifted" means floated gently downward — like a leaf falling slowly off a tree!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," Nico watches his older brother Sam juggle and then tries to learn himself.',
+    passageId:'nico-the-nifty',
     text:'What do paragraphs 14 and 18 tell the reader about Nico?',
     type:'single',
     options:['He wants to be a great juggler.','He is very imaginative.','He is a quick learner.','He wants to make Sam feel bad.'],
@@ -1499,7 +1891,7 @@ const ELA_QUESTIONS = [
     hint:'Nico picks up juggling very quickly after just a little practice — that shows he is a fast learner!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In paragraph 16 of "Nico the Nifty," after Nico successfully juggles all three scarves, Sam says: "You\'re a natural, Nico."',
+    passageId:'nico-the-nifty',
     text:'What is the meaning of the phrase "you\'re a natural"?',
     type:'single',
     options:['to use things from outside','to practice something','to make a good choice','to have the talent to succeed'],
@@ -1507,7 +1899,7 @@ const ELA_QUESTIONS = [
     hint:'Being a "natural" at something means you have a gift or talent for it — you don\'t have to work as hard to be good!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," Sam says "You\'re a natural, Nico" — meaning Nico has a talent for juggling.',
+    passageId:'nico-the-nifty',
     text:'Which sentence from the passage BEST supports the idea that Nico is a natural?',
     type:'single',
     options:['"...Sam taught Nico how to throw two scarves in an X shape..." (paragraph 9)',
@@ -1518,7 +1910,7 @@ const ELA_QUESTIONS = [
     hint:'"It didn\'t take Nico long at all" shows he learned quickly — that\'s the strongest proof of natural talent!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'From paragraph 24 of "Nico the Nifty": "So what? Juggling is silly." Sam spun the basketball on his index finger, something Nico had never been able to do.',
+    passageId:'nico-the-nifty',
     text:'Why does the author include these sentences about Sam spinning the basketball?',
     type:'single',
     options:['He hopes Nico will admire him even though he cannot juggle.',
@@ -1529,7 +1921,7 @@ const ELA_QUESTIONS = [
     hint:'Sam shows off his basketball trick right after Nico\'s juggling success — Sam wants to prove HE is talented too!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," after Nico finds success juggling, Sam says "Try to do that, little brother" while spinning the basketball (paragraph 26).',
+    passageId:'nico-the-nifty',
     text:'Which detail from the passage BEST supports why Sam spins the basketball?',
     type:'single',
     options:['"...Sam\'s scarves and beanbags and balls kept drifting and falling..." (paragraph 19)',
@@ -1540,7 +1932,7 @@ const ELA_QUESTIONS = [
     hint:'"Try to do that, little brother" — Sam is challenging Nico to match his basketball skill. That proves he wants to show his own talent!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," paragraphs 35–38 show what Sam does after watching Nico struggle with something.',
+    passageId:'nico-the-nifty',
     text:'Which TWO statements explain what paragraphs 35–38 show about Sam?',
     type:'multi', note:'Select TWO correct answers.',
     options:['They show how well Sam played during an important basketball game.',
@@ -1552,7 +1944,7 @@ const ELA_QUESTIONS = [
     hint:'Sam feels guilty about being jealous (B), then remembers when HE needed support and uses that to help Nico (D)!' },
 
   { domain:'RL', cat:'Vocabulary',
-    passage:'In paragraph 41 of "Nico the Nifty," Sam stood glumly watching Nico prepare for the talent show.',
+    passageId:'nico-the-nifty',
     text:'Which word means the SAME as "glumly" as used in paragraph 41?',
     type:'single',
     options:['calmly','sadly','angrily','quietly'],
@@ -1560,7 +1952,7 @@ const ELA_QUESTIONS = [
     hint:'"Glumly" means with a sad, gloomy, disappointed feeling. Sam felt bad about how he had been acting!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," brothers Sam and Nico help each other. Sam teaches Nico to juggle, feels jealous of Nico\'s success, but eventually overcomes his jealousy and cheers for Nico at the talent show.',
+    passageId:'nico-the-nifty',
     text:'What is a CENTRAL MESSAGE of "Nico the Nifty"?',
     type:'single',
     options:['Children should work together to learn new skills.',
@@ -1571,7 +1963,7 @@ const ELA_QUESTIONS = [
     hint:'The whole story is about brothers — Sam overcoming jealousy to truly support Nico. Family should support each other!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Nico the Nifty," Sam overcomes his jealousy and cheers for Nico at the school talent show (paragraph 46).',
+    passageId:'nico-the-nifty',
     text:'Which evidence from the passage BEST supports the central message of family support?',
     type:'single',
     options:['"\'Watch this,\' he told his younger brother, Nico, one day." (paragraph 2)',
@@ -1583,7 +1975,7 @@ const ELA_QUESTIONS = [
 
   // ── RL · HOBBY FRIDAY ───────────────────────────────────────────
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," Chris\'s teacher announces a Hobby Friday project. Chris\'s real hobby is designing clothes, but no one except his family knows. In paragraphs 1–3, Chris groans when the assignment is announced.',
+    passageId:'hobby-friday',
     text:'Which statement BEST describes how Chris feels in paragraphs 1–3?',
     type:'single',
     options:['curious about what his classmates will share',
@@ -1594,7 +1986,7 @@ const ELA_QUESTIONS = [
     hint:'Chris doesn\'t want anyone to know his real hobby — he\'s embarrassed about it and doesn\'t want to share it!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," Chris is embarrassed about his real hobby (designing clothes). When deciding what to bring for Hobby Friday, he takes action.',
+    passageId:'hobby-friday',
     text:'What does this feeling FIRST cause Chris to do?',
     type:'single',
     options:['call his grandmother for help',
@@ -1605,7 +1997,7 @@ const ELA_QUESTIONS = [
     hint:'Chris decides to bring baseball cards INSTEAD of his real hobby — hiding what he truly loves to avoid embarrassment!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," paragraphs 12–16 show Chris sitting at the kitchen table, thinking of Grandma, and then suddenly having a realization about what he needs to do.',
+    passageId:'hobby-friday',
     text:'Why are paragraphs 12–16 IMPORTANT to the story?',
     type:'single',
     options:['They show that Chris wants to try a new hobby with his grandmother.',
@@ -1616,7 +2008,7 @@ const ELA_QUESTIONS = [
     hint:'These paragraphs are the turning point — Chris makes the brave decision to be honest about his real hobby!' },
 
   { domain:'RL', cat:'Vocabulary',
-    passage:'In paragraph 18 of "Hobby Friday," Chris walks nervously to the front of the classroom and tells himself: "Don\'t let them see you sweat."',
+    passageId:'hobby-friday',
     text:'When Chris tells himself "Don\'t let them see you sweat," he means that he feels:',
     type:'single',
     options:['proud','surprised','foolish','worried'],
@@ -1624,7 +2016,7 @@ const ELA_QUESTIONS = [
     hint:'"Don\'t let them see you sweat" is an idiom meaning don\'t let people know you\'re nervous or worried. Chris is very anxious!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," Chris walks to the front of the class. From paragraph 16: "His heart was pounding, and his legs felt shaky."',
+    passageId:'hobby-friday',
     text:'Which evidence from the passage BEST supports that Chris feels worried when presenting?',
     type:'single',
     options:['"Suddenly, Chris knew what he had to do." (paragraph 13)',
@@ -1635,7 +2027,7 @@ const ELA_QUESTIONS = [
     hint:'A pounding heart and shaky legs are physical signs of nervousness and worry — that\'s the strongest evidence!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," Chris\'s real hobby is designing clothes and accessories. He got interested because of Grandma. From paragraph 7: "his real hobby let him express things from his imagination, and that\'s what he liked most."',
+    passageId:'hobby-friday',
     text:'What does Chris LIKE MOST about designing clothes?',
     type:'single',
     options:['He can work with his grandmother.',
@@ -1646,7 +2038,7 @@ const ELA_QUESTIONS = [
     hint:'Chris loves that designing lets him express things from his imagination — sharing his own creative new ideas!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'Chris loves designing clothes most of all. He explains his feelings in paragraph 7 of "Hobby Friday."',
+    passageId:'hobby-friday',
     text:'Which evidence from the passage BEST supports what Chris likes most about his hobby?',
     type:'single',
     options:['"But his real hobby let him express things from his imagination..." (paragraph 7)',
@@ -1658,7 +2050,7 @@ const ELA_QUESTIONS = [
 
   // ── RL · PAINT THE MORNING ──────────────────────────────────────
   { domain:'RL', cat:'Vocabulary',
-    passage:'In paragraph 3 of "Paint the Morning," Malia is painting when her brother comes into her room: "He peered at her paper. \'I didn\'t know you liked art.\'"',
+    passageId:'paint-the-morning',
     text:'What does the word "peered" mean as used in paragraph 3?',
     type:'single',
     options:['grabbed quickly','looked closely','laughed loudly','smiled happily'],
@@ -1666,7 +2058,7 @@ const ELA_QUESTIONS = [
     hint:'"Peered" means to look closely and carefully at something — like leaning in to examine it carefully!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Paint the Morning," Malia hangs a sign on her bedroom door in paragraph 9. The next paragraph (10) says: "The footsteps faded away."',
+    passageId:'paint-the-morning',
     text:'How is paragraph 10 IMPORTANT to the passage?',
     type:'single',
     options:['It shows that Malia finishes her painting.',
@@ -1677,7 +2069,7 @@ const ELA_QUESTIONS = [
     hint:'The sign worked — footsteps go away, no more interruptions! This shows Malia\'s plan to get quiet painting time was a success.' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Paint the Morning," every time a family member interrupts Malia\'s painting, she politely says "Thanks!" but puts their suggestions aside and picks up her paintbrush again.',
+    passageId:'paint-the-morning',
     text:'Based on "Paint the Morning," which sentence BEST describes Malia?',
     type:'single',
     options:['Malia gets upset because she forgets what she wants to paint.',
@@ -1688,7 +2080,7 @@ const ELA_QUESTIONS = [
     hint:'Every time someone interrupts, Malia waits for them to leave and picks up her paintbrush — she just wants quiet time to paint!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Paint the Morning," Malia wants to paint without interruptions. In paragraph 9: "She worked quickly on the little sign and hung it outside her bedroom door."',
+    passageId:'paint-the-morning',
     text:'Which detail from the passage BEST supports that Malia wants to be left alone to paint?',
     type:'single',
     options:['"She closed her eyes to try to remember the morning..." (paragraph 7)',
@@ -1699,7 +2091,7 @@ const ELA_QUESTIONS = [
     hint:'Making a "Do Not Disturb" sign proves Malia needs privacy to paint. That\'s the clearest evidence she wants to be left alone!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'In "Hobby Friday," Chris overcomes his embarrassment to share his true passion — fashion design. In "Paint the Morning," Malia creates a sign so she can paint without interruptions.',
+    passageId:'hobby-friday',
     text:'What are TWO ways that Chris from "Hobby Friday" and Malia from "Paint the Morning" are ALIKE?',
     type:'multi', note:'Select TWO correct answers.',
     options:['Both characters think of a way to solve a problem.',
@@ -1712,7 +2104,7 @@ const ELA_QUESTIONS = [
 
   // ── RI · TINY TREES ─────────────────────────────────────────────
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees" (an article about bonsai — miniature trees grown as art): "Before a bonsai is planted in its pot, its roots are trimmed." (paragraph 2)',
+    passageId:'tiny-trees',
     text:'What does the word "trimmed" mean as used in paragraph 2?',
     type:'single',
     options:['cut shorter','decorated','carefully arranged','removed'],
@@ -1720,7 +2112,7 @@ const ELA_QUESTIONS = [
     hint:'To trim roots means to cut them shorter — just like getting a haircut to shorten your hair!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From the last sentence of paragraph 2 of "Tiny Trees": "Some you can hold in your hand, while others are so big they need a forklift to move."',
+    passageId:'tiny-trees',
     text:'What is the PURPOSE of this sentence?',
     type:'single',
     options:['It helps the reader understand that bonsai can be many different sizes.',
@@ -1731,7 +2123,7 @@ const ELA_QUESTIONS = [
     hint:'The sentence shows two extremes — tiny enough to hold vs. huge enough to need a forklift — showing bonsai come in ALL sizes!' },
 
   { domain:'RI', cat:'Vocabulary',
-    passage:'From "Tiny Trees" paragraph 5: "Artists train the branches of a bonsai tree using wire."',
+    passageId:'tiny-trees',
     text:'Which definition BEST matches how the word "train" is used in paragraph 5?',
     type:'single',
     options:['to drag behind','to practice or prepare','to teach another person','to form or guide'],
@@ -1739,7 +2131,7 @@ const ELA_QUESTIONS = [
     hint:'"Train" here means to guide or shape — bending branches with wire to form them into a certain shape!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees": Paragraph 4 talks about the "story" bonsai artists want to tell. Paragraphs 5 and 6 then explain how artists use wire and trimming techniques.',
+    passageId:'tiny-trees',
     text:'How does the author use paragraphs 5 and 6 to BUILD ON the information in paragraph 4?',
     type:'single',
     options:['by listing the reasons that bonsai trees may appear a certain age',
@@ -1750,7 +2142,7 @@ const ELA_QUESTIONS = [
     hint:'Paragraph 4 says artists create a look — paragraphs 5 and 6 explain exactly HOW they do it (wire and careful trimming)!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees," paragraphs 7 and 8 discuss what keeps bonsai roots healthy.',
+    passageId:'tiny-trees',
     text:'According to paragraphs 7 and 8, what will CAUSE the roots of a bonsai tree to stay in good condition?',
     type:'single',
     options:['using a certain kind of soil','cutting off the larger roots','wrapping the roots with tape','choosing a pot of the correct size'],
@@ -1758,7 +2150,7 @@ const ELA_QUESTIONS = [
     hint:'The right type of soil lets water drain properly and provides the nutrients the roots need to stay healthy!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees," paragraph 8 discusses what happens to bonsai roots and what causes it to happen.',
+    passageId:'tiny-trees',
     text:'Which statement BEST describes how the sentences in paragraph 8 are related?',
     type:'single',
     options:['They show the difference between two ideas.',
@@ -1769,7 +2161,7 @@ const ELA_QUESTIONS = [
     hint:'One thing CAUSES another thing to happen. That\'s a cause-and-effect relationship — like: good care → healthy roots!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees": "...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1). The whole article explains how bonsai become works of art.',
+    passageId:'tiny-trees',
     text:'What is the MAIN IDEA of the passage "Tiny Trees"?',
     type:'single',
     options:['Bonsai have been enjoyed as art for many years.',
@@ -1780,7 +2172,7 @@ const ELA_QUESTIONS = [
     hint:'The whole article is about how bonsai become special living works of art through an artist\'s careful skill!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'From "Tiny Trees" paragraph 1: "...bonsai artists create beautiful living sculptures from trees or shrubs."',
+    passageId:'tiny-trees',
     text:'Which evidence from the passage BEST supports the main idea of "Tiny Trees"?',
     type:'single',
     options:['"...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1)',
@@ -2326,7 +2718,7 @@ const ELA_QUESTIONS = [
 
   // ── REAL MCAP PRACTICE TEST — SECTION 1 TINY TREES (Q14) ────────
   { domain:'RI', cat:'Informational Text',
-    passage:'In "Tiny Trees," the article explains that bonsai artists "create beautiful living sculptures from trees or shrubs." Bonsai is a Japanese word, but the practice began in China. Artists use wire, tools, and special soil to shape bonsai. Well-tended bonsai can live for hundreds of years.',
+    passageId:'tiny-trees',
     text:'Part A — "Tiny Trees": What is a MAIN IDEA of the passage?',
     type:'single',
     options:['Bonsai have been enjoyed as art for many years.',
@@ -2337,7 +2729,7 @@ const ELA_QUESTIONS = [
     hint:'The article covers the history, tools, and care of bonsai — showing it has been enjoyed as art for a very long time!' },
 
   { domain:'RI', cat:'Informational Text',
-    passage:'"Tiny Trees" passage quotes:\n• "...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1)\n• "...if they\'re well-tended, they can live for hundreds of years." (paragraph 10)',
+    passageId:'tiny-trees',
     text:'Part B — "Tiny Trees": What evidence BEST supports the main idea that bonsai have been enjoyed as art for many years?',
     type:'single',
     options:['"...bonsai artists create beautiful living sculptures from trees or shrubs." (paragraph 1)',
@@ -2420,7 +2812,7 @@ const ELA_QUESTIONS = [
 
   // ── REAL MCAP — SECTION 2: HOBBY FRIDAY ─────────────────────────
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" by Beverly J. Letchworth: Chris\'s teacher says students must share their favorite hobby on Friday. Chris groaned — No way am I going to talk about my favorite hobby, he thought. "Uh, I guess I can show my baseball cards," Chris mumbled. No one except his family knew about his real hobby. His real hobby let him express things from his imagination, and that\'s what he liked most.',
+    passageId:'hobby-friday',
     text:'Part A — "Hobby Friday": Which statement BEST describes how Chris feels in paragraphs 1 through 3?',
     type:'single',
     options:['curious about what his classmates will share',
@@ -2431,7 +2823,7 @@ const ELA_QUESTIONS = [
     hint:'Chris groans and plans to show baseball cards — NOT his real hobby. He\'s embarrassed about his true passion!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday": Chris is embarrassed about his real hobby (fashion design). His first reaction is to plan an alternative — showing something safer instead.',
+    passageId:'hobby-friday',
     text:'Part B — "Hobby Friday": What does Chris\'s embarrassment cause him to do FIRST?',
     type:'single',
     options:['call his grandmother for help',
@@ -2442,7 +2834,7 @@ const ELA_QUESTIONS = [
     hint:'His FIRST response is to pull out his baseball cards — the safe, less personal choice he plans to show instead of his real hobby.' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" (paragraphs 12–16): Chris thought of Grandma. "You have talent," Grandma had told him. Suddenly, Chris knew what he had to do. He sprinted to the phone. "Hi, Grandma, it\'s Chris. I need your help." On Friday morning, Chris walked to the front of the classroom, clutching his grocery bag.',
+    passageId:'hobby-friday',
     text:'Why are paragraphs 12 through 16 of "Hobby Friday" important?',
     type:'single',
     options:['They show that Chris wants to try a new hobby with his grandmother.',
@@ -2453,7 +2845,7 @@ const ELA_QUESTIONS = [
     hint:'These paragraphs show Chris\'s turning point — after calling Grandma, he walks to class ready to share his REAL hobby. Big decision!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" (paragraph 18): Chris nodded. Get it over with, he told himself. Don\'t let them see you sweat. He remembered that from somewhere.',
+    passageId:'hobby-friday',
     text:'Part A — "Hobby Friday": When Chris tells himself "Don\'t let them see you sweat" (paragraph 18), he means that he feels',
     type:'single',
     options:['proud.', 'surprised.', 'foolish.', 'worried.'],
@@ -2461,7 +2853,7 @@ const ELA_QUESTIONS = [
     hint:'"Don\'t let them see you sweat" means hiding your nervousness. Chris is worried and trying to hide his anxiety!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" (paragraph 16): Chris walked to the front of the classroom, clutching his grocery bag. His heart was pounding, and his legs felt shaky. I can\'t do this! he thought frantically.',
+    passageId:'hobby-friday',
     text:'Part B — "Hobby Friday": What evidence BEST supports that Chris feels worried?',
     type:'single',
     options:['"Suddenly, Chris knew what he had to do." (paragraph 13)',
@@ -2472,7 +2864,7 @@ const ELA_QUESTIONS = [
     hint:'A pounding heart and shaky legs are physical signs of worry and nerves — that\'s the strongest evidence!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" (paragraph 7): Chris liked baseball — even played some. But his real hobby let him express things from his imagination, and that\'s what he liked most.',
+    passageId:'hobby-friday',
     text:'Part A — "Hobby Friday": What does Chris like MOST about designing clothes?',
     type:'single',
     options:['He can work with his grandmother.',
@@ -2483,7 +2875,7 @@ const ELA_QUESTIONS = [
     hint:'Paragraph 7 says his hobby lets him "express things from his imagination" — he loves creating and sharing new ideas!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday" key quotes:\n• "But his real hobby let him express things from his imagination, and that\'s what he liked most." (paragraph 7)',
+    passageId:'hobby-friday',
     text:'Part B — "Hobby Friday": What evidence BEST supports that Chris likes expressing his new ideas?',
     type:'single',
     options:['"But his real hobby let him express things from his imagination. . ." (paragraph 7)',
@@ -2495,7 +2887,7 @@ const ELA_QUESTIONS = [
 
   // ── REAL MCAP — SECTION 2: PAINT THE MORNING ────────────────────
   { domain:'RL', cat:'Literary Text',
-    passage:'"Paint the Morning" by Sandi Takayama (paragraph 3): Her brother burst into the room. "I just borrowed a cool book from the library. It shows you how to draw all kinds of cool monsters and vampires and stuff. Just give it back by Wednesday." He peered at her paper.',
+    passageId:'paint-the-morning',
     text:'"Paint the Morning": In paragraph 3, what does the word PEERED mean?',
     type:'single',
     options:['grabbed quickly', 'looked closely', 'laughed loudly', 'smiled happily'],
@@ -2503,7 +2895,7 @@ const ELA_QUESTIONS = [
     hint:'"Peered" means to look closely or carefully — like squinting to get a better view of something!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Paint the Morning" (paragraph 9): Suddenly Malia knew there was something else she needed to paint. She worked quickly on the little sign and hung it outside her bedroom door. (paragraph 10): The footsteps faded away.',
+    passageId:'paint-the-morning',
     text:'"Paint the Morning": How is paragraph 10 important to the passage?',
     type:'single',
     options:['It shows that Malia finishes her painting.',
@@ -2514,7 +2906,7 @@ const ELA_QUESTIONS = [
     hint:'The footsteps FADING AWAY means Malia\'s "Do Not Disturb" sign worked — her plan was a complete success!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Paint the Morning": Malia wakes early to paint the morning sky. Her brother offers a monster-drawing book; her father mentions a TV show about painting barns; her mother suggests a pottery class. Each time, Malia says "Thanks!" but keeps returning to her paintbrush. She hangs a sign on her door. The footsteps fade, and she finally paints.',
+    passageId:'paint-the-morning',
     text:'Part A — "Paint the Morning": Which sentence BEST describes Malia?',
     type:'single',
     options:['Malia gets upset because she forgets what she wants to paint.',
@@ -2525,7 +2917,7 @@ const ELA_QUESTIONS = [
     hint:'Every time she\'s interrupted, she politely says "Thanks" but returns to her paintbrush. She just wants to be left alone to paint!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Paint the Morning" (paragraph 9): Suddenly Malia knew there was something else she needed to paint. She worked quickly on the little sign and hung it outside her bedroom door.',
+    passageId:'paint-the-morning',
     text:'Part B — "Paint the Morning": Which detail BEST supports that Malia wants to be left alone to paint?',
     type:'single',
     options:['"She closed her eyes to try to remember the morning. . ." (paragraph 7)',
@@ -2536,7 +2928,7 @@ const ELA_QUESTIONS = [
     hint:'Hanging a "Do Not Disturb" sign is the clearest action showing Malia wants privacy to paint without interruptions!' },
 
   { domain:'RL', cat:'Literary Text',
-    passage:'"Hobby Friday": Chris feels embarrassed about fashion design and worried about sharing it, but decides to reveal his true passion. The class loves his headbands — he feels things "finally felt right."\n"Paint the Morning": Malia is interrupted by family but hangs a sign and finally paints the morning. Both characters face a problem and make a satisfying choice.',
+    passageId:'hobby-friday',
     text:'"Hobby Friday" + "Paint the Morning": What are TWO ways that Chris and Malia are alike? Select the TWO correct answers.',
     type:'multi',
     options:['Both characters think of a way to solve a problem.',
@@ -2851,15 +3243,37 @@ function filteredQuestions() {
 //  GAME STATE & LOGIC
 // ═══════════════════════════════════════════════════════════════════
 let questions=[], currentQ=0, score=0, streak=0, bestStreak=0, selected=new Set(), answered=false;
+let shownPassages = new Set();
+let pendingPassageId = null;
 
 function show(id) {
-  ['start-screen','question-screen','end-screen'].forEach(s=>
+  ['start-screen','reading-screen','question-screen','end-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
 }
 
 function startGame(shuffle) {
   questions = filteredQuestions();
+  shownPassages = new Set();
+  // Group passage questions together (keep passage order coherent)
+  const passageGroups = {};
+  const standalone = [];
+  questions.forEach(q => {
+    if (q.passageId) {
+      if (!passageGroups[q.passageId]) passageGroups[q.passageId] = [];
+      passageGroups[q.passageId].push(q);
+    } else { standalone.push(q); }
+  });
+  const passageIds = Object.keys(passageGroups);
   if (shuffle) {
+    // shuffle passage groups order and standalone
+    for (let i=passageIds.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[passageIds[i],passageIds[j]]=[passageIds[j],passageIds[i]];}
+    for (let i=standalone.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[standalone[i],standalone[j]]=[standalone[j],standalone[i]];}
+  }
+  if (passageIds.length > 0) {
+    questions = [];
+    passageIds.forEach(pid => questions.push(...passageGroups[pid]));
+    questions.push(...standalone);
+  } else if (shuffle) {
     for (let i=questions.length-1;i>0;i--) {
       const j=Math.floor(Math.random()*(i+1));
       [questions[i],questions[j]]=[questions[j],questions[i]];
@@ -2891,13 +3305,28 @@ function renderQuestion() {
   chip.style.background=cs.bg; chip.style.color=cs.fg;
   chip.textContent = q.cat;
 
-  // passage context box (ELA questions)
+  // passage handling
   const pb = document.getElementById('passage-box');
   const pt = document.getElementById('passage-text');
-  if (q.passage) {
+  const storyBtn = document.getElementById('story-btn');
+
+  if (q.passageId && PASSAGES[q.passageId]) {
+    // Full story passage — check if we need to show reading screen first
+    if (!shownPassages.has(q.passageId)) {
+      shownPassages.add(q.passageId);
+      showReading(q.passageId);
+      return; // halt renderQuestion — afterReading() will call renderQuestion again
+    }
+    // Already showed reading — show the "view story again" button
+    storyBtn.classList.remove('hidden');
+    pb.classList.add('hidden');
+  } else if (q.passage) {
+    // Inline passage excerpt (non-MCAP generated questions)
+    storyBtn.classList.add('hidden');
     pt.textContent = q.passage;
     pb.classList.remove('hidden');
   } else {
+    storyBtn.classList.add('hidden');
     pb.classList.add('hidden');
   }
 
@@ -3076,6 +3505,56 @@ function launchConfettiPiece() {
   el.style.cssText=`left:${Math.random()*100}%;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${.8+Math.random()*1.2}s;transform:rotate(${Math.random()*360}deg)`;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(),2000);
+}
+
+// ── READING SCREEN & STORY MODAL ──────────────────────────────────
+function showReading(passageId) {
+  const p = PASSAGES[passageId];
+  if (!p) { show('question-screen'); renderQuestion(); return; }
+  document.getElementById('reading-title').textContent = p.title;
+  document.getElementById('reading-byline').textContent = p.byline;
+  // Render numbered paragraphs
+  const body = document.getElementById('reading-body');
+  body.innerHTML = p.text.split('\n\n').map(para => {
+    para = para.trim();
+    if (!para) return '';
+    // Check if paragraph starts with a number
+    const m = para.match(/^(\d+)\s+([\s\S]+)$/);
+    if (m) {
+      return `<p><span class="para-num">${m[1]}</span>${m[2].replace(/\n/g,' ')}</p>`;
+    }
+    return `<p style="color:#666;font-style:italic;font-size:.85rem;">${para.replace(/\n/g,' ')}</p>`;
+  }).join('');
+  body.scrollTop = 0;
+  show('reading-screen');
+}
+
+function afterReading() {
+  show('question-screen');
+  renderQuestion();
+}
+
+function openStoryModal() {
+  const q = questions[currentQ];
+  if (!q || !q.passageId || !PASSAGES[q.passageId]) return;
+  const p = PASSAGES[q.passageId];
+  document.getElementById('modal-reading-title').textContent = p.title;
+  document.getElementById('modal-reading-byline').textContent = p.byline;
+  const body = document.getElementById('modal-reading-body');
+  body.innerHTML = p.text.split('\n\n').map(para => {
+    para = para.trim();
+    if (!para) return '';
+    const m = para.match(/^(\d+)\s+([\s\S]+)$/);
+    if (m) {
+      return `<p style="margin-bottom:10px"><span class="para-num">${m[1]}</span>${m[2].replace(/\n/g,' ')}</p>`;
+    }
+    return `<p style="margin-bottom:10px;color:#666;font-style:italic;font-size:.85rem;">${para.replace(/\n/g,' ')}</p>`;
+  }).join('');
+  document.getElementById('story-modal').classList.add('open');
+}
+
+function closeStoryModal() {
+  document.getElementById('story-modal').classList.remove('open');
 }
 
 // ── STARS BG ───────────────────────────────────────────────────────
