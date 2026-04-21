@@ -293,6 +293,34 @@
       background: transparent; border: 2px solid #0f3460;
       color: #0f3460; padding: 10px 24px;
     }
+    /* ── TEST MODE TOGGLE (Custom vs MCAP Real) ── */
+    .test-mode-toggle {
+      display:inline-flex; gap:0; background:#f1f5f9;
+      border:2px solid #ddd; border-radius:30px; overflow:hidden;
+      margin-bottom:20px;
+    }
+    .test-mode-btn {
+      padding:8px 22px; border:none; font-size:.88rem; font-weight:700;
+      cursor:pointer; background:transparent; color:#777; transition:all .15s;
+    }
+    .test-mode-btn.active { background:#0f3460; color:white; }
+    /* ── MCAP PRESET INFO BOX ── */
+    .mcap-preset-box {
+      background:linear-gradient(135deg,#eff6ff,#dbeafe);
+      border:2px solid #93c5fd; border-radius:16px;
+      padding:18px 20px; margin-bottom:16px;
+    }
+    .mcap-preset-box .mcap-badge {
+      display:inline-block; background:#0f3460; color:white;
+      font-size:.72rem; font-weight:800; letter-spacing:.5px;
+      padding:3px 10px; border-radius:20px; margin-bottom:10px;
+      text-transform:uppercase;
+    }
+    .mcap-stats { display:flex; gap:24px; justify-content:center; margin-top:8px; }
+    .mcap-stat { text-align:center; }
+    .mcap-stat-num { font-size:1.8rem; font-weight:900; color:#0f3460; line-height:1; }
+    .mcap-stat-label { font-size:.75rem; color:#555; font-weight:600; margin-top:2px; }
+    .mcap-sections { font-size:.8rem; color:#64748b; margin-top:10px; }
     .btn-outlined:hover { background: #0f3460; color: white; }
     .test-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
     .link-btn {
@@ -451,6 +479,7 @@
     <h2>🎯 Test Mode</h2>
     <p class="test-subtitle">Practice like it's the real thing — no hints!</p>
 
+    <!-- Subject -->
     <div style="margin-bottom:16px;">
       <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
         <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math')">🔢 Math</button>
@@ -458,18 +487,47 @@
       </div>
     </div>
 
-    <div class="test-config-label">Number of Questions</div>
-    <div class="test-config-row" id="count-btns">
-      <button class="count-btn" data-val="10" onclick="setTestQCount(10)">10</button>
-      <button class="count-btn active" data-val="20" onclick="setTestQCount(20)">20</button>
-      <button class="count-btn" data-val="30" onclick="setTestQCount(30)">30</button>
+    <!-- Mode toggle: Custom vs MCAP Real -->
+    <div class="test-mode-toggle">
+      <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
+      <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
     </div>
 
-    <div class="test-config-label" style="margin-top:10px;">Time Limit</div>
-    <div class="test-config-row" id="time-btns">
-      <button class="time-btn" data-val="10" onclick="setTestMinutes(10)">10 min</button>
-      <button class="time-btn active" data-val="20" onclick="setTestMinutes(20)">20 min</button>
-      <button class="time-btn" data-val="30" onclick="setTestMinutes(30)">30 min</button>
+    <!-- Custom pickers -->
+    <div id="custom-pickers">
+      <div class="test-config-label">Number of Questions</div>
+      <div class="test-config-row" id="count-btns">
+        <button class="count-btn" data-val="10" onclick="setTestQCount(10)">10</button>
+        <button class="count-btn active" data-val="20" onclick="setTestQCount(20)">20</button>
+        <button class="count-btn" data-val="30" onclick="setTestQCount(30)">30</button>
+      </div>
+      <div class="test-config-label" style="margin-top:10px;">Time Limit</div>
+      <div class="test-config-row" id="time-btns">
+        <button class="time-btn" data-val="10" onclick="setTestMinutes(10)">10 min</button>
+        <button class="time-btn active" data-val="20" onclick="setTestMinutes(20)">20 min</button>
+        <button class="time-btn" data-val="30" onclick="setTestMinutes(30)">30 min</button>
+      </div>
+    </div>
+
+    <!-- MCAP preset box (hidden until MCAP mode selected) -->
+    <div id="mcap-preset-box" class="mcap-preset-box hidden">
+      <div class="mcap-badge">Official MCAP Grade 3</div>
+      <div id="mcap-preset-desc" style="font-size:.9rem;color:#1e3a5f;font-weight:600;margin-bottom:8px;"></div>
+      <div class="mcap-stats">
+        <div class="mcap-stat">
+          <div class="mcap-stat-num" id="mcap-q-num">—</div>
+          <div class="mcap-stat-label">Questions</div>
+        </div>
+        <div class="mcap-stat">
+          <div class="mcap-stat-num" id="mcap-t-num">—</div>
+          <div class="mcap-stat-label">Minutes</div>
+        </div>
+        <div class="mcap-stat">
+          <div class="mcap-stat-num" id="mcap-s-num">—</div>
+          <div class="mcap-stat-label">Sections</div>
+        </div>
+      </div>
+      <div class="mcap-sections" id="mcap-sections-detail"></div>
     </div>
 
     <div>
@@ -3425,6 +3483,25 @@ let testTimerInterval = null;
 let testQCount      = 20;
 let testMinutes     = 20;
 let testSubject     = 'Math'; // tracks subject chosen in test config
+let testModeType    = 'custom'; // 'custom' | 'mcap'
+
+// Real MCAP Grade 3 specs
+const MCAP_PRESETS = {
+  Math: {
+    questions: 33,
+    minutes:   160,
+    sections:  4,
+    desc:      'Math · 4 Sessions',
+    detail:    'Sessions 1–4 · 40 minutes each · No calculator'
+  },
+  Reading: {
+    questions: 42,
+    minutes:   180,
+    sections:  4,
+    desc:      'ELA/Literacy · 4 Sections',
+    detail:    'Sections 1–4 · 45 minutes each · Includes reading passages'
+  }
+};
 
 function show(id) {
   ['start-screen','reading-screen','question-screen','end-screen',
@@ -3724,6 +3801,26 @@ function setTestSubject(subj) {
   testSubject = subj;
   document.getElementById('test-btn-math').classList.toggle('active', subj==='Math');
   document.getElementById('test-btn-reading').classList.toggle('active', subj==='Reading');
+  refreshMcapPreset();
+}
+
+function setTestModeType(mode) {
+  testModeType = mode;
+  document.getElementById('mode-btn-custom').classList.toggle('active', mode==='custom');
+  document.getElementById('mode-btn-mcap').classList.toggle('active', mode==='mcap');
+  document.getElementById('custom-pickers').classList.toggle('hidden', mode==='mcap');
+  document.getElementById('mcap-preset-box').classList.toggle('hidden', mode==='custom');
+  if (mode === 'mcap') refreshMcapPreset();
+}
+
+function refreshMcapPreset() {
+  const p = MCAP_PRESETS[testSubject];
+  if (!p) return;
+  document.getElementById('mcap-preset-desc').textContent   = p.desc;
+  document.getElementById('mcap-q-num').textContent          = p.questions;
+  document.getElementById('mcap-t-num').textContent          = p.minutes;
+  document.getElementById('mcap-s-num').textContent          = p.sections;
+  document.getElementById('mcap-sections-detail').textContent = p.detail;
 }
 
 function setTestQCount(n) {
@@ -3741,6 +3838,11 @@ function setTestMinutes(m) {
 }
 
 function startTest() {
+  // Resolve question count and time based on mode
+  const preset = MCAP_PRESETS[testSubject];
+  const qCount = testModeType === 'mcap' ? preset.questions : testQCount;
+  const mins   = testModeType === 'mcap' ? preset.minutes   : testMinutes;
+
   // Set subject context to what's selected in test config
   activeSubject = testSubject;
   buildNav();
@@ -3748,7 +3850,7 @@ function startTest() {
   // Pick all questions for the subject and shuffle
   const allQ = currentQuestions().slice();
   for (let i=allQ.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[allQ[i],allQ[j]]=[allQ[j],allQ[i]];}
-  questions = allQ.slice(0, testQCount);
+  questions = allQ.slice(0, Math.min(qCount, allQ.length));
 
   // In test mode all passages are treated as already shown
   shownPassages = new Set(Object.keys(PASSAGES));
@@ -3761,7 +3863,7 @@ function startTest() {
   bestStreak  = 0;
 
   // Setup timer
-  testTotalTime = testMinutes * 60;
+  testTotalTime = mins * 60;
   testTimeLeft  = testTotalTime;
   if (testTimerInterval) clearInterval(testTimerInterval);
   updateTimerDisplay();
@@ -3823,7 +3925,7 @@ function endTest() {
     id: crypto.randomUUID(),
     student: 'Jaden',
     subject: activeSubject,
-    domain: 'All',
+    domain: testModeType === 'mcap' ? 'MCAP Simulation' : 'All',
     score: correct,
     total: answered,
     pct,
