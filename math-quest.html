@@ -252,6 +252,106 @@
       font-weight:700; cursor:pointer; margin-bottom:10px;
     }
     .story-btn:hover { background:#dbeafe; }
+
+    /* ── TEST MODE TIMER ── */
+    .test-timer {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #e8f0fe; color: #0f3460;
+      border: 1.5px solid #bfdbfe; border-radius: 20px;
+      padding: 4px 12px; font-size: .85rem; font-weight: 700;
+      transition: background .3s, color .3s, border-color .3s;
+    }
+    .test-timer.warning {
+      background: #fef2f2; color: #dc2626;
+      border-color: #fca5a5; animation: pulse-timer 1s infinite alternate;
+    }
+    @keyframes pulse-timer { from{opacity:1} to{opacity:.65} }
+
+    /* ── TEST CONFIG SCREEN ── */
+    #test-config-screen { text-align: center; }
+    #test-config-screen h2 { font-size: 1.8rem; color: #0f3460; margin-bottom: 4px; }
+    #test-config-screen .test-subtitle { font-size: .95rem; color: #666; margin-bottom: 18px; line-height: 1.5; }
+    .test-config-row { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 10px; }
+    .test-config-label { font-size: .82rem; font-weight: 700; color: #555; text-transform: uppercase; letter-spacing: .4px; margin-bottom: 6px; }
+    .count-btn, .time-btn {
+      padding: 8px 20px; border: 2px solid #ddd; border-radius: 30px;
+      font-size: .92rem; font-weight: 700; cursor: pointer;
+      background: white; color: #555; transition: all .15s;
+    }
+    .count-btn.active, .time-btn.active {
+      border-color: #0f3460; background: #0f3460; color: white;
+    }
+    .count-btn:hover:not(.active), .time-btn:hover:not(.active) {
+      border-color: #0f3460; color: #0f3460;
+    }
+    .btn-test-start {
+      background: linear-gradient(135deg, #0f3460, #1a6bb5);
+      color: white; font-size: 1.05rem; padding: 13px 36px;
+      margin-top: 14px;
+    }
+    .btn-outlined {
+      background: transparent; border: 2px solid #0f3460;
+      color: #0f3460; padding: 10px 24px;
+    }
+    .btn-outlined:hover { background: #0f3460; color: white; }
+    .test-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
+    .link-btn {
+      background: none; border: none; cursor: pointer;
+      color: #0f3460; font-size: .88rem; font-weight: 700;
+      text-decoration: underline; padding: 4px;
+    }
+    .link-btn:hover { color: #e94560; }
+
+    /* ── TEST RESULTS SCREEN ── */
+    #test-results-screen { text-align: center; }
+    .test-trophy { font-size: 68px; display: block; margin-bottom: 8px; animation: bounce .6s infinite alternate; }
+    .test-score-big { font-size: 2.6rem; font-weight: 900; color: #e94560; margin: 4px 0; }
+    .test-pct-big { font-size: 1.4rem; font-weight: 800; color: #0f3460; margin-bottom: 14px; }
+    .test-time-row { font-size: .92rem; color: #666; margin-bottom: 16px; }
+    .save-badge {
+      display: inline-block; padding: 5px 16px; border-radius: 20px;
+      font-size: .82rem; font-weight: 700; margin-bottom: 14px;
+    }
+    .save-badge.saving { background: #fef3c7; color: #92400e; border: 1.5px solid #fcd34d; }
+    .save-badge.saved  { background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7; }
+    .save-badge.hidden { display: none; }
+
+    /* Breakdown table */
+    .breakdown-table { width: 100%; border-collapse: collapse; margin: 12px 0; text-align: left; }
+    .breakdown-table th { font-size: .75rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; padding: 4px 6px; border-bottom: 2px solid #eee; }
+    .breakdown-row td { padding: 7px 6px; font-size: .88rem; border-bottom: 1px solid #f0f0f0; }
+    .breakdown-domain { font-weight: 700; color: #1a1a2e; }
+    .mini-bar-wrap { width: 90px; background: #e5e7eb; border-radius: 6px; height: 8px; overflow: hidden; display: inline-block; vertical-align: middle; }
+    .mini-bar { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #0f3460, #1a6bb5); }
+    .mini-bar.good { background: linear-gradient(90deg, #27ae60, #16a34a); }
+    .mini-bar.warn { background: linear-gradient(90deg, #f59e0b, #d97706); }
+    .mini-bar.bad  { background: linear-gradient(90deg, #e74c3c, #c0392b); }
+    .breakdown-score { font-weight: 700; color: #0f3460; white-space: nowrap; }
+    .test-result-btns { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+
+    /* ── HISTORY SCREEN ── */
+    #history-screen { }
+    #history-screen h2 { font-size: 1.5rem; color: #0f3460; margin-bottom: 14px; }
+    .history-loading { text-align: center; padding: 30px; font-size: 1rem; color: #888; }
+    .history-empty   { text-align: center; padding: 30px; font-size: .95rem; color: #999; }
+    .history-list { display: flex; flex-direction: column; gap: 10px; max-height: 60vh; overflow-y: auto; }
+    .history-card {
+      background: #f8faff; border: 1.5px solid #e2e8f0;
+      border-radius: 14px; padding: 12px 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .hc-left { display: flex; flex-direction: column; gap: 2px; }
+    .hc-date { font-size: .72rem; color: #888; font-weight: 600; }
+    .hc-info { font-size: .88rem; color: #1a1a2e; font-weight: 700; }
+    .hc-time { font-size: .75rem; color: #666; }
+    .hc-score {
+      font-size: 1.3rem; font-weight: 900;
+      padding: 4px 12px; border-radius: 10px;
+    }
+    .hc-score.good { background: #d1fae5; color: #065f46; }
+    .hc-score.warn { background: #fef3c7; color: #92400e; }
+    .hc-score.bad  { background: #fef2f2; color: #dc2626; }
   </style>
 </head>
 <body>
@@ -278,6 +378,9 @@
       <button class="btn btn-primary" onclick="startGame(false)">▶ Start in Order</button>
       <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle &amp; Play</button>
     </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-outlined" onclick="show('test-config-screen')">🎯 Test Mode</button>
+    </div>
   </div>
 
   <!-- READING SCREEN -->
@@ -303,6 +406,7 @@
       </div>
       <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
       <div class="q-counter" id="q-counter"></div>
+      <div id="test-timer" class="test-timer hidden">⏱ <span id="timer-display">20:00</span></div>
     </div>
     <div class="cat-chip" id="cat-chip"></div>
     <button class="story-btn hidden" id="story-btn" onclick="openStoryModal()">📖 View Story Again</button>
@@ -342,6 +446,70 @@
       <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle</button>
     </div>
   </div>
+  <!-- TEST CONFIG SCREEN -->
+  <div id="test-config-screen" class="card hidden">
+    <h2>🎯 Test Mode</h2>
+    <p class="test-subtitle">Practice like it's the real thing — no hints!</p>
+
+    <div style="margin-bottom:16px;">
+      <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
+        <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math')">🔢 Math</button>
+        <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading')">📚 Reading</button>
+      </div>
+    </div>
+
+    <div class="test-config-label">Number of Questions</div>
+    <div class="test-config-row" id="count-btns">
+      <button class="count-btn" data-val="10" onclick="setTestQCount(10)">10</button>
+      <button class="count-btn active" data-val="20" onclick="setTestQCount(20)">20</button>
+      <button class="count-btn" data-val="30" onclick="setTestQCount(30)">30</button>
+    </div>
+
+    <div class="test-config-label" style="margin-top:10px;">Time Limit</div>
+    <div class="test-config-row" id="time-btns">
+      <button class="time-btn" data-val="10" onclick="setTestMinutes(10)">10 min</button>
+      <button class="time-btn active" data-val="20" onclick="setTestMinutes(20)">20 min</button>
+      <button class="time-btn" data-val="30" onclick="setTestMinutes(30)">30 min</button>
+    </div>
+
+    <div>
+      <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
+    </div>
+    <div class="test-links">
+      <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
+      <button class="link-btn" onclick="show('start-screen')">← Practice Mode</button>
+    </div>
+  </div>
+
+  <!-- TEST RESULTS SCREEN -->
+  <div id="test-results-screen" class="card hidden">
+    <span class="test-trophy" id="test-trophy">🏆</span>
+    <div class="test-score-big" id="test-score-big">0 / 0</div>
+    <div class="test-pct-big" id="test-pct-big">0%</div>
+    <div class="test-time-row" id="test-time-row">⏱ Time: —</div>
+    <div class="save-badge saving hidden" id="save-badge">Saving...</div>
+    <table class="breakdown-table">
+      <thead><tr><th>Domain</th><th>Progress</th><th>Score</th></tr></thead>
+      <tbody id="breakdown-body"></tbody>
+    </table>
+    <div class="test-result-btns">
+      <button class="btn btn-shuffle" onclick="show('test-config-screen')">🔁 Try Again</button>
+      <button class="btn btn-next" onclick="showHistory()">📋 View History</button>
+      <button class="btn btn-primary" onclick="show('start-screen')">🏠 Practice Mode</button>
+    </div>
+  </div>
+
+  <!-- HISTORY SCREEN -->
+  <div id="history-screen" class="card hidden">
+    <h2>📋 Score History</h2>
+    <div id="history-content">
+      <div class="history-loading">Loading...</div>
+    </div>
+    <div style="text-align:center;margin-top:14px;">
+      <button class="link-btn" onclick="show('test-config-screen')">← Back to Test Setup</button>
+    </div>
+  </div>
+
   <!-- STORY MODAL (view story during questions) -->
   <div id="story-modal">
     <div class="story-modal-inner">
@@ -3246,9 +3414,25 @@ let questions=[], currentQ=0, score=0, streak=0, bestStreak=0, selected=new Set(
 let shownPassages = new Set();
 let pendingPassageId = null;
 
+// ── TEST MODE STATE ────────────────────────────────────────────────
+const SUPABASE_URL  = 'https://zvffmucghcrqackghhlf.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic';
+let testMode        = false;
+let testAnswers     = [];
+let testTimeLeft    = 0;
+let testTotalTime   = 0;
+let testTimerInterval = null;
+let testQCount      = 20;
+let testMinutes     = 20;
+let testSubject     = 'Math'; // tracks subject chosen in test config
+
 function show(id) {
-  ['start-screen','reading-screen','question-screen','end-screen'].forEach(s=>
+  ['start-screen','reading-screen','question-screen','end-screen',
+   'test-config-screen','test-results-screen','history-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
+  // Hide domain nav when in test screens
+  const hideNav = ['test-config-screen','test-results-screen','history-screen'].includes(id);
+  document.getElementById('domain-nav').style.display = hideNav ? 'none' : '';
 }
 
 function startGame(shuffle) {
@@ -3288,12 +3472,18 @@ function renderQuestion() {
   const q = questions[currentQ];
   answered=false; selected=new Set();
 
+  // Timer visibility
+  const timerEl = document.getElementById('test-timer');
+  if (testMode) timerEl.classList.remove('hidden');
+  else timerEl.classList.add('hidden');
+
+  // HUD score (hide star score in test mode, show question counter)
   document.getElementById('score-display').textContent = score;
   document.getElementById('q-counter').textContent = `${currentQ+1} / ${questions.length}`;
   document.getElementById('progress-bar').style.width = `${(currentQ/questions.length)*100}%`;
 
   const sd = document.getElementById('streak-display');
-  if (streak>=2) { sd.classList.remove('hidden'); document.getElementById('streak-count').textContent=streak; }
+  if (!testMode && streak>=2) { sd.classList.remove('hidden'); document.getElementById('streak-count').textContent=streak; }
   else sd.classList.add('hidden');
 
   const d = currentDomains().find(x=>x.id===q.domain);
@@ -3311,17 +3501,17 @@ function renderQuestion() {
   const storyBtn = document.getElementById('story-btn');
 
   if (q.passageId && PASSAGES[q.passageId]) {
-    // Full story passage — check if we need to show reading screen first
-    if (!shownPassages.has(q.passageId)) {
+    if (!testMode && !shownPassages.has(q.passageId)) {
+      // Practice mode: show reading screen before questions
       shownPassages.add(q.passageId);
       showReading(q.passageId);
       return; // halt renderQuestion — afterReading() will call renderQuestion again
     }
-    // Already showed reading — show the "view story again" button
+    // Test mode (or already shown): show "view story again" button
     storyBtn.classList.remove('hidden');
     pb.classList.add('hidden');
   } else if (q.passage) {
-    // Inline passage excerpt (non-MCAP generated questions)
+    // Inline passage excerpt
     storyBtn.classList.add('hidden');
     pt.textContent = q.passage;
     pb.classList.remove('hidden');
@@ -3392,6 +3582,12 @@ function selectOption(el,letter,type) {
 function revealSingle(chosen) {
   const q=questions[currentQ]; answered=true;
   const ok=q.correct.includes(chosen);
+  if (testMode) {
+    testAnswers.push({q, correct:ok});
+    document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
+    setTimeout(()=>nextQuestion(), 300);
+    return;
+  }
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(q.correct.includes(o.dataset.letter)) o.classList.add('correct');
@@ -3407,6 +3603,13 @@ function checkMulti() {
   answered=true;
   const cs=new Set(q.correct);
   const ok=selected.size===cs.size&&[...selected].every(l=>cs.has(l));
+  if (testMode) {
+    testAnswers.push({q, correct:ok});
+    document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
+    document.getElementById('check-btn').classList.add('hidden');
+    setTimeout(()=>nextQuestion(), 300);
+    return;
+  }
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(cs.has(o.dataset.letter)) o.classList.add('correct');
@@ -3424,6 +3627,12 @@ function checkNumeric() {
   if(isNaN(val)) return;
   answered=true;
   const ok=val===q.correct;
+  if (testMode) {
+    testAnswers.push({q, correct:ok});
+    ni.disabled=true;
+    setTimeout(()=>nextQuestion(), 300);
+    return;
+  }
   ni.className='numeric-input '+(ok?'correct':'wrong');
   ni.disabled=true;
   updateScore(ok); showFeedback(ok,q);
@@ -3469,8 +3678,10 @@ function showStreakPopup(n) {
 
 function nextQuestion() {
   currentQ++;
-  if(currentQ>=questions.length) showEndScreen();
-  else renderQuestion();
+  if(currentQ>=questions.length) {
+    if (testMode) endTest();
+    else showEndScreen();
+  } else renderQuestion();
 }
 
 function showEndScreen() {
@@ -3505,6 +3716,224 @@ function launchConfettiPiece() {
   el.style.cssText=`left:${Math.random()*100}%;background:${cols[Math.floor(Math.random()*cols.length)]};animation-duration:${.8+Math.random()*1.2}s;transform:rotate(${Math.random()*360}deg)`;
   document.body.appendChild(el);
   setTimeout(()=>el.remove(),2000);
+}
+
+// ── TEST MODE FUNCTIONS ────────────────────────────────────────────
+
+function setTestSubject(subj) {
+  testSubject = subj;
+  document.getElementById('test-btn-math').classList.toggle('active', subj==='Math');
+  document.getElementById('test-btn-reading').classList.toggle('active', subj==='Reading');
+}
+
+function setTestQCount(n) {
+  testQCount = n;
+  document.querySelectorAll('.count-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.val)===n);
+  });
+}
+
+function setTestMinutes(m) {
+  testMinutes = m;
+  document.querySelectorAll('.time-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.val)===m);
+  });
+}
+
+function startTest() {
+  // Set subject context to what's selected in test config
+  activeSubject = testSubject;
+  buildNav();
+
+  // Pick all questions for the subject and shuffle
+  const allQ = currentQuestions().slice();
+  for (let i=allQ.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[allQ[i],allQ[j]]=[allQ[j],allQ[i]];}
+  questions = allQ.slice(0, testQCount);
+
+  // In test mode all passages are treated as already shown
+  shownPassages = new Set(Object.keys(PASSAGES));
+
+  testMode    = true;
+  testAnswers = [];
+  currentQ    = 0;
+  score       = 0;
+  streak      = 0;
+  bestStreak  = 0;
+
+  // Setup timer
+  testTotalTime = testMinutes * 60;
+  testTimeLeft  = testTotalTime;
+  if (testTimerInterval) clearInterval(testTimerInterval);
+  updateTimerDisplay();
+  testTimerInterval = setInterval(updateTimer, 1000);
+
+  show('question-screen');
+  renderQuestion();
+}
+
+function updateTimer() {
+  testTimeLeft--;
+  updateTimerDisplay();
+  if (testTimeLeft <= 0) endTest();
+}
+
+function updateTimerDisplay() {
+  const m = Math.floor(Math.max(0,testTimeLeft) / 60);
+  const s = Math.max(0,testTimeLeft) % 60;
+  document.getElementById('timer-display').textContent =
+    String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+  const timerEl = document.getElementById('test-timer');
+  if (testTimeLeft <= 120) timerEl.classList.add('warning');
+  else timerEl.classList.remove('warning');
+}
+
+function endTest() {
+  if (testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
+  document.getElementById('test-timer').classList.add('hidden');
+
+  const total    = questions.length;
+  const answered = testAnswers.length;
+  const correct  = testAnswers.filter(a=>a.correct).length;
+  const pct      = answered === 0 ? 0 : Math.round(correct / answered * 100);
+  const timeTaken = testTotalTime - testTimeLeft;
+
+  // Domain breakdown
+  const domainMap = {};
+  testAnswers.forEach(a=>{
+    const dom = a.q.domain || 'Other';
+    if (!domainMap[dom]) domainMap[dom]={correct:0,total:0};
+    domainMap[dom].total++;
+    if(a.correct) domainMap[dom].correct++;
+  });
+  // Also count unanswered questions per domain
+  if (answered < total) {
+    questions.slice(answered).forEach(q=>{
+      const dom = q.domain || 'Other';
+      if (!domainMap[dom]) domainMap[dom]={correct:0,total:0};
+      domainMap[dom].total++;
+    });
+  }
+
+  const breakdown = {};
+  Object.entries(domainMap).forEach(([dom,v])=>{
+    breakdown[dom] = { correct:v.correct, total:v.total, pct:Math.round(v.correct/v.total*100) };
+  });
+
+  const data = {
+    id: crypto.randomUUID(),
+    student: 'Jaden',
+    subject: activeSubject,
+    domain: 'All',
+    score: correct,
+    total: answered,
+    pct,
+    time_sec: timeTaken,
+    breakdown,
+  };
+
+  testMode = false;
+  showTestResults(data);
+}
+
+function showTestResults(data) {
+  const { score: correct, total, pct, time_sec, breakdown } = data;
+
+  // Trophy
+  let trophy = pct >= 90 ? '🏆' : pct >= 70 ? '⭐' : '📚';
+  document.getElementById('test-trophy').textContent = trophy;
+  document.getElementById('test-score-big').textContent = `${correct} / ${total}`;
+  document.getElementById('test-pct-big').textContent = `${pct}%`;
+
+  const m = Math.floor(time_sec/60), s = time_sec%60;
+  document.getElementById('test-time-row').textContent =
+    `⏱ Time taken: ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  // Domain breakdown table
+  const tbody = document.getElementById('breakdown-body');
+  tbody.innerHTML = '';
+  const doms = currentDomains().filter(d=>d.id!=='All');
+  const rows = Object.entries(breakdown).sort((a,b)=>a[0].localeCompare(b[0]));
+  rows.forEach(([domId, v])=>{
+    const domDef = doms.find(d=>d.id===domId);
+    const label = domDef ? `${domDef.icon} ${domDef.label}` : domId;
+    const barClass = v.pct >= 80 ? 'good' : v.pct >= 60 ? 'warn' : 'bad';
+    const tr = document.createElement('tr');
+    tr.className='breakdown-row';
+    tr.innerHTML=`<td class="breakdown-domain">${label}</td>
+      <td><span class="mini-bar-wrap"><span class="mini-bar ${barClass}" style="width:${v.pct}%"></span></span></td>
+      <td class="breakdown-score">${v.correct}/${v.total} (${v.pct}%)</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Save badge
+  const badge = document.getElementById('save-badge');
+  badge.className='save-badge saving';
+  badge.textContent='Saving...';
+
+  show('test-results-screen');
+
+  // Save asynchronously
+  saveAttempt(data).then(ok=>{
+    badge.className='save-badge saved';
+    badge.textContent = ok ? '💾 Saved!' : '⚠️ Save failed';
+  });
+}
+
+async function saveAttempt(data) {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/attempts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': SUPABASE_ANON,
+        'Authorization': `Bearer ${SUPABASE_ANON}`,
+        'Prefer': 'return=minimal'
+      },
+      body: JSON.stringify(data)
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+async function showHistory() {
+  show('history-screen');
+  const content = document.getElementById('history-content');
+  content.innerHTML = '<div class="history-loading">⏳ Loading scores...</div>';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/attempts?order=created_at.desc&limit=20`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    if (!res.ok) throw new Error('fetch failed');
+    const rows = await res.json();
+    if (!rows.length) {
+      content.innerHTML = '<div class="history-empty">No attempts yet — take a test to see your scores here! 🎯</div>';
+      return;
+    }
+    const list = document.createElement('div');
+    list.className = 'history-list';
+    rows.forEach(r=>{
+      const d = new Date(r.created_at);
+      const dateStr = d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      const timeStr = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      const m = Math.floor((r.time_sec||0)/60), s = (r.time_sec||0)%60;
+      const scoreClass = r.pct>=80 ? 'good' : r.pct>=60 ? 'warn' : 'bad';
+      const card = document.createElement('div');
+      card.className='history-card';
+      card.innerHTML=`
+        <div class="hc-left">
+          <div class="hc-date">${dateStr} at ${timeStr}</div>
+          <div class="hc-info">${r.subject||'Math'} · ${r.domain||'All'} · ${r.total||0} questions</div>
+          <div class="hc-time">⏱ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
+        </div>
+        <div class="hc-score ${scoreClass}">${r.pct}%</div>`;
+      list.appendChild(card);
+    });
+    content.innerHTML = '';
+    content.appendChild(list);
+  } catch(e) {
+    content.innerHTML = '<div class="history-empty">⚠️ Could not load scores. Check your connection.</div>';
+  }
 }
 
 // ── READING SCREEN & STORY MODAL ──────────────────────────────────
