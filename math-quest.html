@@ -388,6 +388,66 @@
     .hc-score.warn { background: #fef3c7; color: #92400e; }
     .hc-score.bad  { background: #fef2f2; color: #dc2626; }
 
+    /* ── VIDEO LESSON MODAL ── */
+    #video-modal {
+      display: none; position: fixed; inset: 0; z-index: 8000;
+      background: rgba(0,0,0,.75); padding: 16px;
+      align-items: center; justify-content: center;
+    }
+    #video-modal.open { display: flex; }
+    .video-modal-inner {
+      background: #0f1929; border-radius: 20px;
+      width: 100%; max-width: 720px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.6);
+      overflow: hidden; position: relative;
+    }
+    .video-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px 10px;
+      background: #1a2740;
+    }
+    .video-modal-title {
+      font-size: .92rem; font-weight: 800; color: white;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .video-modal-cat {
+      font-size: .72rem; padding: 2px 9px; border-radius: 10px;
+      background: rgba(255,255,255,.15); color: rgba(255,255,255,.85);
+    }
+    .video-modal-close {
+      background: rgba(255,255,255,.15); border: none; border-radius: 50%;
+      width: 32px; height: 32px; color: white; font-size: 1rem;
+      cursor: pointer; line-height: 32px; text-align: center; flex-shrink: 0;
+    }
+    .video-modal-close:hover { background: #ef4444; }
+    .video-frame-wrap {
+      position: relative; padding-top: 56.25%; /* 16:9 */
+      background: #000;
+    }
+    .video-frame-wrap iframe {
+      position: absolute; inset: 0; width: 100%; height: 100%; border: none;
+    }
+    .video-modal-footer {
+      padding: 10px 16px; background: #1a2740;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .video-ka-link {
+      font-size: .8rem; color: #60a5fa; font-weight: 700;
+      text-decoration: none;
+    }
+    .video-ka-link:hover { color: #93c5fd; text-decoration: underline; }
+    .video-note { font-size: .72rem; color: rgba(255,255,255,.45); }
+    /* Watch lesson button inside review items */
+    .watch-btn {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #fff7ed; color: #c2410c; border: 1.5px solid #fed7aa;
+      border-radius: 16px; padding: 4px 12px; font-size: .78rem;
+      font-weight: 700; cursor: pointer; margin-top: 8px;
+      transition: background .12s;
+    }
+    .watch-btn:hover { background: #ffedd5; }
+
     /* ── PIN GATE ── */
     #pin-gate {
       position: fixed; inset: 0; z-index: 9999;
@@ -789,6 +849,32 @@
     </div>
     <div style="text-align:center;margin-top:14px;">
       <button class="link-btn" onclick="show('test-config-screen')">← Back to Test Setup</button>
+    </div>
+  </div>
+
+  <!-- VIDEO LESSON MODAL -->
+  <div id="video-modal">
+    <div class="video-modal-inner">
+      <div class="video-modal-header">
+        <div class="video-modal-title">
+          📺 <span id="video-modal-label">Watch a Lesson</span>
+          <span class="video-modal-cat" id="video-modal-cat"></span>
+        </div>
+        <button class="video-modal-close" onclick="closeVideoModal()">✕</button>
+      </div>
+      <div class="video-frame-wrap">
+        <iframe id="video-iframe"
+          src=""
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowfullscreen>
+        </iframe>
+      </div>
+      <div class="video-modal-footer">
+        <a id="video-ka-link" href="#" target="_blank" rel="noopener" class="video-ka-link">
+          🎓 Open full lesson on Khan Academy →
+        </a>
+        <span class="video-note">Khan Academy · Grade 3</span>
+      </div>
     </div>
   </div>
 
@@ -4487,6 +4573,10 @@ function showTestReview(scrollToIdx) {
     const hintHTML = q.hint && !correct
       ? `<div class="review-hint">💡 ${q.hint}</div>` : '';
 
+    const watchHTML = !correct && LESSON_MAP[q.cat]
+      ? `<button class="watch-btn" onclick="openVideoModal('${q.cat.replace(/'/g,"\\'")}')">📺 Watch a lesson on ${q.cat}</button>`
+      : '';
+
     item.innerHTML = `
       <div class="review-item-header">
         <span class="review-num">Q${idx + 1}</span>
@@ -4495,7 +4585,8 @@ function showTestReview(scrollToIdx) {
       </div>
       <div class="review-q-text">${q.text.replace(/\n/g,'<br>')}</div>
       ${optionsHTML}
-      ${hintHTML}`;
+      ${hintHTML}
+      ${watchHTML}`;
     list.appendChild(item);
   });
 
@@ -4594,6 +4685,112 @@ function openStoryModal() {
 
 function closeStoryModal() {
   document.getElementById('story-modal').classList.remove('open');
+}
+
+// ── VIDEO LESSON MAP ──────────────────────────────────────────────────
+// yt: YouTube video ID (Khan Academy). ka: Khan Academy page URL.
+// NOTE: Verify video IDs before deploying — search YouTube for each to confirm.
+const LESSON_MAP = {
+  // ── Math ──────────────────────────────────────────────────────────
+  'Multiplication': {
+    label: 'Intro to Multiplication',
+    yt: 'VgrUBo1AdNc',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-multiply-divide',
+  },
+  'Division': {
+    label: 'Intro to Division',
+    yt: 'IGAlOKWOi6Y',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-multiply-divide',
+  },
+  'Mult & Division Reasoning': {
+    label: 'Multiplication & Division Word Problems',
+    yt: 'VgrUBo1AdNc',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-multiply-divide',
+  },
+  'Addition & Subtraction': {
+    label: 'Addition & Subtraction',
+    yt: 'AuX7nPBqDts',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-add-subtract',
+  },
+  'Rounding': {
+    label: 'Rounding to the Nearest 10',
+    yt: 'QdZ51nXGkFE',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-place-value-rounding',
+  },
+  'Fractions': {
+    label: 'Intro to Fractions',
+    yt: 'n0FZhQ_GkKw',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-fractions',
+  },
+  'Measurement & Time': {
+    label: 'Telling Time & Measurement',
+    yt: 'lBMl9Y9Yp6Y',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-measure-data',
+  },
+  'Area': {
+    label: 'Intro to Area',
+    yt: 'AsykZMbPkXI',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-measure-data',
+  },
+  'Perimeter': {
+    label: 'Perimeter',
+    yt: 'AAB0VByELKY',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-measure-data',
+  },
+  'Word Problems': {
+    label: 'Word Problems',
+    yt: 'D8MnGHnqMJ4',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-multiply-divide',
+  },
+  'Data & Graphs': {
+    label: 'Reading Bar Graphs',
+    yt: 'W5fMkBSWBmI',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-measure-data',
+  },
+  'Geometry': {
+    label: 'Shapes & Geometry',
+    yt: 'BpQMROmT3O0',
+    ka: 'https://www.khanacademy.org/math/cc-third-grade-math/3rd-grade-geometry',
+  },
+  // ── ELA ──────────────────────────────────────────────────────────
+  'Literary Text': {
+    label: 'Reading Literary Text',
+    yt: 'MSYw502dJNY',
+    ka: 'https://www.khanacademy.org/ela/cc-3rd-reading-vocab',
+  },
+  'Informational Text': {
+    label: 'Reading Informational Text',
+    yt: 'bpRcRDBm73Y',
+    ka: 'https://www.khanacademy.org/ela/cc-3rd-reading-vocab',
+  },
+  'Vocabulary': {
+    label: 'Vocabulary in Context',
+    yt: 'JuTSluBsqvI',
+    ka: 'https://www.khanacademy.org/ela/cc-3rd-reading-vocab',
+  },
+  'Word Study': {
+    label: 'Phonics & Word Study',
+    yt: 'JuTSluBsqvI',
+    ka: 'https://www.khanacademy.org/ela/cc-3rd-reading-vocab',
+  },
+};
+
+function openVideoModal(cat) {
+  const lesson = LESSON_MAP[cat];
+  if (!lesson) return;
+  document.getElementById('video-modal-label').textContent = lesson.label;
+  document.getElementById('video-modal-cat').textContent = cat;
+  document.getElementById('video-ka-link').href = lesson.ka;
+  // Use youtube-nocookie for privacy; autoplay=1 so it plays right away
+  document.getElementById('video-iframe').src =
+    `https://www.youtube-nocookie.com/embed/${lesson.yt}?autoplay=1&rel=0`;
+  document.getElementById('video-modal').classList.add('open');
+}
+
+function closeVideoModal() {
+  document.getElementById('video-modal').classList.remove('open');
+  // Stop video by clearing src
+  document.getElementById('video-iframe').src = '';
 }
 
 // ── PIN GATE ───────────────────────────────────────────────────────
