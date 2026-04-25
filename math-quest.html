@@ -5245,12 +5245,24 @@ async function deleteAttempt(id, btn) {
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/attempts?id=eq.${encodeURIComponent(id)}`,
-      { method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+      {
+        method: 'DELETE',
+        headers: {
+          'apikey': SUPABASE_ANON,
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+          'Prefer': 'return=representation',   // returns deleted rows so we know it actually worked
+        }
+      }
     );
-    if (res.ok) {
-      btn.closest('.ps-row').remove();
+    const deleted = await res.json();
+    if (res.ok && Array.isArray(deleted) && deleted.length > 0) {
+      // Refresh the full dashboard so all stats stay in sync
+      _showParentDash();
     } else {
+      // RLS blocked it or id not found — alert parent
       btn.disabled = false; btn.textContent = '🗑';
+      alert('Could not delete — check Supabase RLS policy (see console for details).');
+      console.warn('Delete returned:', res.status, deleted);
     }
   } catch(e) { btn.disabled = false; btn.textContent = '🗑'; }
 }
