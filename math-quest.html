@@ -557,6 +557,8 @@
     /* Recent sessions */
     .ps-row { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 9px; }
     .ps-row:hover { background: #f8faff; }
+    .ps-delete { margin-left: auto; border: none; background: none; color: #d1d5db; font-size: 1rem; cursor: pointer; padding: 2px 6px; border-radius: 6px; flex-shrink: 0; }
+    .ps-delete:hover { color: #dc2626; background: #fef2f2; }
     .ps-date { font-size: .7rem; color: #888; flex-shrink: 0; width: 52px; }
     .ps-info { font-size: .82rem; font-weight: 700; color: #1a1a2e; flex: 1; min-width: 0; }
     .ps-mode { font-size: .68rem; color: #888; font-weight: 400; }
@@ -5211,24 +5213,46 @@ function _renderHotspots(hotspots) {
 }
 
 function _renderRecent(attempts) {
+  const el = document.getElementById('parent-recent');
   if (!attempts.length) {
-    document.getElementById('parent-recent').innerHTML = '<div style="color:#aaa;font-size:.85rem;">No sessions yet.</div>';
+    el.innerHTML = '<div style="color:#aaa;font-size:.85rem;">No sessions yet.</div>';
     return;
   }
-  const html = attempts.slice(0,25).map(a => {
+  el.innerHTML = '';
+  attempts.slice(0,25).forEach(a => {
     const d   = new Date(a.created_at);
     const dt  = d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
     const tm  = d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
     const pct = a.pct||0;
     const cls = pct>=80?'good':pct>=60?'warn':'bad';
     const mode= a.mode==='practice'?'Practice':'Test';
-    return `<div class="ps-row">
+    const row = document.createElement('div');
+    row.className = 'ps-row';
+    row.dataset.id = a.id;
+    row.innerHTML = `
       <div class="ps-date">${dt}<br><span style="font-size:.62rem;">${tm}</span></div>
       <div class="ps-info">${a.subject||'Math'} · ${a.domain||'All'}<br><span class="ps-mode">${mode} · ${a.total||0}q</span></div>
       <div class="ps-pct ${cls}">${pct}%</div>
-    </div>`;
-  }).join('');
-  document.getElementById('parent-recent').innerHTML = html;
+      <button class="ps-delete" title="Delete session" onclick="deleteAttempt('${a.id}', this)">🗑</button>`;
+    el.appendChild(row);
+  });
+}
+
+async function deleteAttempt(id, btn) {
+  if (!confirm('Delete this session?')) return;
+  btn.disabled = true;
+  btn.textContent = '…';
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/attempts?id=eq.${encodeURIComponent(id)}`,
+      { method: 'DELETE', headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    if (res.ok) {
+      btn.closest('.ps-row').remove();
+    } else {
+      btn.disabled = false; btn.textContent = '🗑';
+    }
+  } catch(e) { btn.disabled = false; btn.textContent = '🗑'; }
 }
 
 // ── STARS BG ───────────────────────────────────────────────────────
