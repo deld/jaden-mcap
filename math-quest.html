@@ -735,9 +735,16 @@
     <h1 id="start-title">Jaden's Math Quest!</h1>
     <div class="domain-banner" id="domain-banner"></div>
     <p id="start-desc"></p>
+    <!-- Question count picker -->
+    <div id="q-count-picker" style="margin-bottom:14px;">
+      <div style="font-size:.78rem;font-weight:700;color:#6b7280;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;">How many questions?</div>
+      <div id="q-count-btns" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>
+    </div>
     <div class="start-btns">
-      <button class="btn btn-primary" onclick="startGame(false)">▶ Start in Order</button>
-      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle &amp; Play</button>
+      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Let's Play!</button>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)">▶ In Order</button>
     </div>
     <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-outlined" onclick="show('test-config-screen')">🎯 Test Mode</button>
@@ -3881,8 +3888,9 @@ const ELA_QUESTIONS = [
 // ═══════════════════════════════════════════════════════════════════
 //  STATE
 // ═══════════════════════════════════════════════════════════════════
-let activeSubject = 'Math';
-let activeDomain  = 'All';
+let activeSubject  = 'Math';
+let activeDomain   = 'All';
+let practiceQCount = 0; // 0 = all available
 
 function currentDomains()   { return activeSubject === 'Math' ? MATH_DOMAINS   : ELA_DOMAINS; }
 function currentQuestions() { return activeSubject === 'Math' ? MATH_QUESTIONS : ELA_QUESTIONS; }
@@ -3954,6 +3962,21 @@ function updateStartScreen() {
   } else {
     desc.innerHTML = `<strong>${qs.length} questions</strong> focused on <em>${d.label}</em>.<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   }
+
+  // Build question count picker
+  const total = qs.length;
+  const counts = [10, 20, 30, 50, 100].filter(n => n < total);
+  counts.push(total); // "All"
+  if (practiceQCount === 0 || practiceQCount > total) practiceQCount = total;
+  const btnWrap = document.getElementById('q-count-btns');
+  btnWrap.innerHTML = '';
+  counts.forEach(n => {
+    const b = document.createElement('button');
+    b.className = 'count-btn' + (practiceQCount === n ? ' active' : '');
+    b.textContent = n === total ? `All ${n}` : n;
+    b.onclick = () => { practiceQCount = n; updateStartScreen(); };
+    btnWrap.appendChild(b);
+  });
 }
 
 function filteredQuestions() {
@@ -4014,8 +4037,15 @@ function show(id) {
   if (id === 'start-screen' || id === 'test-config-screen') updateWeakButton();
 }
 
-function startGame(shuffle) {
+function startGame(shuffle = true) {
   questions = filteredQuestions();
+  // Apply question count limit (always shuffle first so count picks a random subset)
+  if (practiceQCount > 0 && practiceQCount < questions.length) {
+    // Shuffle full pool first, then slice — ensures a fresh random subset each time
+    for (let i=questions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[questions[i],questions[j]]=[questions[j],questions[i]];}
+    questions = questions.slice(0, practiceQCount);
+    shuffle = false; // already shuffled above
+  }
   shownPassages = new Set();
   // Group passage questions together (keep passage order coherent)
   const passageGroups = {};
@@ -4998,15 +5028,14 @@ function openVideoModal(cat) {
   document.getElementById('video-modal-label').textContent = lesson.label;
   document.getElementById('video-modal-cat').textContent = cat;
   document.getElementById('video-ka-link').href = lesson.ka;
-  // Use youtube-nocookie for privacy; autoplay=1 so it plays right away
+  // Embed from YouTube Kids so Qustodio allows it
   document.getElementById('video-iframe').src =
-    `https://www.youtube-nocookie.com/embed/${lesson.yt}?autoplay=1&rel=0`;
+    `https://www.youtubekids.com/embed/${lesson.yt}?autoplay=1&rel=0`;
   document.getElementById('video-modal').classList.add('open');
 }
 
 function closeVideoModal() {
   document.getElementById('video-modal').classList.remove('open');
-  // Stop video by clearing src
   document.getElementById('video-iframe').src = '';
 }
 
