@@ -388,6 +388,92 @@
     .hc-score.warn { background: #fef3c7; color: #92400e; }
     .hc-score.bad  { background: #fef2f2; color: #dc2626; }
 
+    /* ── PIN GATE ── */
+    #pin-gate {
+      position: fixed; inset: 0; z-index: 9999;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #pin-gate.unlocked { display: none; }
+    .pin-card {
+      background: white; border-radius: 24px; padding: 36px 32px;
+      text-align: center; width: 100%; max-width: 340px;
+      box-shadow: 0 24px 64px rgba(0,0,0,.5);
+    }
+    .pin-icon { font-size: 52px; margin-bottom: 10px; display: block; }
+    .pin-card h2 { font-size: 1.6rem; color: #0f3460; margin-bottom: 4px; }
+    .pin-card p { font-size: .88rem; color: #666; margin-bottom: 22px; }
+    .pin-dots {
+      display: flex; gap: 12px; justify-content: center; margin-bottom: 22px;
+    }
+    .pin-dot {
+      width: 18px; height: 18px; border-radius: 50%;
+      background: #e5e7eb; transition: background .15s;
+    }
+    .pin-dot.filled { background: #0f3460; }
+    .pin-pad {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+    }
+    .pin-key {
+      padding: 14px; border: 2px solid #e5e7eb; border-radius: 12px;
+      font-size: 1.2rem; font-weight: 700; cursor: pointer; background: white;
+      color: #1a1a2e; transition: all .12s;
+    }
+    .pin-key:hover { background: #eff6ff; border-color: #0f3460; }
+    .pin-key.clear { color: #ef4444; font-size: .9rem; }
+    .pin-error { color: #ef4444; font-size: .85rem; font-weight: 700; margin-top: 10px; min-height: 20px; }
+
+    /* ── TEST REVIEW SCREEN ── */
+    #test-review-screen h2 { font-size: 1.5rem; color: #0f3460; margin-bottom: 4px; }
+    .review-subtitle { font-size: .88rem; color: #666; margin-bottom: 16px; }
+    .review-list { display: flex; flex-direction: column; gap: 14px; }
+    .review-item {
+      border: 2px solid #e5e7eb; border-radius: 14px; padding: 14px 16px;
+      background: #fafbff;
+    }
+    .review-item.ri-correct { border-color: #6ee7b7; background: #f0fdf8; }
+    .review-item.ri-wrong   { border-color: #fca5a5; background: #fff5f5; }
+    .review-item.ri-skip    { border-color: #d1d5db; background: #f9fafb; }
+    .review-item-header {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .review-num { font-size: .75rem; font-weight: 800; color: #888; }
+    .review-verdict {
+      font-size: .75rem; font-weight: 800; padding: 2px 9px;
+      border-radius: 12px; letter-spacing: .3px;
+    }
+    .review-verdict.correct { background: #d1fae5; color: #065f46; }
+    .review-verdict.wrong   { background: #fef2f2; color: #dc2626; }
+    .review-verdict.skip    { background: #f3f4f6; color: #6b7280; }
+    .review-q-text { font-size: .93rem; font-weight: 600; color: #1a1a2e; line-height: 1.55; margin-bottom: 10px; }
+    .review-options { display: flex; flex-direction: column; gap: 5px; }
+    .review-opt {
+      display: flex; align-items: flex-start; gap: 8px;
+      font-size: .87rem; padding: 6px 10px; border-radius: 8px;
+      line-height: 1.45;
+    }
+    .review-opt.ro-chosen-wrong { background: #fef2f2; color: #b91c1c; font-weight: 700; }
+    .review-opt.ro-correct-ans  { background: #ecfdf5; color: #065f46; font-weight: 700; }
+    .review-opt.ro-chosen-right { background: #ecfdf5; color: #065f46; font-weight: 700; }
+    .ro-letter { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 800; background: #e5e7eb; color: #374151; }
+    .ro-chosen-wrong .ro-letter { background: #ef4444; color: white; }
+    .ro-correct-ans  .ro-letter { background: #10b981; color: white; }
+    .ro-chosen-right .ro-letter { background: #10b981; color: white; }
+    .review-hint { margin-top: 8px; font-size: .82rem; color: #555; font-style: italic; padding: 7px 10px; background: #f1f5f9; border-radius: 8px; border-left: 3px solid #94a3b8; }
+
+    /* ── WEAK AREAS BUTTON ── */
+    .weak-areas-btn {
+      display: inline-flex; align-items: center; gap: 7px;
+      background: linear-gradient(135deg, #7c3aed, #5b21b6);
+      color: white; border: none; border-radius: 50px;
+      padding: 10px 22px; font-size: .92rem; font-weight: 700;
+      cursor: pointer; transition: transform .15s, box-shadow .15s;
+      margin-top: 10px;
+    }
+    .weak-areas-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(124,58,237,.35); }
+    .weak-badge { background: #ef4444; color: white; border-radius: 10px; font-size: .7rem; padding: 1px 7px; font-weight: 800; }
+
     /* ── DESKTOP STORY PANEL (two-column reading layout) ── */
     .q-layout { display: contents; } /* flat on mobile — grid kicks in on desktop */
     .q-story-panel {
@@ -627,6 +713,11 @@
       <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
       <button class="link-btn" onclick="show('start-screen')">← Practice Mode</button>
     </div>
+    <div style="text-align:center;" id="weak-areas-row">
+      <button class="weak-areas-btn hidden" id="weak-areas-btn" onclick="showWeakPractice()">
+        🎯 Practice Weak Areas <span class="weak-badge" id="weak-count-badge">0</span>
+      </button>
+    </div>
   </div>
 
   <!-- TEST RESULTS SCREEN -->
@@ -644,6 +735,20 @@
       <button class="btn btn-shuffle" onclick="show('test-config-screen')">🔁 Try Again</button>
       <button class="btn btn-next" onclick="showHistory()">📋 View History</button>
       <button class="btn btn-primary" onclick="show('start-screen')">🏠 Practice Mode</button>
+    </div>
+    <div style="text-align:center;margin-top:10px;">
+      <button class="btn" id="review-btn" onclick="showTestReview()" style="background:linear-gradient(135deg,#0f3460,#1a6bb5);color:white;font-size:.92rem;">📖 Review My Answers</button>
+    </div>
+  </div>
+
+  <!-- TEST REVIEW SCREEN -->
+  <div id="test-review-screen" class="card hidden">
+    <h2>📖 Answer Review</h2>
+    <p class="review-subtitle" id="review-subtitle"></p>
+    <div class="review-list" id="review-list"></div>
+    <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-shuffle" onclick="show('test-results-screen')">← Back to Results</button>
+      <button class="weak-areas-btn hidden" id="weak-practice-from-review" onclick="showWeakPractice()">🎯 Practice Missed Questions</button>
     </div>
   </div>
 
@@ -666,6 +771,36 @@
       <div id="modal-reading-byline" style="font-size:.85rem;color:#666;font-style:italic;margin-bottom:16px;"></div>
       <div id="modal-reading-body" style="font-size:.95rem;line-height:1.85;color:#1a1a2e;"></div>
     </div>
+  </div>
+</div>
+
+<!-- ══ PIN GATE ══ -->
+<div id="pin-gate">
+  <div class="pin-card">
+    <span class="pin-icon">🔐</span>
+    <h2>Jaden's MCAP Quest</h2>
+    <p>Enter your PIN to continue</p>
+    <div class="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinKey('1')">1</button>
+      <button class="pin-key" onclick="pinKey('2')">2</button>
+      <button class="pin-key" onclick="pinKey('3')">3</button>
+      <button class="pin-key" onclick="pinKey('4')">4</button>
+      <button class="pin-key" onclick="pinKey('5')">5</button>
+      <button class="pin-key" onclick="pinKey('6')">6</button>
+      <button class="pin-key" onclick="pinKey('7')">7</button>
+      <button class="pin-key" onclick="pinKey('8')">8</button>
+      <button class="pin-key" onclick="pinKey('9')">9</button>
+      <button class="pin-key clear" onclick="pinClear()">⌫</button>
+      <button class="pin-key" onclick="pinKey('0')">0</button>
+      <button class="pin-key clear" onclick="pinReset()">✕</button>
+    </div>
+    <div class="pin-error" id="pin-error"></div>
   </div>
 </div>
 
@@ -3595,11 +3730,14 @@ const MCAP_PRESETS = {
 
 function show(id) {
   ['start-screen','reading-screen','question-screen','end-screen',
-   'test-config-screen','test-results-screen','history-screen'].forEach(s=>
+   'test-config-screen','test-results-screen','history-screen',
+   'test-review-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
   // Hide domain nav when in test screens
-  const hideNav = ['test-config-screen','test-results-screen','history-screen'].includes(id);
+  const hideNav = ['test-config-screen','test-results-screen','history-screen','test-review-screen'].includes(id);
   document.getElementById('domain-nav').style.display = hideNav ? 'none' : '';
+  // Refresh weak areas button count when visiting test config
+  if (id === 'test-config-screen') updateWeakButton();
 }
 
 function startGame(shuffle) {
@@ -3765,6 +3903,7 @@ function revealSingle(chosen) {
   const q=questions[currentQ]; answered=true;
   const ok=q.correct.includes(chosen);
   if (testMode) {
+    q._chosen = new Set([chosen]);
     testAnswers.push({q, correct:ok});
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     setTimeout(()=>nextQuestion(), 300);
@@ -3786,6 +3925,7 @@ function checkMulti() {
   const cs=new Set(q.correct);
   const ok=selected.size===cs.size&&[...selected].every(l=>cs.has(l));
   if (testMode) {
+    q._chosen = new Set(selected);
     testAnswers.push({q, correct:ok});
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     document.getElementById('check-btn').classList.add('hidden');
@@ -3810,6 +3950,7 @@ function checkNumeric() {
   answered=true;
   const ok=val===q.correct;
   if (testMode) {
+    q._yourAnswer = val;
     testAnswers.push({q, correct:ok});
     ni.disabled=true;
     setTimeout(()=>nextQuestion(), 300);
@@ -3888,6 +4029,21 @@ function showEndScreen() {
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
+
+  // Save practice session to Supabase
+  const d2 = currentDomains().find(x=>x.id===activeDomain);
+  saveAttempt({
+    id: crypto.randomUUID(),
+    student: 'Jaden',
+    subject: activeSubject,
+    domain: d2 ? d2.label : activeDomain,
+    score,
+    total,
+    pct: Math.round(pct*100),
+    time_sec: 0,
+    breakdown: {},
+    mode: 'practice',
+  });
 }
 
 function launchConfetti() { for(let i=0;i<16;i++) setTimeout(launchConfettiPiece,i*35); }
@@ -4039,6 +4195,11 @@ function endTest() {
   };
 
   testMode = false;
+
+  // Save wrong answers to Supabase bank
+  const wrongQs = testAnswers.filter(a => !a.correct).map(a => a.q);
+  if (wrongQs.length) saveWrongAnswers(wrongQs);
+
   showTestResults(data);
 }
 
@@ -4143,6 +4304,181 @@ async function showHistory() {
   }
 }
 
+// ── WRONG QUESTION BANK (Supabase) ────────────────────────────────────
+async function saveWrongAnswers(wrongQs) {
+  if (!wrongQs.length) return;
+  const rows = wrongQs.map(q => ({
+    student: 'Jaden',
+    subject: activeSubject,
+    question_text: q.text,
+    question_json: q,
+  }));
+  try {
+    await fetch(
+      `${SUPABASE_URL}/rest/v1/wrong_answers?on_conflict=student,question_text`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': SUPABASE_ANON,
+          'Authorization': `Bearer ${SUPABASE_ANON}`,
+          'Prefer': 'resolution=merge-duplicates,return=minimal',
+        },
+        body: JSON.stringify(rows),
+      }
+    );
+  } catch(e) {}
+}
+
+async function loadWrongBank(subject) {
+  subject = subject || activeSubject;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&subject=eq.${encodeURIComponent(subject)}&select=question_json,times_missed&order=times_missed.desc&limit=200`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    if (!res.ok) return [];
+    const rows = await res.json();
+    return rows.map(r => r.question_json);
+  } catch(e) { return []; }
+}
+
+async function updateWeakButton() {
+  const btn = document.getElementById('weak-areas-btn');
+  const badge = document.getElementById('weak-count-badge');
+  if (!btn) return;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&subject=eq.${encodeURIComponent(activeSubject)}&select=id`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'count=exact', 'Range': '0-0' } }
+    );
+    const count = parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+    if (count > 0) {
+      btn.classList.remove('hidden');
+      badge.textContent = count;
+    } else {
+      btn.classList.add('hidden');
+    }
+  } catch(e) { btn.classList.add('hidden'); }
+}
+
+// ── TEST ANSWER REVIEW ────────────────────────────────────────────────
+function showTestReview() {
+  const L = 'ABCDEFGHIJ';
+  const wrongQs = testAnswers.filter(a => !a.correct).map(a => a.q);
+
+  document.getElementById('review-subtitle').textContent =
+    `${testAnswers.filter(a=>a.correct).length} correct · ${wrongQs.length} missed · ${questions.length - testAnswers.length} unanswered`;
+
+  const list = document.getElementById('review-list');
+  list.innerHTML = '';
+
+  const allItems = [...testAnswers.map((a,i) => ({...a, idx:i, skipped:false}))];
+  // Add unanswered (timed-out) questions
+  for (let i = testAnswers.length; i < questions.length; i++) {
+    allItems.push({q: questions[i], correct: false, idx: i, skipped: true});
+  }
+
+  allItems.forEach(({q, correct, idx, skipped}) => {
+    const item = document.createElement('div');
+    const cls = skipped ? 'ri-skip' : correct ? 'ri-correct' : 'ri-wrong';
+    item.className = `review-item ${cls}`;
+
+    const verdictCls = skipped ? 'skip' : correct ? 'correct' : 'wrong';
+    const verdictText = skipped ? '⏭ Skipped' : correct ? '✓ Correct' : '✗ Wrong';
+
+    const cs = CAT_STYLE[q.cat] || {bg:'#eee', fg:'#333'};
+
+    let optionsHTML = '';
+    if (q.type === 'numeric') {
+      const yourAns = skipped ? '—' : q._yourAnswer ?? '?';
+      const correctCls = correct ? 'ro-chosen-right' : 'ro-chosen-wrong';
+      optionsHTML = `
+        <div class="review-options">
+          <div class="review-opt ${skipped ? '' : correctCls}">
+            <div class="ro-letter">=</div>
+            Your answer: <strong>${yourAns}</strong>
+            ${!correct ? ` &nbsp;·&nbsp; Correct: <strong>${Array.isArray(q.correct) ? q.correct[0] : q.correct}</strong>` : ''}
+          </div>
+        </div>`;
+    } else if (q.options) {
+      optionsHTML = '<div class="review-options">';
+      const yourChosen = skipped ? new Set() : (q._chosen || new Set());
+      const correctSet = new Set(Array.isArray(q.correct) ? q.correct : [q.correct]);
+      q.options.forEach((opt, i) => {
+        const letter = L[i];
+        const wasChosen = yourChosen.has ? yourChosen.has(letter) : yourChosen === letter;
+        const isCorrect = correctSet.has(letter);
+        let cls = '';
+        if (wasChosen && !isCorrect) cls = 'ro-chosen-wrong';
+        else if (isCorrect) cls = wasChosen ? 'ro-chosen-right' : 'ro-correct-ans';
+        optionsHTML += `<div class="review-opt ${cls}">
+          <div class="ro-letter">${letter}</div><span>${opt}</span>
+          ${wasChosen && !isCorrect ? ' <strong>← your answer</strong>' : ''}
+          ${isCorrect && !wasChosen ? ' <strong>← correct answer</strong>' : ''}
+        </div>`;
+      });
+      optionsHTML += '</div>';
+    }
+
+    const hintHTML = q.hint && !correct
+      ? `<div class="review-hint">💡 ${q.hint}</div>` : '';
+
+    item.innerHTML = `
+      <div class="review-item-header">
+        <span class="review-num">Q${idx + 1}</span>
+        <span class="review-verdict ${verdictCls}">${verdictText}</span>
+        <span class="cat-chip" style="background:${cs.bg};color:${cs.fg};font-size:.7rem;padding:2px 9px;">${q.cat}</span>
+      </div>
+      <div class="review-q-text">${q.text.replace(/\n/g,'<br>')}</div>
+      ${optionsHTML}
+      ${hintHTML}`;
+    list.appendChild(item);
+  });
+
+  // Show "Practice Missed" button if there are wrong answers
+  const practiceBtn = document.getElementById('weak-practice-from-review');
+  if (wrongQs.length > 0) practiceBtn.classList.remove('hidden');
+  else practiceBtn.classList.add('hidden');
+
+  show('test-review-screen');
+  window.scrollTo(0, 0);
+}
+
+// ── WEAK AREAS PRACTICE ───────────────────────────────────────────────
+async function showWeakPractice() {
+  const bank = await loadWrongBank();
+  if (!bank.length) return;
+
+  // Gather categories and domains from wrong bank
+  const weakCats = new Set(bank.map(q => q.cat));
+  const weakDoms = new Set(bank.map(q => q.domain));
+
+  // Pull similar questions from full bank (same domain or category, not in wrong bank)
+  const allQ = currentQuestions();
+  const similar = allQ.filter(q =>
+    !bank.some(b => b.text === q.text) &&
+    (weakCats.has(q.cat) || weakDoms.has(q.domain))
+  );
+
+  // Wrong bank first (most-missed order from Supabase), then shuffled similar
+  const shuffledSimilar = [...similar].sort(() => Math.random() - .5).slice(0, Math.min(similar.length, bank.length * 2));
+
+  questions = [...bank, ...shuffledSimilar];
+  currentQ = 0; score = 0; streak = 0; bestStreak = 0;
+  shownPassages = new Set();
+  testMode = false;
+
+  show('question-screen');
+  renderQuestion();
+
+  // Brief banner
+  const popup = document.getElementById('streak-popup');
+  popup.style.display = 'block';
+  popup.textContent = `🎯 ${bank.length} missed + ${shuffledSimilar.length} similar questions`;
+  setTimeout(() => { popup.style.display = 'none'; }, 2800);
+}
+
 // ── READING SCREEN & STORY MODAL ──────────────────────────────────
 // ── PASSAGE RENDERING HELPER ──────────────────────────────────────────
 function buildPassageHTML(text) {
@@ -4186,6 +4522,57 @@ function openStoryModal() {
 
 function closeStoryModal() {
   document.getElementById('story-modal').classList.remove('open');
+}
+
+// ── PIN GATE ───────────────────────────────────────────────────────
+const PIN_CORRECT = '2016';
+let pinEntry = '';
+
+function pinUpdateDots() {
+  for (let i = 0; i < 4; i++) {
+    document.getElementById(`pd${i}`).classList.toggle('filled', i < pinEntry.length);
+  }
+}
+
+function pinKey(digit) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += digit;
+  pinUpdateDots();
+  document.getElementById('pin-error').textContent = '';
+  if (pinEntry.length === 4) {
+    if (pinEntry === PIN_CORRECT) {
+      sessionStorage.setItem('pin_ok', '1');
+      document.getElementById('pin-gate').classList.add('unlocked');
+    } else {
+      document.getElementById('pin-error').textContent = 'Wrong PIN — try again';
+      setTimeout(() => { pinEntry = ''; pinUpdateDots(); }, 800);
+    }
+  }
+}
+
+function pinClear() {
+  pinEntry = pinEntry.slice(0, -1);
+  pinUpdateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+function pinReset() {
+  pinEntry = '';
+  pinUpdateDots();
+  document.getElementById('pin-error').textContent = '';
+}
+
+// Keyboard support on PIN screen
+document.addEventListener('keydown', e => {
+  if (document.getElementById('pin-gate').classList.contains('unlocked')) return;
+  if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+  else if (e.key === 'Backspace') pinClear();
+  else if (e.key === 'Escape') pinReset();
+});
+
+// Auto-unlock if already verified this session
+if (sessionStorage.getItem('pin_ok') === '1') {
+  document.getElementById('pin-gate').classList.add('unlocked');
 }
 
 // ── STARS BG ───────────────────────────────────────────────────────
