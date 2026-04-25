@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jaden MCAP — DB Migration</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; padding: 32px 24px; max-width: 700px; margin: 0 auto; }
+    h1 { font-size: 1.5rem; margin-bottom: 8px; }
+    p { color: #94a3b8; margin-bottom: 24px; font-size: .9rem; line-height: 1.5; }
+    #run-btn {
+      background: #6366f1; color: white; border: none; padding: 12px 28px;
+      font-size: 1rem; font-weight: 700; border-radius: 10px; cursor: pointer;
+    }
+    #run-btn:hover:not(:disabled) { background: #4f46e5; }
+    #run-btn:disabled { opacity: .5; cursor: not-allowed; }
+    #log {
+      margin-top: 24px; background: #1e293b; border-radius: 10px;
+      padding: 16px; font-family: monospace; font-size: .8rem; line-height: 1.8;
+      min-height: 60px; max-height: 500px; overflow-y: auto;
+    }
+    .log-ok   { color: #34d399; }
+    .log-warn { color: #fbbf24; }
+    .log-err  { color: #f87171; }
+    .log-info { color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>🗄 DB Migration</h1>
+  <p>
+    Run this once to populate Supabase with the full question bank, passages, and lesson map.<br>
+    Safe to re-run — passages and lesson map entries are de-duped; questions are skipped if already present.
+  </p>
+  <button id="run-btn" onclick="runMigration()">▶ Run Migration</button>
+  <div id="log"></div>
+
+  <script>
+    const SUPABASE_URL  = 'https://zvffmucghcrqackghhlf.supabase.co';
+    const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic';
+
+    const HEADERS = {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_ANON,
+      'Authorization': `Bearer ${SUPABASE_ANON}`,
+    };
+
+    function log(msg, cls = 'log-info') {
+      const el = document.getElementById('log');
+      const line = document.createElement('div');
+      line.className = cls;
+      line.textContent = msg;
+      el.appendChild(line);
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function insert(table, rows, ignoreDups = true) {
+      const prefer = ignoreDups
+        ? 'return=minimal,resolution=ignore-duplicates'
+        : 'return=minimal';
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+        method: 'POST',
+        headers: { ...HEADERS, 'Prefer': prefer },
+        body: JSON.stringify(rows),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(`${table}: ${err.message || res.status} — ${JSON.stringify(err)}`);
+      }
+    }
+
+    function toQRow(q, subject) {
+      return {
+        subject,
+        domain:     q.domain   || null,
+        category:   q.cat      || null,
+        type:       q.type,
+        text:       q.text,
+        options:    q.options  || null,
+        correct:    q.correct,          // number for numeric; ["A"] / ["B","D"] for others
+        hint:       q.hint     || null,
+        passage_id: q.passageId || null, // FK to passages table
+        passage:    q.passage  || null,  // inline passage text (mini-passages)
+        active:     true,
+      };
+    }
+
+    function loadSourceData() {
+      return new Promise((resolve, reject) => {
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:absolute;top:-9999px;left:-9999px;width:1px;height:1px;';
+        let resolved = false;
+
+        iframe.onload = () => {
+          try {
+            const data = iframe.contentWindow._mcapData;
+            if (!data) throw new Error('_mcapData missing — math-quest.html may not have loaded correctly');
+            resolved = true;
+            resolve(data);
+          } catch (e) {
+            reject(e);
+          }
+        };
+        iframe.onerror = () => reject(new Error('Failed to load math-quest.html'));
+        iframe.src = './math-quest.html';
+        document.body.appendChild(iframe);
+
+        setTimeout(() => {
+          if (!resolved) reject(new Error('Timed out loading math-quest.html (>10s)'));
+        }, 10000);
+      });
+    }
+
+    async function runMigration() {
+      const btn = document.getElementById('run-btn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Running…';
+      document.getElementById('log').innerHTML = '';
+
+      try {
+        // ── Load data ───────────────────────────────────────────────
+        log('Loading data from math-quest.html…');
+        const { PASSAGES, MATH_QUESTIONS, ELA_QUESTIONS, LESSON_MAP } = await loadSourceData();
+        log(`  Found: ${Object.keys(PASSAGES).length} passages, ${MATH_QUESTIONS.length} math q, ${ELA_QUESTIONS.length} ELA q, ${Object.keys(LESSON_MAP).length} lesson entries`);
+
+        // ── 1. Passages ─────────────────────────────────────────────
+        log('Inserting passages…');
+        const passageRows = Object.entries(PASSAGES).map(([id, p]) => ({
+          id,
+          subject: 'Reading',
+          title:   p.title,
+          byline:  p.byline  || null,
+          body:    p.text,
+        }));
+        await insert('passages', passageRows, true);
+        log(`✅ ${passageRows.length} passages done (duplicates ignored)`, 'log-ok');
+
+        // ── 2. Lesson map ────────────────────────────────────────────
+        log('Inserting lesson map…');
+        const lessonRows = Object.entries(LESSON_MAP).map(([category, entry]) => ({
+          category,
+          label:      entry.label,
+          youtube_id: entry.yt,
+          ka_url:     entry.ka,
+        }));
+        await insert('lesson_map', lessonRows, true);
+        log(`✅ ${lessonRows.length} lesson map entries done (duplicates ignored)`, 'log-ok');
+
+        // ── 3. Check if questions already exist ──────────────────────
+        const checkRes = await fetch(`${SUPABASE_URL}/rest/v1/questions?select=id&limit=1`, {
+          headers: HEADERS,
+        });
+        const existing = await checkRes.json();
+
+        if (Array.isArray(existing) && existing.length > 0) {
+          log('⚠️  Questions already exist in DB — skipping question migration.', 'log-warn');
+          log('    To re-seed, delete all rows from the questions table first.', 'log-warn');
+        } else {
+          // ── 4. Math questions ──────────────────────────────────────
+          log(`Inserting ${MATH_QUESTIONS.length} math questions…`);
+          const mathRows = MATH_QUESTIONS.map(q => toQRow(q, 'Math'));
+          const BATCH = 50;
+          for (let i = 0; i < mathRows.length; i += BATCH) {
+            await insert('questions', mathRows.slice(i, i + BATCH), false);
+            log(`  Math: ${Math.min(i + BATCH, mathRows.length)} / ${mathRows.length}`);
+          }
+          log(`✅ ${mathRows.length} math questions inserted`, 'log-ok');
+
+          // ── 5. ELA questions ───────────────────────────────────────
+          log(`Inserting ${ELA_QUESTIONS.length} ELA questions…`);
+          const elaRows = ELA_QUESTIONS.map(q => toQRow(q, 'Reading'));
+          for (let i = 0; i < elaRows.length; i += BATCH) {
+            await insert('questions', elaRows.slice(i, i + BATCH), false);
+            log(`  ELA: ${Math.min(i + BATCH, elaRows.length)} / ${elaRows.length}`);
+          }
+          log(`✅ ${elaRows.length} ELA questions inserted`, 'log-ok');
+        }
+
+        log('');
+        log('✅ Migration complete!', 'log-ok');
+        btn.textContent = '▶ Run Again';
+
+      } catch (e) {
+        log(`❌ Error: ${e.message}`, 'log-err');
+        console.error(e);
+        btn.textContent = '▶ Retry';
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
