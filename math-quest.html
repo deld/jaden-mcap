@@ -807,6 +807,9 @@
       <button class="btn btn-primary" onclick="startGame(false)">▶ Play Again</button>
       <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle</button>
     </div>
+    <div style="margin-top:12px;">
+      <button id="practice-review-btn" class="btn hidden" style="background:#fff;color:#0f3460;border:2px solid #0f3460;font-weight:700;" onclick="showPracticeReview()">📖 Review My Answers</button>
+    </div>
   </div>
   <!-- TEST CONFIG SCREEN -->
   <div id="test-config-screen" class="card hidden">
@@ -910,14 +913,14 @@
   <div id="test-review-screen" class="card hidden">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
       <h2 style="margin:0;">📖 Answer Review</h2>
-      <button class="btn btn-shuffle" style="padding:7px 16px;font-size:.85rem;" onclick="show('test-results-screen')">← Results</button>
+      <button class="btn btn-shuffle" style="padding:7px 16px;font-size:.85rem;" onclick="show(reviewReturnScreen)">← Results</button>
     </div>
     <p class="review-subtitle" id="review-subtitle"></p>
     <!-- mini grid for quick navigation within review -->
     <div class="q-grid" id="review-nav-grid" style="margin-bottom:16px;"></div>
     <div class="review-list" id="review-list"></div>
     <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn btn-shuffle" onclick="show('test-results-screen')">← Back to Results</button>
+      <button class="btn btn-shuffle" onclick="show(reviewReturnScreen)">← Back to Results</button>
       <button class="weak-areas-btn hidden" id="weak-practice-from-review" onclick="showWeakPractice()">🎯 Practice Missed Questions</button>
     </div>
   </div>
@@ -4001,6 +4004,8 @@ const SUPABASE_URL  = 'https://zvffmucghcrqackghhlf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic';
 let testMode        = false;
 let testAnswers     = [];
+let practiceAnswers = [];   // tracks answers in practice/domain mode
+let reviewReturnScreen = 'test-results-screen'; // where "← Results" goes from review
 let testTimeLeft    = 0;
 let testTotalTime   = 0;
 let testTimerInterval = null;
@@ -4067,7 +4072,7 @@ function startGame(shuffle) {
       [questions[i],questions[j]]=[questions[j],questions[i]];
     }
   }
-  currentQ=0; score=0; streak=0; bestStreak=0;
+  currentQ=0; score=0; streak=0; bestStreak=0; practiceAnswers=[];
   show('question-screen');
   renderQuestion();
 }
@@ -4208,6 +4213,8 @@ function revealSingle(chosen) {
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
+  q._chosen = new Set([chosen]);
+  practiceAnswers.push({q, correct:ok});
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(q.correct.includes(o.dataset.letter)) o.classList.add('correct');
@@ -4231,6 +4238,8 @@ function checkMulti() {
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
+  q._chosen = new Set(selected);
+  practiceAnswers.push({q, correct:ok});
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(cs.has(o.dataset.letter)) o.classList.add('correct');
@@ -4255,6 +4264,8 @@ function checkNumeric() {
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
+  q._yourAnswer = val;
+  practiceAnswers.push({q, correct:ok});
   ni.className='numeric-input '+(ok?'correct':'wrong');
   ni.disabled=true;
   updateScore(ok); showFeedback(ok,q);
@@ -4329,7 +4340,10 @@ function showEndScreen() {
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
 
-  // Save practice session to Supabase
+  // Save wrong answers to bank + persist session
+  const wrongQs = practiceAnswers.filter(a=>!a.correct).map(a=>a.q);
+  if (wrongQs.length) saveWrongAnswers(wrongQs);
+
   const d2 = currentDomains().find(x=>x.id===activeDomain);
   saveAttempt({
     id: crypto.randomUUID(),
@@ -4343,6 +4357,10 @@ function showEndScreen() {
     breakdown: {},
     mode: 'practice',
   });
+
+  // Show Review button if there were any answered questions
+  const reviewBtn = document.getElementById('practice-review-btn');
+  if (reviewBtn) reviewBtn.classList.toggle('hidden', practiceAnswers.length === 0);
 }
 
 function launchConfetti() { for(let i=0;i<16;i++) setTimeout(launchConfettiPiece,i*35); }
@@ -4594,7 +4612,7 @@ async function showHistory() {
     if (!res.ok) throw new Error('fetch failed');
     const rows = await res.json();
     if (!rows.length) {
-      content.innerHTML = '<div class="history-empty">No attempts yet — take a test to see your scores here! 🎯</div>';
+      content.innerHTML = '<div class="history-empty">No sessions yet — practice or take a test to see your scores here! 🎯</div>';
       return;
     }
     const list = document.createElement('div');
@@ -4607,9 +4625,10 @@ async function showHistory() {
       const scoreClass = r.pct>=80 ? 'good' : r.pct>=60 ? 'warn' : 'bad';
       const card = document.createElement('div');
       card.className='history-card';
+      const modeLabel = r.mode === 'practice' ? '🎮 Practice' : '🎯 Test';
       card.innerHTML=`
         <div class="hc-left">
-          <div class="hc-date">${dateStr} at ${timeStr}</div>
+          <div class="hc-date">${dateStr} at ${timeStr} <span style="font-size:.75rem;color:#6b7280;margin-left:6px;">${modeLabel}</span></div>
           <div class="hc-info">${r.subject||'Math'} · ${r.domain||'All'} · ${r.total||0} questions</div>
           <div class="hc-time">⏱ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}</div>
         </div>
@@ -4683,18 +4702,29 @@ async function updateWeakButton() {
 
 // ── TEST ANSWER REVIEW ────────────────────────────────────────────────
 function showTestReview(scrollToIdx) {
-  const L = 'ABCDEFGHIJ';
-  const wrongQs = testAnswers.filter(a => !a.correct).map(a => a.q);
+  reviewReturnScreen = 'test-results-screen';
+  _buildReview(testAnswers, questions, scrollToIdx);
+}
 
+function showPracticeReview() {
+  reviewReturnScreen = 'end-screen';
+  _buildReview(practiceAnswers, practiceAnswers.map(a=>a.q), undefined);
+}
+
+function _buildReview(answers, allQuestions, scrollToIdx) {
+  const L = 'ABCDEFGHIJ';
+  const wrongQs = answers.filter(a => !a.correct).map(a => a.q);
+
+  const unanswered = allQuestions.length - answers.length;
   document.getElementById('review-subtitle').textContent =
-    `${testAnswers.filter(a=>a.correct).length} correct · ${wrongQs.length} missed · ${questions.length - testAnswers.length} unanswered`;
+    `${answers.filter(a=>a.correct).length} correct · ${wrongQs.length} missed${unanswered > 0 ? ` · ${unanswered} unanswered` : ''}`;
 
   const list = document.getElementById('review-list');
   list.innerHTML = '';
 
-  const allItems = [...testAnswers.map((a,i) => ({...a, idx:i, skipped:false}))];
-  for (let i = testAnswers.length; i < questions.length; i++) {
-    allItems.push({q: questions[i], correct: false, idx: i, skipped: true});
+  const allItems = [...answers.map((a,i) => ({...a, idx:i, skipped:false}))];
+  for (let i = answers.length; i < allQuestions.length; i++) {
+    allItems.push({q: allQuestions[i], correct: false, idx: i, skipped: true});
   }
 
   // Build mini nav grid inside review screen
@@ -4979,6 +5009,7 @@ function closeVideoModal() {
 
 // ── PIN GATE ───────────────────────────────────────────────────────
 const PIN_CORRECT = '2016';
+const PIN_PARENT  = '1713';
 let pinEntry = '';
 
 function pinUpdateDots() {
@@ -4996,6 +5027,8 @@ function pinKey(digit) {
     if (pinEntry === PIN_CORRECT) {
       sessionStorage.setItem('pin_ok', '1');
       document.getElementById('pin-gate').classList.add('unlocked');
+    } else if (pinEntry === PIN_PARENT) {
+      enterParentMode();
     } else {
       document.getElementById('pin-error').textContent = 'Wrong PIN — try again';
       setTimeout(() => { pinEntry = ''; pinUpdateDots(); }, 800);
