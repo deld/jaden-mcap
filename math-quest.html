@@ -4345,8 +4345,9 @@ function showEndScreen() {
   if (wrongQs.length) saveWrongAnswers(wrongQs);
 
   const d2 = currentDomains().find(x=>x.id===activeDomain);
+  const practiceAttemptId = crypto.randomUUID();
   saveAttempt({
-    id: crypto.randomUUID(),
+    id: practiceAttemptId,
     student: 'Jaden',
     subject: activeSubject,
     domain: d2 ? d2.label : activeDomain,
@@ -4357,6 +4358,8 @@ function showEndScreen() {
     breakdown: {},
     mode: 'practice',
     answers_json: practiceAnswers.map(a => ({ q: a.q, correct: a.correct })),
+  }).then(ok => {
+    if (ok) saveQuestionAttempts(practiceAttemptId, practiceAnswers, activeSubject);
   });
 
   // Show Review button if there were any answered questions
@@ -4583,7 +4586,38 @@ function showTestResults(data) {
   saveAttempt(data).then(ok=>{
     badge.className='save-badge saved';
     badge.textContent = ok ? '💾 Saved!' : '⚠️ Save failed';
+    if (ok) saveQuestionAttempts(data.id, testAnswers, activeSubject);
   });
+}
+
+async function saveQuestionAttempts(attemptId, answers, subject) {
+  if (!answers.length) return;
+  const rows = answers.map(({ q, correct }) => {
+    const yourAnswer = q.type === 'numeric'
+      ? String(q._yourAnswer ?? '')
+      : [...(q._chosen || new Set())].join(',');
+    const correctAnswer = q.type === 'numeric'
+      ? String(Array.isArray(q.correct) ? q.correct[0] : q.correct)
+      : (Array.isArray(q.correct) ? q.correct.join(',') : String(q.correct));
+    return {
+      attempt_id:     attemptId,
+      student:        'Jaden',
+      subject:        subject || activeSubject,
+      category:       q.cat   || null,
+      domain:         q.domain || null,
+      question_text:  q.text  || null,
+      your_answer:    yourAnswer || null,
+      correct_answer: correctAnswer || null,
+      correct,
+    };
+  });
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/question_attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify(rows),
+    });
+  } catch(e) {}
 }
 
 async function saveAttempt(data) {
