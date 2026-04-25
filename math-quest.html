@@ -423,6 +423,23 @@
     .pin-key.clear { color: #ef4444; font-size: .9rem; }
     .pin-error { color: #ef4444; font-size: .85rem; font-weight: 700; margin-top: 10px; min-height: 20px; }
 
+    /* ── QUESTION GRID (results screen) ── */
+    .q-grid-section { margin: 16px 0 8px; }
+    .q-grid-label { font-size: .75rem; font-weight: 700; color: #888; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 8px; }
+    .q-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .q-grid-btn {
+      width: 34px; height: 34px; border-radius: 8px; border: none;
+      font-size: .78rem; font-weight: 800; cursor: pointer;
+      transition: transform .12s, box-shadow .12s;
+    }
+    .q-grid-btn:hover { transform: scale(1.18); box-shadow: 0 3px 10px rgba(0,0,0,.2); }
+    .qg-correct { background: #d1fae5; color: #065f46; }
+    .qg-wrong   { background: #fef2f2; color: #dc2626; }
+    .qg-skip    { background: #f3f4f6; color: #9ca3af; }
+    .q-grid-legend { display: flex; gap: 14px; font-size: .75rem; color: #666; margin-bottom: 6px; flex-wrap: wrap; }
+    .q-grid-legend span { display: flex; align-items: center; gap: 4px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+
     /* ── TEST REVIEW SCREEN ── */
     #test-review-screen h2 { font-size: 1.5rem; color: #0f3460; margin-bottom: 4px; }
     .review-subtitle { font-size: .88rem; color: #666; margin-bottom: 16px; }
@@ -731,20 +748,32 @@
       <thead><tr><th>Domain</th><th>Progress</th><th>Score</th></tr></thead>
       <tbody id="breakdown-body"></tbody>
     </table>
+    <!-- Question-by-question grid -->
+    <div class="q-grid-section">
+      <div class="q-grid-label">Tap any question to review it</div>
+      <div class="q-grid-legend">
+        <span><span class="legend-dot" style="background:#d1fae5;"></span> Correct</span>
+        <span><span class="legend-dot" style="background:#fef2f2;"></span> Wrong</span>
+        <span><span class="legend-dot" style="background:#f3f4f6;"></span> Skipped</span>
+      </div>
+      <div class="q-grid" id="q-grid"></div>
+    </div>
     <div class="test-result-btns">
       <button class="btn btn-shuffle" onclick="show('test-config-screen')">🔁 Try Again</button>
       <button class="btn btn-next" onclick="showHistory()">📋 View History</button>
       <button class="btn btn-primary" onclick="show('start-screen')">🏠 Practice Mode</button>
     </div>
-    <div style="text-align:center;margin-top:10px;">
-      <button class="btn" id="review-btn" onclick="showTestReview()" style="background:linear-gradient(135deg,#0f3460,#1a6bb5);color:white;font-size:.92rem;">📖 Review My Answers</button>
-    </div>
   </div>
 
   <!-- TEST REVIEW SCREEN -->
   <div id="test-review-screen" class="card hidden">
-    <h2>📖 Answer Review</h2>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+      <h2 style="margin:0;">📖 Answer Review</h2>
+      <button class="btn btn-shuffle" style="padding:7px 16px;font-size:.85rem;" onclick="show('test-results-screen')">← Results</button>
+    </div>
     <p class="review-subtitle" id="review-subtitle"></p>
+    <!-- mini grid for quick navigation within review -->
+    <div class="q-grid" id="review-nav-grid" style="margin-bottom:16px;"></div>
     <div class="review-list" id="review-list"></div>
     <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-shuffle" onclick="show('test-results-screen')">← Back to Results</button>
@@ -4233,6 +4262,26 @@ function showTestResults(data) {
     tbody.appendChild(tr);
   });
 
+  // Build question grid
+  const grid = document.getElementById('q-grid');
+  grid.innerHTML = '';
+  testAnswers.forEach((a, i) => {
+    const btn = document.createElement('button');
+    btn.className = `q-grid-btn ${a.correct ? 'qg-correct' : 'qg-wrong'}`;
+    btn.textContent = i + 1;
+    btn.title = a.correct ? `Q${i+1}: Correct` : `Q${i+1}: Wrong`;
+    btn.onclick = () => showTestReview(i);
+    grid.appendChild(btn);
+  });
+  for (let i = testAnswers.length; i < questions.length; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'q-grid-btn qg-skip';
+    btn.textContent = i + 1;
+    btn.title = `Q${i+1}: Not answered`;
+    btn.onclick = () => showTestReview(i);
+    grid.appendChild(btn);
+  }
+
   // Save badge
   const badge = document.getElementById('save-badge');
   badge.className='save-badge saving';
@@ -4363,7 +4412,7 @@ async function updateWeakButton() {
 }
 
 // ── TEST ANSWER REVIEW ────────────────────────────────────────────────
-function showTestReview() {
+function showTestReview(scrollToIdx) {
   const L = 'ABCDEFGHIJ';
   const wrongQs = testAnswers.filter(a => !a.correct).map(a => a.q);
 
@@ -4374,13 +4423,27 @@ function showTestReview() {
   list.innerHTML = '';
 
   const allItems = [...testAnswers.map((a,i) => ({...a, idx:i, skipped:false}))];
-  // Add unanswered (timed-out) questions
   for (let i = testAnswers.length; i < questions.length; i++) {
     allItems.push({q: questions[i], correct: false, idx: i, skipped: true});
   }
 
+  // Build mini nav grid inside review screen
+  const navGrid = document.getElementById('review-nav-grid');
+  navGrid.innerHTML = '';
+  allItems.forEach(({correct, idx, skipped}) => {
+    const btn = document.createElement('button');
+    btn.className = `q-grid-btn ${skipped ? 'qg-skip' : correct ? 'qg-correct' : 'qg-wrong'}`;
+    btn.textContent = idx + 1;
+    btn.onclick = () => {
+      const el = document.getElementById(`ri-${idx}`);
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    };
+    navGrid.appendChild(btn);
+  });
+
   allItems.forEach(({q, correct, idx, skipped}) => {
     const item = document.createElement('div');
+    item.id = `ri-${idx}`;
     const cls = skipped ? 'ri-skip' : correct ? 'ri-correct' : 'ri-wrong';
     item.className = `review-item ${cls}`;
 
@@ -4442,7 +4505,16 @@ function showTestReview() {
   else practiceBtn.classList.add('hidden');
 
   show('test-review-screen');
-  window.scrollTo(0, 0);
+
+  // Scroll to a specific question if requested, otherwise top
+  if (scrollToIdx !== undefined) {
+    setTimeout(() => {
+      const el = document.getElementById(`ri-${scrollToIdx}`);
+      if (el) el.scrollIntoView({behavior:'smooth', block:'start'});
+    }, 80);
+  } else {
+    window.scrollTo(0, 0);
+  }
 }
 
 // ── WEAK AREAS PRACTICE ───────────────────────────────────────────────
