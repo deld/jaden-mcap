@@ -300,6 +300,11 @@
       background: transparent; border: 2px solid #0f3460;
       color: #0f3460; padding: 10px 24px;
     }
+    .home-wrong-btn {
+      background: #fef2f2; border: 2px solid #fca5a5;
+      color: #dc2626; padding: 10px 20px; font-weight: 700;
+    }
+    .home-wrong-btn:hover { background: #fee2e2; }
     /* ── TEST MODE TOGGLE (Custom vs MCAP Real) ── */
     .test-mode-toggle {
       display:inline-flex; gap:0; background:#f1f5f9;
@@ -732,8 +737,12 @@
       <button class="btn btn-primary" onclick="startGame(false)">▶ Start in Order</button>
       <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle &amp; Play</button>
     </div>
-    <div style="margin-top:12px;">
+    <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-outlined" onclick="show('test-config-screen')">🎯 Test Mode</button>
+      <button class="btn home-wrong-btn hidden" id="home-wrong-btn" onclick="showWeakPractice()">❌ Wrong Answers <span id="home-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="link-btn" onclick="showHistory()" style="font-size:.85rem;color:#6b7280;">📋 Past Scores</button>
     </div>
   </div>
 
@@ -976,50 +985,9 @@
 <!-- ══ PARENT MODE ══ -->
 <div id="parent-mode">
 
-  <!-- ── Auth card ── -->
-  <div class="parent-card" id="parent-auth">
-    <button class="parent-back-btn" onclick="exitParentMode()">← Back to App</button>
-    <div style="text-align:center;margin-bottom:22px;">
-      <span style="font-size:48px;display:block;margin-bottom:6px;">👨‍👩‍👧</span>
-      <h2 style="font-size:1.4rem;color:#0f3460;margin-bottom:4px;">Parent Dashboard</h2>
-      <p style="font-size:.85rem;color:#666;">Sign in to monitor Jaden's progress</p>
-    </div>
-    <!-- Sign-in form -->
-    <div id="parent-login-form">
-      <div class="parent-form-group">
-        <label>Email</label>
-        <input type="email" id="parent-email" class="parent-input" placeholder="your@email.com" autocomplete="email">
-      </div>
-      <div class="parent-form-group">
-        <label>Password</label>
-        <input type="password" id="parent-password" class="parent-input" placeholder="••••••••" autocomplete="current-password">
-      </div>
-      <div class="parent-error err" id="parent-error"></div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="parentSignIn()">Sign In</button>
-      <div style="text-align:center;margin-top:10px;">
-        <button class="link-btn" onclick="showParentForm('signup')">New here? Create an account →</button>
-      </div>
-    </div>
-    <!-- Sign-up form -->
-    <div id="parent-signup-form" class="hidden">
-      <div class="parent-form-group">
-        <label>Email</label>
-        <input type="email" id="signup-email" class="parent-input" placeholder="your@email.com" autocomplete="email">
-      </div>
-      <div class="parent-form-group">
-        <label>Password <span style="font-weight:400;color:#999;">(min 6 chars)</span></label>
-        <input type="password" id="signup-password" class="parent-input" placeholder="••••••••" autocomplete="new-password">
-      </div>
-      <div class="parent-error" id="signup-error"></div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="parentSignUp()">Create Account</button>
-      <div style="text-align:center;margin-top:10px;">
-        <button class="link-btn" onclick="showParentForm('login')">← Back to Sign In</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ── Dashboard ── -->
-  <div id="parent-dashboard" class="hidden" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;">
+  <div id="parent-dashboard" style="width:100%;display:flex;flex-direction:column;align-items:center;gap:14px;">
 
     <!-- Header bar -->
     <div class="parent-dash-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 22px;">
@@ -1027,7 +995,7 @@
         <div style="font-size:1.25rem;font-weight:900;color:#0f3460;">👨‍👩‍👧 Parent Dashboard</div>
         <div style="font-size:.8rem;color:#888;">Jaden · Grade 3 · MCAP Prep</div>
       </div>
-      <button class="btn btn-outlined" style="padding:7px 16px;font-size:.82rem;" onclick="parentSignOut()">Sign Out</button>
+      <button class="btn btn-outlined" style="padding:7px 16px;font-size:.82rem;" onclick="exitParentMode()">← Back to App</button>
     </div>
 
     <!-- At-a-glance stats -->
@@ -4040,8 +4008,8 @@ function show(id) {
   // Hide domain nav when in test screens
   const hideNav = ['test-config-screen','test-results-screen','history-screen','test-review-screen'].includes(id);
   document.getElementById('domain-nav').style.display = hideNav ? 'none' : '';
-  // Refresh weak areas button count when visiting test config
-  if (id === 'test-config-screen') updateWeakButton();
+  // Refresh weak areas count on home and test config
+  if (id === 'start-screen' || id === 'test-config-screen') updateWeakButton();
 }
 
 function startGame(shuffle) {
@@ -4682,22 +4650,30 @@ async function loadWrongBank(subject) {
 }
 
 async function updateWeakButton() {
-  const btn = document.getElementById('weak-areas-btn');
-  const badge = document.getElementById('weak-count-badge');
-  if (!btn) return;
   try {
     const res = await fetch(
       `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&subject=eq.${encodeURIComponent(activeSubject)}&select=id`,
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'count=exact', 'Range': '0-0' } }
     );
     const count = parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0', 10);
-    if (count > 0) {
-      btn.classList.remove('hidden');
-      badge.textContent = count;
-    } else {
-      btn.classList.add('hidden');
+    // Test config screen button
+    const btn = document.getElementById('weak-areas-btn');
+    const badge = document.getElementById('weak-count-badge');
+    if (btn) {
+      btn.classList.toggle('hidden', count === 0);
+      if (badge) badge.textContent = count;
     }
-  } catch(e) { btn.classList.add('hidden'); }
+    // Home screen button
+    const homeBtn = document.getElementById('home-wrong-btn');
+    const homeCount = document.getElementById('home-wrong-count');
+    if (homeBtn) {
+      homeBtn.classList.toggle('hidden', count === 0);
+      if (homeCount) homeCount.textContent = count;
+    }
+  } catch(e) {
+    document.getElementById('weak-areas-btn')?.classList.add('hidden');
+    document.getElementById('home-wrong-btn')?.classList.add('hidden');
+  }
 }
 
 // ── TEST ANSWER REVIEW ────────────────────────────────────────────────
@@ -5063,93 +5039,24 @@ if (sessionStorage.getItem('pin_ok') === '1') {
 
 // ── PARENT MODE ────────────────────────────────────────────────────────
 function enterParentMode() {
-  document.getElementById('pin-gate').style.display      = 'none';
+  document.getElementById('pin-gate').style.display       = 'none';
   document.getElementById('subject-toggle').style.display = 'none';
-  document.getElementById('domain-nav').style.display    = 'none';
-  document.getElementById('app').style.display           = 'none';
+  document.getElementById('domain-nav').style.display     = 'none';
+  document.getElementById('app').style.display            = 'none';
   document.getElementById('parent-mode').classList.add('visible');
-  const tok = sessionStorage.getItem('parent_token');
-  if (tok) { parentToken = tok; _showParentDash(); }
+  _showParentDash();
 }
 
 function exitParentMode() {
   const pinUnlocked = sessionStorage.getItem('pin_ok') === '1';
-  document.getElementById('pin-gate').style.display      = pinUnlocked ? 'none' : '';
+  document.getElementById('pin-gate').style.display       = pinUnlocked ? 'none' : '';
   document.getElementById('subject-toggle').style.display = '';
-  document.getElementById('domain-nav').style.display    = '';
-  document.getElementById('app').style.display           = '';
+  document.getElementById('domain-nav').style.display     = '';
+  document.getElementById('app').style.display            = '';
   document.getElementById('parent-mode').classList.remove('visible');
 }
 
-function showParentForm(mode) {
-  document.getElementById('parent-login-form').classList.toggle('hidden', mode !== 'login');
-  document.getElementById('parent-signup-form').classList.toggle('hidden', mode !== 'signup');
-  document.getElementById('parent-error').textContent  = '';
-  document.getElementById('signup-error').textContent  = '';
-}
-
-let parentToken = null;
-
-async function parentSignIn() {
-  const email    = document.getElementById('parent-email').value.trim();
-  const password = document.getElementById('parent-password').value;
-  const errEl    = document.getElementById('parent-error');
-  errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Enter your email and password.'; return; }
-  try {
-    const res  = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error_description || data.msg || 'Sign in failed.'; return; }
-    parentToken = data.access_token;
-    sessionStorage.setItem('parent_token', parentToken);
-    _showParentDash();
-  } catch(e) { errEl.textContent = 'Connection error — try again.'; }
-}
-
-async function parentSignUp() {
-  const email    = document.getElementById('signup-email').value.trim();
-  const password = document.getElementById('signup-password').value;
-  const errEl    = document.getElementById('signup-error');
-  errEl.className = 'parent-error';
-  errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Enter your email and password.'; return; }
-  if (password.length < 6)  { errEl.textContent = 'Password must be at least 6 characters.'; return; }
-  try {
-    const res  = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON },
-      body: JSON.stringify({ email, password }),
-    });
-    const data = await res.json();
-    if (!res.ok) { errEl.textContent = data.error_description || data.msg || 'Sign up failed.'; return; }
-    if (data.access_token) {
-      parentToken = data.access_token;
-      sessionStorage.setItem('parent_token', parentToken);
-      _showParentDash();
-    } else {
-      errEl.className = 'parent-error ok';
-      errEl.textContent = '✓ Account created! Check your email to confirm, then sign in.';
-    }
-  } catch(e) { errEl.textContent = 'Connection error — try again.'; }
-}
-
-function parentSignOut() {
-  parentToken = null;
-  sessionStorage.removeItem('parent_token');
-  document.getElementById('parent-dashboard').classList.add('hidden');
-  document.getElementById('parent-auth').classList.remove('hidden');
-  showParentForm('login');
-  document.getElementById('parent-email').value    = '';
-  document.getElementById('parent-password').value = '';
-}
-
 async function _showParentDash() {
-  document.getElementById('parent-auth').classList.add('hidden');
-  document.getElementById('parent-dashboard').classList.remove('hidden');
 
   const [attempts, hotspots] = await Promise.all([
     _fetchAttempts(),
@@ -5339,6 +5246,7 @@ function _renderRecent(attempts) {
 buildNav();
 updateStartScreen();
 show('start-screen');
+updateWeakButton();
 </script>
 </body>
 </html>
