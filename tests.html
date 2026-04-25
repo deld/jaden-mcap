@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCAP App — DB Integration Tests</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f1729; color: #e2e8f0; padding: 24px; max-width: 860px; margin: 0 auto; }
+  h1 { color: #60a5fa; margin-bottom: 4px; }
+  .subtitle { color: #94a3b8; font-size: .9rem; margin-bottom: 24px; }
+  #run-btn { background: #3b82f6; color: white; border: none; padding: 10px 28px; border-radius: 8px; font-size: 1rem; font-weight: 700; cursor: pointer; margin-bottom: 24px; }
+  #run-btn:hover { background: #2563eb; }
+  #run-btn:disabled { background: #475569; cursor: default; }
+  .suite { margin-bottom: 20px; }
+  .suite-title { font-size: 1rem; font-weight: 700; color: #93c5fd; margin-bottom: 8px; border-bottom: 1px solid #1e3a5f; padding-bottom: 4px; }
+  .test { display: flex; align-items: flex-start; gap: 10px; padding: 7px 10px; border-radius: 6px; margin-bottom: 4px; font-size: .88rem; }
+  .test.pass  { background: #052e16; }
+  .test.fail  { background: #450a0a; }
+  .test.skip  { background: #1c1917; }
+  .test.running { background: #1e3a5f; }
+  .badge { font-size: .75rem; font-weight: 800; padding: 2px 8px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; }
+  .badge.pass  { background: #16a34a; color: white; }
+  .badge.fail  { background: #dc2626; color: white; }
+  .badge.skip  { background: #78716c; color: white; }
+  .badge.running { background: #2563eb; color: white; }
+  .test-name { flex: 1; }
+  .test-detail { color: #94a3b8; font-size: .8rem; margin-top: 2px; }
+  .test-error  { color: #fca5a5; font-size: .8rem; margin-top: 2px; font-family: monospace; }
+  #summary { margin-top: 20px; padding: 14px 18px; border-radius: 10px; font-weight: 700; font-size: 1.05rem; }
+  #summary.all-pass { background: #052e16; color: #4ade80; }
+  #summary.has-fail { background: #450a0a; color: #f87171; }
+  #summary.running  { background: #1e3a5f; color: #93c5fd; }
+</style>
+</head>
+<body>
+
+<h1>🧪 MCAP App — Integration Tests</h1>
+<p class="subtitle">Verifies Supabase schema, RLS policies, and data round-trips. Cleans up after itself.</p>
+
+<button id="run-btn" onclick="runAll()">▶ Run All Tests</button>
+
+<div id="output"></div>
+<div id="summary"></div>
+
+<script>
+const SUPABASE_URL  = 'https://zvffmucghcrqackghhlf.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic';
+const HEADERS = { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
+
+// ── helpers ───────────────────────────────────────────────────────────────
+
+function db(path, opts = {}) {
+  return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: HEADERS, ...opts });
+}
+
+function makeAttemptId() {
+  return crypto.randomUUID();  // must be valid uuid — track by student='__test__' instead
+}
+
+async function cleanup(table, field, value) {
+  await db(`${table}?${field}=eq.${encodeURIComponent(value)}`, { method: 'DELETE' });
+}
+
+// ── test runner ───────────────────────────────────────────────────────────
+
+const results = [];
+let currentSuite = null;
+
+function suite(name) {
+  currentSuite = { name, el: null };
+  const div = document.createElement('div');
+  div.className = 'suite';
+  div.innerHTML = `<div class="suite-title">${name}</div>`;
+  currentSuite.el = div;
+  document.getElementById('output').appendChild(div);
+}
+
+function addTestEl(name) {
+  const el = document.createElement('div');
+  el.className = 'test running';
+  el.innerHTML = `<span class="badge running">…</span><div class="test-name">${name}</div>`;
+  currentSuite.el.appendChild(el);
+  return el;
+}
+
+async function test(name, fn) {
+  const el = addTestEl(name);
+  const result = { suite: currentSuite.name, name, status: 'running' };
+  results.push(result);
+  try {
+    const detail = await fn();
+    result.status = 'pass';
+    el.className = 'test pass';
+    el.innerHTML = `<span class="badge pass">PASS</span><div class="test-name">${name}${detail ? `<div class="test-detail">${detail}</div>` : ''}</div>`;
+  } catch(e) {
+    result.status = 'fail';
+    result.error = e.message;
+    el.className = 'test fail';
+    el.innerHTML = `<span class="badge fail">FAIL</span><div class="test-name">${name}<div class="test-error">${e.message}</div></div>`;
+  }
+  updateSummary();
+}
+
+function assert(cond, msg) {
+  if (!cond) throw new Error(msg || 'Assertion failed');
+}
+
+function updateSummary() {
+  const el = document.getElementById('summary');
+  const pass = results.filter(r=>r.status==='pass').length;
+  const fail = results.filter(r=>r.status==='fail').length;
+  const running = results.filter(r=>r.status==='running').length;
+  if (running > 0) {
+    el.className = 'running';
+    el.textContent = `Running… ${pass} passed, ${fail} failed`;
+  } else if (fail === 0) {
+    el.className = 'all-pass';
+    el.textContent = `✅ All ${pass} tests passed`;
+  } else {
+    el.className = 'has-fail';
+    el.textContent = `❌ ${fail} failed, ${pass} passed — see red tests above`;
+  }
+}
+
+// ── test suites ───────────────────────────────────────────────────────────
+
+async function runAll() {
+  document.getElementById('output').innerHTML = '';
+  document.getElementById('summary').textContent = '';
+  results.length = 0;
+  document.getElementById('run-btn').disabled = true;
+
+  // ── 1. Schema ────────────────────────────────────────────────────────────
+  suite('📐 Schema — attempts table');
+
+  await test('Table is reachable', async () => {
+    const res = await db('attempts?limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Column: id (uuid primary key)', async () => {
+    const res = await db('attempts?select=id&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(Array.isArray(rows), 'Expected array');
+    return 'column exists';
+  });
+
+  await test('Column: mode (text) exists', async () => {
+    const res = await db('attempts?select=mode&limit=1');
+    assert(res.ok, `HTTP ${res.status} — run: alter table attempts add column if not exists mode text`);
+    return 'column exists';
+  });
+
+  await test('Column: answers_json (jsonb) exists', async () => {
+    const res = await db('attempts?select=answers_json&limit=1');
+    assert(res.ok, `HTTP ${res.status} — run: alter table attempts add column if not exists answers_json jsonb`);
+    return 'column exists';
+  });
+
+  await test('Column: breakdown (jsonb) exists', async () => {
+    const res = await db('attempts?select=breakdown&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'column exists';
+  });
+
+  // ── 2. Schema — wrong_answers ─────────────────────────────────────────
+  suite('📐 Schema — wrong_answers table');
+
+  const WA_SETUP_SQL = `
+create table if not exists wrong_answers (
+  id uuid default gen_random_uuid() primary key,
+  student text not null,
+  subject text,
+  question_text text not null,
+  question_json jsonb,
+  times_missed integer default 1,
+  created_at timestamptz default now(),
+  unique(student, question_text)
+);
+alter table wrong_answers enable row level security;
+create policy "Allow insert wrong_answers"  on wrong_answers for insert with check (true);
+create policy "Allow select wrong_answers"  on wrong_answers for select using (true);
+create policy "Allow update wrong_answers"  on wrong_answers for update using (true);
+create policy "Allow delete wrong_answers"  on wrong_answers for delete using (true);`.trim();
+
+  await test('Table is reachable', async () => {
+    const res = await db('wrong_answers?limit=1');
+    assert(res.ok, `HTTP ${res.status} — table missing. Run this in Supabase SQL Editor:\n${WA_SETUP_SQL}`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Columns: student, subject, question_text, question_json', async () => {
+    const res = await db('wrong_answers?select=student,subject,question_text,question_json&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'all columns exist';
+  });
+
+  // ── 3. RLS — attempts ────────────────────────────────────────────────────
+  suite('🔐 RLS policies — attempts');
+
+  const testId = makeAttemptId();
+  const testAttempt = {
+    id: testId,
+    student: '__test__',
+    subject: 'Math',
+    domain: 'Test Suite',
+    score: 5,
+    total: 10,
+    pct: 50,
+    time_sec: 60,
+    breakdown: { 'Test': { correct: 5, total: 10, pct: 50 } },
+    mode: 'practice',
+    answers_json: [{ q: { text: 'What is 2+2?', correct: ['A'], options: ['4','3','2','1'], hint: 'Count', cat: 'Addition', type: 'single' }, correct: true }],
+  };
+
+  await test('INSERT: can save a full attempt with all columns', async () => {
+    const res = await db('attempts', {
+      method: 'POST',
+      body: JSON.stringify(testAttempt),
+      headers: { ...HEADERS, 'Prefer': 'return=representation' },
+    });
+    const body = await res.json();
+    assert(res.ok, `HTTP ${res.status}: ${JSON.stringify(body)}`);
+    assert(Array.isArray(body) && body.length === 1, 'Expected 1 inserted row');
+    assert(body[0].mode === 'practice', 'mode not stored correctly');
+    assert(Array.isArray(body[0].answers_json), 'answers_json not stored');
+    return `inserted id=${body[0].id.slice(0,8)}…`;
+  });
+
+  await test('SELECT: can read back the saved attempt', async () => {
+    const res = await db(`attempts?id=eq.${testId}`);
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length === 1, `Expected 1 row, got ${rows.length}`);
+    assert(rows[0].pct === 50, `pct mismatch: ${rows[0].pct}`);
+    assert(rows[0].mode === 'practice', `mode mismatch: ${rows[0].mode}`);
+    assert(Array.isArray(rows[0].answers_json) && rows[0].answers_json.length === 1, 'answers_json missing or empty');
+    return `round-trip verified, answers_json length=${rows[0].answers_json.length}`;
+  });
+
+  await test('DELETE: row actually removed (not silently blocked by RLS)', async () => {
+    const res = await db(`attempts?id=eq.${testId}`, {
+      method: 'DELETE',
+      headers: { ...HEADERS, 'Prefer': 'return=representation' },
+    });
+    const body = await res.json();
+    assert(res.ok, `HTTP ${res.status}`);
+    assert(Array.isArray(body) && body.length === 1,
+      `RLS blocked delete — run: create policy "Allow delete attempts" on attempts for delete using (true); (got ${body.length} deleted rows)`);
+    // Confirm it's really gone
+    const check = await db(`attempts?id=eq.${testId}`);
+    const remaining = await check.json();
+    assert(remaining.length === 0, 'Row still present after delete — RLS may have partially blocked it');
+    return 'row confirmed gone from DB';
+  });
+
+  // ── 4. RLS — wrong_answers ────────────────────────────────────────────
+  suite('🔐 RLS policies — wrong_answers');
+
+  const testQ = { text: 'Test question for test suite', correct: ['A'], options: ['Yes','No'], hint: 'hint', cat: 'Test', type: 'single', domain: 'Test' };
+
+  await test('UPSERT: can save a wrong answer', async () => {
+    const res = await db('wrong_answers?on_conflict=student,question_text', {
+      method: 'POST',
+      body: JSON.stringify([{ student: '__test__', subject: 'Math', question_text: testQ.text, question_json: testQ }]),
+      headers: { ...HEADERS, 'Prefer': 'resolution=merge-duplicates,return=representation' },
+    });
+    const body = await res.json();
+    assert(res.ok, `HTTP ${res.status}: ${JSON.stringify(body)}`);
+    assert(Array.isArray(body) && body.length >= 1, 'Expected upserted row');
+    return 'upserted';
+  });
+
+  await test('SELECT: can read wrong answers back', async () => {
+    const res = await db(`wrong_answers?student=eq.__test__&select=question_json`);
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length >= 1, 'No rows returned');
+    assert(rows[0].question_json?.text === testQ.text, 'question_json mismatch');
+    return `${rows.length} row(s) found`;
+  });
+
+  await test('DELETE: cleanup wrong_answers (RLS allows delete)', async () => {
+    const res = await db(`wrong_answers?student=eq.__test__`, {
+      method: 'DELETE',
+      headers: { ...HEADERS, 'Prefer': 'return=representation' },
+    });
+    const body = await res.json();
+    assert(res.ok, `HTTP ${res.status}`);
+    assert(Array.isArray(body) && body.length >= 1,
+      `RLS blocked wrong_answers delete — run: create policy "Allow delete wrong_answers" on wrong_answers for delete using (true);`);
+    return `${body.length} row(s) deleted`;
+  });
+
+  // ── 5. Data integrity ────────────────────────────────────────────────────
+  suite('🔍 Data integrity');
+
+  await test('saveAttempt fallback: core fields save when mode/answers_json columns missing (simulated)', async () => {
+    // Simulate the fallback by saving without new columns — should still succeed
+    const coreId = makeAttemptId();
+    const res = await db('attempts', {
+      method: 'POST',
+      body: JSON.stringify({ id: coreId, student: '__test__', subject: 'Math', domain: 'Test', score: 1, total: 1, pct: 100, time_sec: 0, breakdown: {} }),
+      headers: { ...HEADERS, 'Prefer': 'return=representation' },
+    });
+    const body = await res.json();
+    assert(res.ok && body.length === 1, `Core-only insert failed: HTTP ${res.status}`);
+    await cleanup('attempts', 'id', coreId);
+    return 'core-only insert works as fallback';
+  });
+
+  await test('Jaden has at least one real attempt in DB', async () => {
+    const res = await db('attempts?student=eq.Jaden&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length > 0, 'No attempts found for Jaden — has he completed a session yet?');
+    return `${rows.length}+ attempt(s) found`;
+  });
+
+  await test('New sessions have answers_json (at least 1 session)', async () => {
+    const res = await db('attempts?student=eq.Jaden&order=created_at.desc&limit=10');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    const withAnswers = rows.filter(r => Array.isArray(r.answers_json) && r.answers_json.length > 0);
+    // Warn but don't fail if none yet — he just needs to complete one session
+    if (withAnswers.length === 0) {
+      throw new Error(`No sessions with answers_json yet — have Jaden complete any practice or test session to verify end-to-end save`);
+    }
+    return `${withAnswers.length} session(s) with stored answers`;
+  });
+
+  document.getElementById('run-btn').disabled = false;
+  updateSummary();
+}
+</script>
+</body>
+</html>
