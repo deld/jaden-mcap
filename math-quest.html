@@ -1261,6 +1261,8 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let testMode        = false;
 let testAnswers     = [];
 let practiceAnswers = [];   // tracks answers in practice/domain mode
+let currentAttemptId = null; // set at session start; used for real-time per-question saves
+let questionStartTime = null; // Date.now() when current question was rendered
 let reviewReturnScreen = 'test-results-screen'; // where "← Results" goes from review
 let testTimeLeft    = 0;
 let testTotalTime   = 0;
@@ -1300,7 +1302,7 @@ function show(id) {
   if (id === 'start-screen' || id === 'test-config-screen') updateWeakButton();
 }
 
-function startGame(shuffle = true) {
+async function startGame(shuffle = true) {
   questions = filteredQuestions();
   // Apply question count limit (always shuffle first so count picks a random subset)
   if (practiceQCount > 0 && practiceQCount < questions.length) {
@@ -1336,6 +1338,8 @@ function startGame(shuffle = true) {
     }
   }
   currentQ=0; score=0; streak=0; bestStreak=0; practiceAnswers=[];
+  const _d = currentDomains().find(x=>x.id===activeDomain);
+  await createAttempt(activeSubject, 'practice', _d ? _d.label : activeDomain);
   show('question-screen');
   renderQuestion();
 }
@@ -1343,6 +1347,7 @@ function startGame(shuffle = true) {
 function renderQuestion() {
   const q = questions[currentQ];
   answered=false; selected=new Set();
+  questionStartTime = Date.now(); // start timing this question
 
   // Timer visibility
   const timerEl = document.getElementById('test-timer');
@@ -1472,12 +1477,14 @@ function revealSingle(chosen) {
   if (testMode) {
     q._chosen = new Set([chosen]);
     testAnswers.push({q, correct:ok});
+    saveOneQuestionAttempt(q, ok);
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
   q._chosen = new Set([chosen]);
   practiceAnswers.push({q, correct:ok});
+  saveOneQuestionAttempt(q, ok);
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(q.correct.includes(o.dataset.letter)) o.classList.add('correct');
@@ -1496,6 +1503,7 @@ function checkMulti() {
   if (testMode) {
     q._chosen = new Set(selected);
     testAnswers.push({q, correct:ok});
+    saveOneQuestionAttempt(q, ok);
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     document.getElementById('check-btn').classList.add('hidden');
     setTimeout(()=>nextQuestion(), 300);
@@ -1503,6 +1511,7 @@ function checkMulti() {
   }
   q._chosen = new Set(selected);
   practiceAnswers.push({q, correct:ok});
+  saveOneQuestionAttempt(q, ok);
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(cs.has(o.dataset.letter)) o.classList.add('correct');
@@ -1523,12 +1532,14 @@ function checkNumeric() {
   if (testMode) {
     q._yourAnswer = val;
     testAnswers.push({q, correct:ok});
+    saveOneQuestionAttempt(q, ok);
     ni.disabled=true;
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
   q._yourAnswer = val;
   practiceAnswers.push({q, correct:ok});
+  saveOneQuestionAttempt(q, ok);
   ni.className='numeric-input '+(ok?'correct':'wrong');
   ni.disabled=true;
   updateScore(ok); showFeedback(ok,q);
@@ -1608,21 +1619,15 @@ function showEndScreen() {
   if (wrongQs.length) saveWrongAnswers(wrongQs);
 
   const d2 = currentDomains().find(x=>x.id===activeDomain);
-  const practiceAttemptId = crypto.randomUUID();
-  saveAttempt({
-    id: practiceAttemptId,
-    student: 'Jaden',
+  finalizeAttempt({
     subject: activeSubject,
-    domain: d2 ? d2.label : activeDomain,
-    score,
-    total,
-    pct: Math.round(pct*100),
+    domain:  d2 ? d2.label : activeDomain,
+    score, total,
+    pct:      Math.round(pct*100),
     time_sec: 0,
     breakdown: {},
     mode: 'practice',
     answers_json: practiceAnswers.map(a => ({ q: a.q, correct: a.correct })),
-  }).then(ok => {
-    if (ok) saveQuestionAttempts(practiceAttemptId, practiceAnswers, activeSubject);
   });
 
   // Show Review button if there were any answered questions
@@ -1682,7 +1687,7 @@ function setTestMinutes(m) {
   });
 }
 
-function startTest() {
+async function startTest() {
   // Resolve question count and time based on mode
   const preset = MCAP_PRESETS[testSubject];
   const qCount = testModeType === 'mcap' ? preset.questions : testQCount;
@@ -1706,6 +1711,9 @@ function startTest() {
   score       = 0;
   streak      = 0;
   bestStreak  = 0;
+
+  const _testDomain = testModeType === 'mcap' ? 'MCAP Simulation' : 'All';
+  await createAttempt(testSubject, testModeType === 'mcap' ? 'test-mcap' : 'test', _testDomain);
 
   // Setup timer
   testTotalTime = mins * 60;
@@ -1767,7 +1775,6 @@ function endTest() {
   });
 
   const data = {
-    id: crypto.randomUUID(),
     student: 'Jaden',
     subject: activeSubject,
     domain: testModeType === 'mcap' ? 'MCAP Simulation' : 'All',
@@ -1776,6 +1783,7 @@ function endTest() {
     pct,
     time_sec: timeTaken,
     breakdown,
+    mode: testModeType === 'mcap' ? 'test-mcap' : 'test',
     answers_json: testAnswers.map(a => ({ q: a.q, correct: a.correct })),
   };
 
@@ -1845,11 +1853,10 @@ function showTestResults(data) {
 
   show('test-results-screen');
 
-  // Save asynchronously
-  saveAttempt(data).then(ok=>{
+  // Finalize asynchronously (per-question rows already saved in real-time)
+  finalizeAttempt(data).then(ok=>{
     badge.className='save-badge saved';
     badge.textContent = ok ? '💾 Saved!' : '⚠️ Save failed';
-    if (ok) saveQuestionAttempts(data.id, testAnswers, activeSubject);
   });
 }
 
@@ -1881,6 +1888,57 @@ async function saveQuestionAttempts(attemptId, answers, subject) {
       body: JSON.stringify(rows),
     });
   } catch(e) {}
+}
+
+// ── REAL-TIME SESSION HELPERS ─────────────────────────────────────────
+// Creates the attempt row at session start so per-question rows can FK to it.
+async function createAttempt(subject, mode, domain) {
+  const id = crypto.randomUUID();
+  currentAttemptId = id;
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/attempts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ id, student: 'Jaden', subject, mode, domain, score: 0, total: 0, pct: 0, time_sec: 0, breakdown: {}, completed: false }),
+    });
+  } catch(e) {}
+  return id;
+}
+
+// PATCHes the existing attempt row at session end to record final stats + mark complete.
+async function finalizeAttempt(update) {
+  if (!currentAttemptId) return false;
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/attempts?id=eq.${currentAttemptId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ ...update, completed: true }),
+    });
+    return res.ok;
+  } catch(e) { return false; }
+}
+
+// Saves a single answered question to question_attempts immediately (fire-and-forget).
+function saveOneQuestionAttempt(q, correct) {
+  if (!currentAttemptId) return;
+  const yourAnswer = q.type === 'numeric'
+    ? String(q._yourAnswer ?? '')
+    : [...(q._chosen || new Set())].join(',');
+  const correctAnswer = q.type === 'numeric'
+    ? String(Array.isArray(q.correct) ? q.correct[0] : q.correct)
+    : (Array.isArray(q.correct) ? q.correct.join(',') : String(q.correct));
+  const time_ms = questionStartTime ? Date.now() - questionStartTime : null;
+  fetch(`${SUPABASE_URL}/rest/v1/question_attempts`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+    body: JSON.stringify({
+      attempt_id: currentAttemptId, student: 'Jaden', subject: activeSubject,
+      category: q.cat || null, domain: q.domain || null,
+      question_text: q.text || null,
+      your_answer: yourAnswer || null, correct_answer: correctAnswer || null,
+      correct, time_ms,
+    }),
+  }).catch(() => {});
 }
 
 async function saveAttempt(data) {
