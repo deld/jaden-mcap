@@ -872,6 +872,68 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `${filled.length} dots filled (cap enforced)`;
   });
 
+  // ── 17. Lesson map — YouTube & Khan Academy link verification ────────────
+  suite('🎬 Lesson map — YouTube & Khan Academy links');
+
+  // Fetch the full lesson_map from DB
+  const lessonRes = await db('lesson_map?select=category,label,youtube_id,ka_url&order=category.asc');
+  assert(lessonRes.ok, `Could not fetch lesson_map: HTTP ${lessonRes.status}`);
+  const lessons = await lessonRes.json();
+
+  await test('All 16 categories have a lesson entry', async () => {
+    const expected = [
+      'Addition & Subtraction','Area','Data & Graphs','Division','Fractions',
+      'Geometry','Informational Text','Literary Text','Measurement & Time',
+      'Mult & Division Reasoning','Multiplication','Perimeter','Rounding',
+      'Vocabulary','Word Problems','Word Study',
+    ];
+    const found = lessons.map(l => l.category);
+    const missing = expected.filter(c => !found.includes(c));
+    assert(missing.length === 0, `Missing categories: ${missing.join(', ')}`);
+    return `${found.length} categories found`;
+  });
+
+  await test('No lesson is missing a youtube_id', async () => {
+    const missing = lessons.filter(l => !l.youtube_id);
+    assert(missing.length === 0, `Missing youtube_id: ${missing.map(l=>l.category).join(', ')}`);
+    return 'all entries have youtube_id';
+  });
+
+  await test('No lesson is missing a ka_url', async () => {
+    const missing = lessons.filter(l => !l.ka_url);
+    assert(missing.length === 0, `Missing ka_url: ${missing.map(l=>l.category).join(', ')}`);
+    return 'all entries have ka_url';
+  });
+
+  await test('All ka_url values point to khanacademy.org', async () => {
+    const bad = lessons.filter(l => l.ka_url && !l.ka_url.startsWith('https://www.khanacademy.org/'));
+    assert(bad.length === 0, `Bad KA URLs: ${bad.map(l=>`${l.category}: ${l.ka_url}`).join('; ')}`);
+    return 'all ka_url values are khanacademy.org';
+  });
+
+  // YouTube oEmbed check — confirms each video ID actually exists (not deleted/private)
+  // Uses the public oEmbed endpoint which returns 404 for missing videos
+  const brokenYt = [];
+  for (const lesson of lessons) {
+    await test(`YouTube video exists: ${lesson.category}`, async () => {
+      const oembed = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${lesson.youtube_id}&format=json`;
+      const r = await fetch(oembed);
+      assert(r.ok, `HTTP ${r.status} — video ${lesson.youtube_id} is missing or private`);
+      const data = await r.json();
+      if (!r.ok) brokenYt.push(lesson.category);
+      return `${lesson.youtube_id} → "${(data.title||'').slice(0,50)}"`;
+    });
+  }
+
+  // Verify embed URL uses YouTube Kids (youtubekids.com), not regular youtube.com
+  await test('App embeds videos via youtubekids.com (not youtube.com)', async () => {
+    // Check the source of math-quest.html for the embed pattern
+    const src = await fetch('/math-quest.html').then(r => r.text());
+    assert(src.includes('youtubekids.com/embed/'), 'Embed URL should use youtubekids.com/embed/');
+    assert(!src.includes('youtube.com/embed/'), 'Should NOT use regular youtube.com/embed/');
+    return 'youtubekids.com/embed/ confirmed';
+  });
+
   document.getElementById('run-btn').disabled = false;
   updateSummary();
 }
