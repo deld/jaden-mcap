@@ -714,6 +714,23 @@
       .card, #domain-nav, #reading-screen { max-width: 1200px; }
       #question-screen.has-passage { max-width: 1500px; }
     }
+  /* ── Parent drill-down panels ── */
+  .sd-panel { margin-top:6px; background:#f8fafc; border-radius:8px; border:1px solid #e2e8f0; overflow:hidden; }
+  .sd-panel-loading { padding:12px 14px; font-size:.8rem; color:#6b7280; }
+  .sd-row { display:grid; grid-template-columns:28px 1fr auto auto; align-items:start; gap:6px 10px; padding:8px 12px; border-bottom:1px solid #f1f5f9; font-size:.78rem; }
+  .sd-row:last-child { border-bottom:none; }
+  .sd-icon { font-size:.9rem; padding-top:1px; }
+  .sd-q { color:#1e293b; line-height:1.4; }
+  .sd-ans { font-size:.72rem; white-space:nowrap; }
+  .sd-ans .yours { color:#ef4444; font-weight:700; }
+  .sd-ans .right { color:#10b981; font-weight:700; }
+  .sd-ans .correct-only { color:#10b981; font-weight:700; }
+  .sd-time { font-size:.7rem; color:#6b7280; white-space:nowrap; text-align:right; }
+  .sd-empty { padding:12px 14px; font-size:.8rem; color:#9ca3af; font-style:italic; }
+  .ps-expand-btn { font-size:.72rem; border:1px solid #cbd5e1; background:white; border-radius:6px; padding:3px 8px; cursor:pointer; color:#475569; white-space:nowrap; }
+  .ps-expand-btn:hover { background:#f1f5f9; }
+  .dom-expand-btn { font-size:.7rem; border:1px solid #cbd5e1; background:white; border-radius:5px; padding:2px 7px; cursor:pointer; color:#475569; margin-left:6px; }
+  .dom-expand-btn:hover { background:#f1f5f9; }
   </style>
 </head>
 <body>
@@ -2219,10 +2236,11 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
       : '';
 
     item.innerHTML = `
-      <div class="review-item-header">
+      <div class="review-item-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span class="review-num">Q${idx + 1}</span>
         <span class="review-verdict ${verdictCls}">${verdictText}</span>
         <span class="cat-chip" style="background:${cs.bg};color:${cs.fg};font-size:.7rem;padding:2px 9px;">${q.cat}</span>
+        ${timeHtml}
       </div>
       <div class="review-q-text">${q.text.replace(/\n/g,'<br>')}</div>
       ${optionsHTML}
@@ -2641,11 +2659,15 @@ function _renderDomains(attempts) {
     const def   = allDoms.find(d=>d.id===dom);
     const label = def ? `${def.icon} ${def.label}` : dom;
     const color = avg>=80?'#10b981':avg>=60?'#f59e0b':'#ef4444';
-    return `<div class="p-bar-row">
+    const domEsc = dom.replace(/'/g,"\\'");
+    return `<div class="p-bar-row" style="flex-wrap:wrap;">
       <div class="p-bar-name">${label}</div>
       <div class="p-bar-wrap"><div class="p-bar-fill" style="width:${avg}%;background:${color};"></div></div>
-      <div class="p-bar-val" style="color:${color};">${avg}%</div>
-    </div>`;
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="p-bar-val" style="color:${color};">${avg}%</div>
+        <button class="dom-expand-btn" onclick="_expandDomain('${domEsc}',this)">🔍</button>
+      </div>
+    </div><div class="dom-drill-${domEsc.replace(/\s/g,'_')}"></div>`;
   }).join('');
   document.getElementById('parent-domain-breakdown').innerHTML = html;
 }
@@ -2685,11 +2707,95 @@ function _renderRecent(attempts) {
     row.dataset.id = a.id;
     row.innerHTML = `
       <div class="ps-date">${dt}<br><span style="font-size:.62rem;">${tm}</span></div>
-      <div class="ps-info">${a.subject||'Math'} · ${a.domain||'All'}<br><span class="ps-mode">${mode} · ${a.total||0}q</span></div>
-      <div class="ps-pct ${cls}">${pct}%</div>
-      <button class="ps-delete" title="Delete session" onclick="deleteAttempt('${a.id}', this)">🗑</button>`;
+      <div class="ps-info">${a.subject||'Math'} · ${a.domain||'All'}<br><span class="ps-mode">${mode} · ${a.total||0}q${a.completed===false?' · ⚠️ incomplete':''}</span></div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <div class="ps-pct ${cls}">${pct}%</div>
+        <button class="ps-expand-btn" onclick="_expandSession('${a.id}',this)">📋 Questions</button>
+        <button class="ps-delete" title="Delete session" onclick="deleteAttempt('${a.id}', this)">🗑</button>
+      </div>`;
     el.appendChild(row);
   });
+}
+
+// Renders fetched question_attempts rows into a drill-down panel
+function _renderDrillRows(rows, panel) {
+  if (!rows.length) {
+    panel.innerHTML = '<div class="sd-empty">No per-question data saved for this session yet.</div>';
+    return;
+  }
+  panel.innerHTML = rows.map(r => {
+    const icon = r.correct ? '✅' : '❌';
+    const q = (r.question_text || '').replace(/</g,'&lt;');
+    const truncQ = q.length > 90 ? q.substring(0,90)+'…' : q;
+    let ansHtml = '';
+    if (r.correct) {
+      ansHtml = `<span class="correct-only">✓ ${r.correct_answer||''}</span>`;
+    } else {
+      ansHtml = `<span class="yours">✗ ${r.your_answer||'—'}</span>`
+              + (r.correct_answer ? ` → <span class="right">${r.correct_answer}</span>` : '');
+    }
+    const timeStr = r.time_ms ? _fmtMs(r.time_ms) : '—';
+    const cat = r.category ? `<span style="font-size:.65rem;color:#6b7280;">${r.category}</span>` : '';
+    return `<div class="sd-row">
+      <div class="sd-icon">${icon}</div>
+      <div class="sd-q">${truncQ}${cat ? '<br>'+cat : ''}</div>
+      <div class="sd-ans">${ansHtml}</div>
+      <div class="sd-time">⏱ ${timeStr}</div>
+    </div>`;
+  }).join('');
+}
+
+async function _expandSession(attemptId, btn) {
+  // Toggle: if panel already open, close it
+  const existing = btn.closest('.ps-row')?.nextElementSibling;
+  if (existing && existing.classList.contains('sd-panel')) {
+    existing.remove(); btn.textContent = '📋 Questions'; return;
+  }
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  const panel = document.createElement('div');
+  panel.className = 'sd-panel';
+  panel.innerHTML = '<div class="sd-panel-loading">Loading questions…</div>';
+  btn.closest('.ps-row').insertAdjacentElement('afterend', panel);
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/question_attempts?attempt_id=eq.${attemptId}&order=created_at.asc&select=question_text,category,domain,your_answer,correct_answer,correct,time_ms`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    const rows = await res.json();
+    _renderDrillRows(rows, panel);
+    btn.textContent = '▲ Close';
+  } catch(e) {
+    panel.innerHTML = '<div class="sd-empty">⚠️ Could not load questions.</div>';
+    btn.textContent = '📋 Questions';
+  }
+  btn.disabled = false;
+}
+
+async function _expandDomain(domCode, btn) {
+  const container = btn.closest('.p-bar-row').nextElementSibling;
+  if (!container) return;
+  if (container.innerHTML) { container.innerHTML = ''; btn.textContent = '🔍'; return; }
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  const panel = document.createElement('div');
+  panel.className = 'sd-panel';
+  panel.style.marginBottom = '8px';
+  panel.innerHTML = '<div class="sd-panel-loading">Loading questions…</div>';
+  container.appendChild(panel);
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/question_attempts?student=eq.Jaden&domain=eq.${encodeURIComponent(domCode)}&order=created_at.desc&limit=40&select=question_text,category,your_answer,correct_answer,correct,time_ms`,
+      { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+    );
+    const rows = await res.json();
+    _renderDrillRows(rows, panel);
+    btn.textContent = '▲';
+  } catch(e) {
+    panel.innerHTML = '<div class="sd-empty">⚠️ Could not load questions.</div>';
+    btn.textContent = '🔍';
+  }
+  btn.disabled = false;
 }
 
 async function deleteAttempt(id, btn) {
