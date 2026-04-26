@@ -1346,22 +1346,27 @@ async function startGame(shuffle = true) {
 
 function shuffleOptions(q) {
   // Shuffle MC options in-place once per question (prevents position memorization).
-  // Uses text matching to keep q.correct in sync with new letter assignments.
+  // Options are plain strings; letters are position-based (A=index 0, B=1, …).
   if (!q.options || q.options.length <= 1 || q._shuffled) return;
-  const letters = ['A','B','C','D','E','F'];
-  // Save correct answer TEXTS before shuffling
+  const L = 'ABCDEFGHIJ';
+
+  // Save the TEXT of each correct option using its current letter → index mapping
   const correctTexts = new Set(
-    q.correct.map(l => q.options.find(o => o.letter === l)?.text).filter(Boolean)
+    q.correct.map(letter => q.options[L.indexOf(letter)]).filter(t => t !== undefined)
   );
-  // Fisher-Yates
+  if (!correctTexts.size) return; // safety: don't shuffle if we can't track correct answer
+
+  // Fisher-Yates on the plain string array
   for (let i = q.options.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
   }
-  // Re-assign letters in new order
-  q.options.forEach((opt, i) => { opt.letter = letters[i]; });
-  // Update correct to new letters
-  q.correct = q.options.filter(opt => correctTexts.has(opt.text)).map(opt => opt.letter);
+
+  // Reassign q.correct to the new positions of the correct texts
+  q.correct = q.options
+    .map((text, i) => correctTexts.has(text) ? L[i] : null)
+    .filter(Boolean);
+
   q._shuffled = true;
 }
 
@@ -1496,17 +1501,18 @@ function selectOption(el,letter,type) {
 function revealSingle(chosen) {
   const q=questions[currentQ]; answered=true;
   const ok=q.correct.includes(chosen);
+  const _tms = questionStartTime ? Date.now() - questionStartTime : null;
   if (testMode) {
     q._chosen = new Set([chosen]);
-    testAnswers.push({q, correct:ok});
-    saveOneQuestionAttempt(q, ok);
+    testAnswers.push({q, correct:ok, time_ms:_tms});
+    saveOneQuestionAttempt(q, ok, _tms);
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
   q._chosen = new Set([chosen]);
-  practiceAnswers.push({q, correct:ok});
-  saveOneQuestionAttempt(q, ok);
+  practiceAnswers.push({q, correct:ok, time_ms:_tms});
+  saveOneQuestionAttempt(q, ok, _tms);
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(q.correct.includes(o.dataset.letter)) o.classList.add('correct');
@@ -1522,18 +1528,19 @@ function checkMulti() {
   answered=true;
   const cs=new Set(q.correct);
   const ok=selected.size===cs.size&&[...selected].every(l=>cs.has(l));
+  const _tms = questionStartTime ? Date.now() - questionStartTime : null;
   if (testMode) {
     q._chosen = new Set(selected);
-    testAnswers.push({q, correct:ok});
-    saveOneQuestionAttempt(q, ok);
+    testAnswers.push({q, correct:ok, time_ms:_tms});
+    saveOneQuestionAttempt(q, ok, _tms);
     document.querySelectorAll('.option').forEach(o=>o.classList.add('disabled'));
     document.getElementById('check-btn').classList.add('hidden');
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
   q._chosen = new Set(selected);
-  practiceAnswers.push({q, correct:ok});
-  saveOneQuestionAttempt(q, ok);
+  practiceAnswers.push({q, correct:ok, time_ms:_tms});
+  saveOneQuestionAttempt(q, ok, _tms);
   document.querySelectorAll('.option').forEach(o=>{
     o.classList.add('disabled');
     if(cs.has(o.dataset.letter)) o.classList.add('correct');
@@ -1551,17 +1558,18 @@ function checkNumeric() {
   if(isNaN(val)) return;
   answered=true;
   const ok=val===q.correct;
+  const _tms = questionStartTime ? Date.now() - questionStartTime : null;
   if (testMode) {
     q._yourAnswer = val;
-    testAnswers.push({q, correct:ok});
-    saveOneQuestionAttempt(q, ok);
+    testAnswers.push({q, correct:ok, time_ms:_tms});
+    saveOneQuestionAttempt(q, ok, _tms);
     ni.disabled=true;
     setTimeout(()=>nextQuestion(), 300);
     return;
   }
   q._yourAnswer = val;
-  practiceAnswers.push({q, correct:ok});
-  saveOneQuestionAttempt(q, ok);
+  practiceAnswers.push({q, correct:ok, time_ms:_tms});
+  saveOneQuestionAttempt(q, ok, _tms);
   ni.className='numeric-input '+(ok?'correct':'wrong');
   ni.disabled=true;
   updateScore(ok); showFeedback(ok,q);
@@ -1941,7 +1949,9 @@ async function finalizeAttempt(update) {
 }
 
 // Saves a single answered question to question_attempts immediately (fire-and-forget).
-function saveOneQuestionAttempt(q, correct) {
+// time_ms is passed in (already captured in the check function) so both the DB
+// row and the in-memory answer object record the same elapsed time.
+function saveOneQuestionAttempt(q, correct, time_ms) {
   if (!currentAttemptId) return;
   const yourAnswer = q.type === 'numeric'
     ? String(q._yourAnswer ?? '')
@@ -1949,7 +1959,6 @@ function saveOneQuestionAttempt(q, correct) {
   const correctAnswer = q.type === 'numeric'
     ? String(Array.isArray(q.correct) ? q.correct[0] : q.correct)
     : (Array.isArray(q.correct) ? q.correct.join(',') : String(q.correct));
-  const time_ms = questionStartTime ? Date.now() - questionStartTime : null;
   fetch(`${SUPABASE_URL}/rest/v1/question_attempts`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
@@ -2110,6 +2119,13 @@ async function updateWeakButton() {
   }
 }
 
+// ── SHARED HELPERS ───────────────────────────────────────────────────
+function _fmtMs(ms) {
+  if (!ms || ms < 0) return '';
+  if (ms < 60000) return (ms / 1000).toFixed(1) + 's';
+  return Math.floor(ms / 60000) + 'm ' + Math.round((ms % 60000) / 1000) + 's';
+}
+
 // ── TEST ANSWER REVIEW ────────────────────────────────────────────────
 function showTestReview(scrollToIdx) {
   reviewReturnScreen = 'test-results-screen';
@@ -2151,7 +2167,7 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
     navGrid.appendChild(btn);
   });
 
-  allItems.forEach(({q, correct, idx, skipped}) => {
+  allItems.forEach(({q, correct, idx, skipped, time_ms}) => {
     const item = document.createElement('div');
     item.id = `ri-${idx}`;
     const cls = skipped ? 'ri-skip' : correct ? 'ri-correct' : 'ri-wrong';
@@ -2159,6 +2175,7 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
 
     const verdictCls = skipped ? 'skip' : correct ? 'correct' : 'wrong';
     const verdictText = skipped ? '⏭ Skipped' : correct ? '✓ Correct' : '✗ Wrong';
+    const timeHtml = time_ms ? `<span style="font-size:.7rem;color:#6b7280;margin-left:auto;">⏱ ${_fmtMs(time_ms)}</span>` : '';
 
     const cs = CAT_STYLE[q.cat] || {bg:'#eee', fg:'#333'};
 
