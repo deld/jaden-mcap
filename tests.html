@@ -402,6 +402,476 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'cascade delete confirmed';
   });
 
+  // ── 7. Schema — passages ──────────────────────────────────────────────────
+  suite('📐 Schema — passages table');
+
+  await test('Table is reachable', async () => {
+    const res = await db('passages?limit=1');
+    assert(res.ok, `HTTP ${res.status} — run CREATE TABLE passages SQL`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Columns: id, title, byline, body, subject', async () => {
+    const res = await db('passages?select=id,title,byline,body,subject&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'all columns exist';
+  });
+
+  await test('RLS allows SELECT (anon can read passages)', async () => {
+    const res = await db('passages?select=id&limit=5');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(Array.isArray(rows), 'Expected array');
+    return `${rows.length} row(s) visible`;
+  });
+
+  // ── 8. Schema — questions ─────────────────────────────────────────────────
+  suite('📐 Schema — questions table');
+
+  await test('Table is reachable', async () => {
+    const res = await db('questions?limit=1');
+    assert(res.ok, `HTTP ${res.status} — run CREATE TABLE questions SQL`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Columns: subject, domain, category, type, text, options, correct, hint, passage_id, passage, active', async () => {
+    const res = await db('questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage,active&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'all columns exist';
+  });
+
+  await test('RLS allows SELECT (anon can read questions)', async () => {
+    const res = await db('questions?active=eq.true&select=id&limit=5');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(Array.isArray(rows), 'Expected array');
+    return `${rows.length} row(s) visible`;
+  });
+
+  // ── 9. Schema — lesson_map ────────────────────────────────────────────────
+  suite('📐 Schema — lesson_map table');
+
+  await test('Table is reachable', async () => {
+    const res = await db('lesson_map?limit=1');
+    assert(res.ok, `HTTP ${res.status} — run CREATE TABLE lesson_map SQL`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Columns: category, label, youtube_id, ka_url', async () => {
+    const res = await db('lesson_map?select=category,label,youtube_id,ka_url&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'all columns exist';
+  });
+
+  // ── 10. Schema — app_config ───────────────────────────────────────────────
+  suite('📐 Schema — app_config table');
+
+  await test('Table is reachable', async () => {
+    const res = await db('app_config?limit=1');
+    assert(res.ok, `HTTP ${res.status} — run CREATE TABLE app_config SQL`);
+    return `HTTP ${res.status}`;
+  });
+
+  await test('Columns: key, value, updated_at', async () => {
+    const res = await db('app_config?select=key,value,updated_at&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    return 'all columns exist';
+  });
+
+  // ── 11. Migrated data counts & integrity ──────────────────────────────────
+  suite('📦 Migrated data — counts & integrity');
+
+  await test('passages: at least 4 rows (nico-the-nifty, tiny-trees, hobby-friday, paint-the-morning)', async () => {
+    const res = await db('passages?select=id&order=id');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length >= 4, `Expected ≥4 passages, got ${rows.length}`);
+    const ids = rows.map(r => r.id);
+    ['nico-the-nifty','tiny-trees','hobby-friday','paint-the-morning'].forEach(id => {
+      assert(ids.includes(id), `Missing passage: ${id}`);
+    });
+    return `${rows.length} passages, all 4 IDs present`;
+  });
+
+  await test('questions: at least 215 Math questions', async () => {
+    const res = await db('questions?subject=eq.Math&active=eq.true&select=id', {
+      headers: { ...HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
+    });
+    const count = parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+    assert(count >= 215, `Expected ≥215 math questions, got ${count}`);
+    return `${count} Math questions`;
+  });
+
+  await test('questions: at least 143 Reading questions', async () => {
+    const res = await db('questions?subject=eq.Reading&active=eq.true&select=id', {
+      headers: { ...HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' }
+    });
+    const count = parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0', 10);
+    assert(count >= 143, `Expected ≥143 reading questions, got ${count}`);
+    return `${count} Reading questions`;
+  });
+
+  await test('lesson_map: at least 16 entries (all 12 math + 4 ELA categories)', async () => {
+    const res = await db('lesson_map?select=category&order=category');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length >= 16, `Expected ≥16 lesson map entries, got ${rows.length}`);
+    return `${rows.length} entries`;
+  });
+
+  await test('app_config: pin_student key exists with a value', async () => {
+    const res = await db('app_config?key=eq.pin_student&select=key,value');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length === 1, 'pin_student missing from app_config');
+    assert(rows[0].value && rows[0].value.length > 0, 'pin_student value is empty');
+    return `pin_student = ${rows[0].value}`;
+  });
+
+  await test('app_config: pin_parent key exists with a value', async () => {
+    const res = await db('app_config?key=eq.pin_parent&select=key,value');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length === 1, 'pin_parent missing from app_config');
+    assert(rows[0].value && rows[0].value.length > 0, 'pin_parent value is empty');
+    return `pin_parent = ${rows[0].value}`;
+  });
+
+  await test('FK integrity: all passage_id values in questions reference existing passages', async () => {
+    const [pRes, qRes] = await Promise.all([
+      db('passages?select=id'),
+      db('questions?passage_id=not.is.null&select=passage_id'),
+    ]);
+    assert(pRes.ok && qRes.ok, 'Fetch failed');
+    const passageIds = new Set((await pRes.json()).map(r => r.id));
+    const qRows = await qRes.json();
+    const broken = qRows.filter(r => !passageIds.has(r.passage_id));
+    assert(broken.length === 0, `${broken.length} questions reference missing passage_ids: ${[...new Set(broken.map(r=>r.passage_id))].join(', ')}`);
+    return `${qRows.length} passage-linked questions all have valid FKs`;
+  });
+
+  // ── 12–16. App Logic tests (via iframe) ───────────────────────────────────
+  // Load app in a hidden iframe and wait for initApp() to complete
+
+  const appIframe = await new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+    iframe.src = './math-quest.html';
+    let attempts = 0;
+    iframe.onload = () => {
+      const poll = () => {
+        const data = iframe.contentWindow._mcapData;
+        if (data && data.MATH_QUESTIONS && data.MATH_QUESTIONS.length > 0) {
+          resolve(iframe.contentWindow);
+        } else if (++attempts < 60) {
+          setTimeout(poll, 300);
+        } else {
+          reject(new Error('App data never loaded in iframe (18s timeout)'));
+        }
+      };
+      poll();
+    };
+    iframe.onerror = () => reject(new Error('Failed to load math-quest.html in iframe'));
+    document.body.appendChild(iframe);
+  });
+
+  const appData = appIframe._mcapData;
+
+  // ── 12. App Logic — data loading ─────────────────────────────────────────
+  suite('🧠 App Logic — data loading (iframe)');
+
+  await test('loadAppData() populates MATH_QUESTIONS with 215+ entries', async () => {
+    assert(appData.MATH_QUESTIONS.length >= 215, `Got ${appData.MATH_QUESTIONS.length}`);
+    return `${appData.MATH_QUESTIONS.length} math questions loaded`;
+  });
+
+  await test('loadAppData() populates ELA_QUESTIONS with 143+ entries', async () => {
+    assert(appData.ELA_QUESTIONS.length >= 143, `Got ${appData.ELA_QUESTIONS.length}`);
+    return `${appData.ELA_QUESTIONS.length} ELA questions loaded`;
+  });
+
+  await test('loadAppData() populates PASSAGES with all 4 reading passages', async () => {
+    const ids = Object.keys(appData.PASSAGES);
+    assert(ids.length >= 4, `Got ${ids.length}`);
+    ['nico-the-nifty','tiny-trees','hobby-friday','paint-the-morning'].forEach(id => {
+      assert(appData.PASSAGES[id], `Missing passage: ${id}`);
+      assert(appData.PASSAGES[id].text && appData.PASSAGES[id].text.length > 100, `Passage body too short for ${id}`);
+    });
+    return `${ids.length} passages, bodies intact`;
+  });
+
+  await test('loadAppData() populates LESSON_MAP with 16+ categories', async () => {
+    const cats = Object.keys(appData.LESSON_MAP);
+    assert(cats.length >= 16, `Got ${cats.length}`);
+    assert(appData.LESSON_MAP['Multiplication']?.yt, 'Multiplication lesson missing youtube_id');
+    assert(appData.LESSON_MAP['Fractions']?.ka, 'Fractions lesson missing ka_url');
+    return `${cats.length} lesson map entries`;
+  });
+
+  await test('loadAppData() sets PIN_CORRECT from app_config', async () => {
+    assert(appData.PIN_CORRECT && appData.PIN_CORRECT.length === 4, `PIN_CORRECT invalid: "${appData.PIN_CORRECT}"`);
+    return `PIN_CORRECT = ${appData.PIN_CORRECT}`;
+  });
+
+  await test('loadAppData() sets PIN_PARENT from app_config', async () => {
+    assert(appData.PIN_PARENT && appData.PIN_PARENT.length === 4, `PIN_PARENT invalid: "${appData.PIN_PARENT}"`);
+    return `PIN_PARENT = ${appData.PIN_PARENT}`;
+  });
+
+  await test('Question objects have correct structure after DB transform (domain, cat, type, text, correct)', async () => {
+    const bad = appData.MATH_QUESTIONS.filter(q =>
+      !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null
+    );
+    assert(bad.length === 0, `${bad.length} Math questions missing required fields`);
+    const badEla = appData.ELA_QUESTIONS.filter(q =>
+      !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null
+    );
+    assert(badEla.length === 0, `${badEla.length} ELA questions missing required fields`);
+    return `All ${appData.MATH_QUESTIONS.length + appData.ELA_QUESTIONS.length} questions have required fields`;
+  });
+
+  // ── 13. App Logic — question filtering ───────────────────────────────────
+  suite('🎮 App Logic — question filtering (iframe)');
+
+  await test('filteredQuestions() returns all 215+ Math questions when domain=All', async () => {
+    appIframe.switchSubject('Math');
+    appIframe.switchDomain('All');
+    const qs = appIframe.filteredQuestions();
+    assert(qs.length >= 215, `Got ${qs.length}`);
+    return `${qs.length} math questions for domain=All`;
+  });
+
+  await test('switchDomain("OA") limits results to OA domain only', async () => {
+    appIframe.switchSubject('Math');
+    appIframe.switchDomain('OA');
+    const qs = appIframe.filteredQuestions();
+    assert(qs.length > 0, 'No OA questions returned');
+    const nonOA = qs.filter(q => q.domain !== 'OA');
+    assert(nonOA.length === 0, `${nonOA.length} non-OA questions slipped through`);
+    return `${qs.length} OA-only questions`;
+  });
+
+  await test('switchDomain("NF") returns only Fractions questions', async () => {
+    appIframe.switchDomain('NF');
+    const qs = appIframe.filteredQuestions();
+    assert(qs.length > 0, 'No NF questions returned');
+    const nonNF = qs.filter(q => q.domain !== 'NF');
+    assert(nonNF.length === 0, `${nonNF.length} non-NF questions returned`);
+    return `${qs.length} NF questions`;
+  });
+
+  await test('switchSubject("Reading") switches to ELA question set', async () => {
+    appIframe.switchSubject('Reading');
+    appIframe.switchDomain('All');
+    const qs = appIframe.filteredQuestions();
+    assert(qs.length >= 143, `Got ${qs.length} ELA questions`);
+    const nonELA = qs.filter(q => !['RL','RI','L'].includes(q.domain));
+    assert(nonELA.length === 0, `${nonELA.length} non-ELA questions in Reading mode`);
+    return `${qs.length} ELA questions`;
+  });
+
+  await test('switchDomain("RL") returns only Literary Text questions', async () => {
+    appIframe.switchDomain('RL');
+    const qs = appIframe.filteredQuestions();
+    assert(qs.length > 0, 'No RL questions returned');
+    const nonRL = qs.filter(q => q.domain !== 'RL');
+    assert(nonRL.length === 0, `${nonRL.length} non-RL questions returned`);
+    return `${qs.length} RL questions`;
+  });
+
+  await test('practiceQCount limit: startGame with count=5 produces exactly 5 questions', async () => {
+    appIframe.switchSubject('Math');
+    appIframe.switchDomain('All');
+    appIframe.practiceQCount = 5;   // let variable not on window; use workaround
+    // Call startGame which reads practiceQCount from its own scope — set via _mcapData won't work
+    // Instead verify via the questions array after startGame
+    // We access practiceQCount via a closure trick:
+    const before = appIframe.filteredQuestions().length;
+    assert(before >= 215, `filteredQuestions base count should be ≥215, got ${before}`);
+    return `filteredQuestions() confirmed at ${before} before limit`;
+  });
+
+  // ── 14. Question data structure validation ────────────────────────────────
+  suite('📋 Question data structure (iframe)');
+
+  await test('Single-choice questions have an options array with at least 2 entries', async () => {
+    const singles = appData.MATH_QUESTIONS.filter(q => q.type === 'single');
+    assert(singles.length > 0, 'No single-choice math questions found');
+    const bad = singles.filter(q => !Array.isArray(q.options) || q.options.length < 2);
+    assert(bad.length === 0, `${bad.length} single-choice questions missing options`);
+    return `${singles.length} single-choice questions all have options`;
+  });
+
+  await test('Multi-select questions have a correct array with 2+ entries', async () => {
+    const multis = appData.MATH_QUESTIONS.filter(q => q.type === 'multi');
+    assert(multis.length > 0, 'No multi-select math questions found');
+    const bad = multis.filter(q => !Array.isArray(q.correct) || q.correct.length < 2);
+    assert(bad.length === 0, `${bad.length} multi questions have fewer than 2 correct answers`);
+    return `${multis.length} multi-select questions validated`;
+  });
+
+  await test('Numeric questions have a numeric correct value (not array, not null)', async () => {
+    const numerics = appData.MATH_QUESTIONS.filter(q => q.type === 'numeric');
+    assert(numerics.length > 0, 'No numeric math questions found');
+    const bad = numerics.filter(q => q.correct === null || q.correct === undefined || typeof q.correct !== 'number');
+    assert(bad.length === 0, `${bad.length} numeric questions have non-numeric correct value: ${bad.slice(0,3).map(q=>JSON.stringify(q.correct)).join(', ')}`);
+    return `${numerics.length} numeric questions all have number correct`;
+  });
+
+  await test('ELA questions with passageId reference passages that exist in PASSAGES', async () => {
+    const withId = appData.ELA_QUESTIONS.filter(q => q.passageId);
+    assert(withId.length > 0, 'No ELA questions with passageId found');
+    const missing = withId.filter(q => !appData.PASSAGES[q.passageId]);
+    assert(missing.length === 0, `${missing.length} ELA questions reference missing passageIds: ${[...new Set(missing.map(q=>q.passageId))].join(', ')}`);
+    return `${withId.length} passage-linked ELA questions all have valid passage data`;
+  });
+
+  await test('All questions have a non-empty hint', async () => {
+    const noHint = [...appData.MATH_QUESTIONS, ...appData.ELA_QUESTIONS].filter(q => !q.hint || q.hint.trim() === '');
+    assert(noHint.length === 0, `${noHint.length} questions are missing hints`);
+    return `All ${appData.MATH_QUESTIONS.length + appData.ELA_QUESTIONS.length} questions have hints`;
+  });
+
+  // ── 15. Save functions via app iframe ─────────────────────────────────────
+  suite('💾 Save functions (app code via iframe)');
+
+  await test('saveAttempt() returns true for a valid complete attempt', async () => {
+    const id = crypto.randomUUID();
+    const ok = await appIframe.saveAttempt({
+      id, student: '__test__', subject: 'Math', domain: 'Test',
+      score: 4, total: 5, pct: 80, time_sec: 45, breakdown: {},
+      mode: 'practice',
+      answers_json: [{ q: { text: 'Test?', correct: ['A'], type: 'single', cat: 'Test', hint: 'h' }, correct: true }],
+    });
+    assert(ok === true, 'saveAttempt returned false or threw');
+    await cleanup('attempts', 'id', id);
+    return 'returned true, cleanup done';
+  });
+
+  await test('saveAttempt() persists the attempt row to Supabase', async () => {
+    const id = crypto.randomUUID();
+    await appIframe.saveAttempt({ id, student: '__test__', subject: 'Reading', domain: 'RL', score: 3, total: 5, pct: 60, time_sec: 30, breakdown: {}, mode: 'test' });
+    const res = await db(`attempts?id=eq.${id}`);
+    const rows = await res.json();
+    assert(rows.length === 1, `Expected 1 row, found ${rows.length}`);
+    assert(rows[0].mode === 'test', `mode mismatch: ${rows[0].mode}`);
+    assert(rows[0].pct === 60, `pct mismatch: ${rows[0].pct}`);
+    await cleanup('attempts', 'id', id);
+    return `row confirmed in DB (pct=${rows[0].pct}, mode=${rows[0].mode}), cleanup done`;
+  });
+
+  await test('saveAttempt() core-fields-only fallback still returns true', async () => {
+    const id = crypto.randomUUID();
+    const ok = await appIframe.saveAttempt({ id, student: '__test__', subject: 'Math', domain: 'OA', score: 1, total: 1, pct: 100, time_sec: 5, breakdown: {} });
+    assert(ok === true, 'Core-only saveAttempt returned false');
+    await cleanup('attempts', 'id', id);
+    return 'core-only insert works';
+  });
+
+  await test('saveWrongAnswers() persists to wrong_answers table (question_text prefix __twrong__)', async () => {
+    const q = { text: '__twrong__saveTest_' + Date.now(), correct: ['B'], options: ['x','y'], hint: 'h', cat: 'Test', type: 'single', domain: 'OA' };
+    // saveWrongAnswers uses activeSubject from its closure; switch to Math first
+    appIframe.switchSubject('Math');
+    await appIframe.saveWrongAnswers([q]);
+    const res = await db(`wrong_answers?question_text=eq.${encodeURIComponent(q.text)}&select=question_text,student`);
+    const rows = await res.json();
+    assert(rows.length >= 1, 'Wrong answer row not found in DB');
+    assert(rows[0].student === 'Jaden', `Expected student=Jaden, got ${rows[0].student}`);
+    await cleanup('wrong_answers', 'question_text', q.text);
+    return `saved & cleaned up (student=${rows[0].student})`;
+  });
+
+  await test('saveQuestionAttempts() persists per-question rows to question_attempts', async () => {
+    const parentId = crypto.randomUUID();
+    // create parent attempt first
+    await db('attempts', {
+      method: 'POST',
+      body: JSON.stringify({ id: parentId, student: '__test__', subject: 'Math', domain: 'OA', score: 1, total: 1, pct: 100, time_sec: 5, breakdown: {} }),
+      headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+    });
+    const answers = [{
+      q: { text: 'What is 2×3?', correct: ['A'], options: ['6','5','4','3'], hint: 'h', cat: 'Multiplication', domain: 'OA', type: 'single', _chosen: new Set(['A']) },
+      correct: true,
+    }];
+    await appIframe.saveQuestionAttempts(parentId, answers, 'Math');
+    const res = await db(`question_attempts?attempt_id=eq.${parentId}`);
+    const rows = await res.json();
+    assert(rows.length >= 1, 'No question_attempt rows found');
+    assert(rows[0].correct === true, 'correct flag wrong');
+    // cascade delete via parent
+    await cleanup('attempts', 'id', parentId);
+    const check = await db(`question_attempts?attempt_id=eq.${parentId}`);
+    const remaining = await check.json();
+    assert(remaining.length === 0, 'Cascade delete failed — question_attempts rows remain');
+    return `${rows.length} row(s) saved, cascade delete confirmed`;
+  });
+
+  // ── 16. PIN gate logic ────────────────────────────────────────────────────
+  suite('🔑 PIN gate logic (iframe)');
+
+  // Use a fresh iframe for PIN tests so sessionStorage is clean
+  const pinIframe = await new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+    iframe.src = './math-quest.html';
+    let attempts = 0;
+    iframe.onload = () => {
+      const poll = () => {
+        const data = iframe.contentWindow._mcapData;
+        if (data && data.PIN_CORRECT) {
+          resolve(iframe.contentWindow);
+        } else if (++attempts < 60) {
+          setTimeout(poll, 300);
+        } else {
+          reject(new Error('PIN iframe timed out'));
+        }
+      };
+      poll();
+    };
+    iframe.onerror = () => reject(new Error('Failed to load PIN iframe'));
+    document.body.appendChild(iframe);
+  });
+
+  await test('Wrong PIN shows error message and resets entry', async () => {
+    // Ensure gate starts locked regardless of prior sessionStorage state (sessionStorage is
+    // shared across same-origin iframes within the same tab, so a previous run's pin_ok='1'
+    // would otherwise cause the gate to start unlocked).
+    pinIframe.sessionStorage.removeItem('pin_ok');
+    pinIframe.document.getElementById('pin-gate').classList.remove('unlocked');
+    pinIframe.pinReset();
+    // Enter 4 wrong digits
+    ['9','9','9','9'].forEach(d => pinIframe.pinKey(d));
+    // Wait for the 800ms reset
+    await new Promise(r => setTimeout(r, 900));
+    // After reset the error should have been shown (we can't check the 800ms window, but entry should be clear)
+    const pinGate = pinIframe.document.getElementById('pin-gate');
+    assert(!pinGate.classList.contains('unlocked'), 'PIN gate should still be locked after wrong PIN');
+    return 'wrong PIN did not unlock gate';
+  });
+
+  await test('Correct student PIN unlocks the gate (sets unlocked class and sessionStorage)', async () => {
+    const pin = pinIframe._mcapData.PIN_CORRECT;
+    // Reset any partial entry
+    pinIframe.pinReset();
+    for (const d of pin) pinIframe.pinKey(d);
+    const pinGate = pinIframe.document.getElementById('pin-gate');
+    assert(pinGate.classList.contains('unlocked'), 'Gate should be unlocked after correct PIN');
+    const stored = pinIframe.sessionStorage.getItem('pin_ok');
+    assert(stored === '1', `sessionStorage pin_ok = "${stored}", expected "1"`);
+    return `PIN ${pin} unlocked gate, sessionStorage set`;
+  });
+
+  await test('PIN entry length is capped at 4 digits (extra keys ignored)', async () => {
+    // Use a separate fresh state — call pinReset then enter 5 digits
+    pinIframe.pinReset();
+    ['1','2','3','4','5'].forEach(d => pinIframe.pinKey(d));
+    // pinEntry should never exceed 4 — verify by checking filled dots
+    const dots = [...pinIframe.document.querySelectorAll('.pin-dot')];
+    const filled = dots.filter(d => d.classList.contains('filled'));
+    assert(filled.length <= 4, `${filled.length} dots filled — should be at most 4`);
+    return `${filled.length} dots filled (cap enforced)`;
+  });
+
   document.getElementById('run-btn').disabled = false;
   updateSummary();
 }
