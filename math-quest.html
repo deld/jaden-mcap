@@ -1344,10 +1344,32 @@ async function startGame(shuffle = true) {
   renderQuestion();
 }
 
+function shuffleOptions(q) {
+  // Shuffle MC options in-place once per question (prevents position memorization).
+  // Uses text matching to keep q.correct in sync with new letter assignments.
+  if (!q.options || q.options.length <= 1 || q._shuffled) return;
+  const letters = ['A','B','C','D','E','F'];
+  // Save correct answer TEXTS before shuffling
+  const correctTexts = new Set(
+    q.correct.map(l => q.options.find(o => o.letter === l)?.text).filter(Boolean)
+  );
+  // Fisher-Yates
+  for (let i = q.options.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [q.options[i], q.options[j]] = [q.options[j], q.options[i]];
+  }
+  // Re-assign letters in new order
+  q.options.forEach((opt, i) => { opt.letter = letters[i]; });
+  // Update correct to new letters
+  q.correct = q.options.filter(opt => correctTexts.has(opt.text)).map(opt => opt.letter);
+  q._shuffled = true;
+}
+
 function renderQuestion() {
   const q = questions[currentQ];
   answered=false; selected=new Set();
   questionStartTime = Date.now(); // start timing this question
+  shuffleOptions(q); // randomise answer positions (no-op for numeric)
 
   // Timer visibility
   const timerEl = document.getElementById('test-timer');
@@ -2210,6 +2232,89 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
   }
 }
 
+// ── QUESTION VARIANT GENERATORS ──────────────────────────────────────
+// Generates fresh numeric questions (same skill, different numbers) so Jaden
+// can't memorise answers from the wrong-answer bank. Area & Perimeter generators
+// intentionally mix both concepts so he must read the question carefully.
+const _ri = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+function _nq(orig, text, correct, hint) {
+  return { type: 'numeric', cat: orig.cat, domain: orig.domain, text, correct, hint };
+}
+
+const VARIANT_GENERATORS = {
+  'Addition & Subtraction': orig => {
+    const v = [
+      () => { const a=_ri(100,999),b=_ri(100,999); return _nq(orig,`What is ${a} + ${b}?`,a+b,`Add column by column. ${a} + ${b} = ${a+b}`); },
+      () => { const b=_ri(100,500),d=_ri(10,200),a=b+d; return _nq(orig,`What is ${a} − ${b}?`,a-b,`Subtract column by column. ${a} − ${b} = ${a-b}`); },
+      () => { const a=_ri(100,500),b=_ri(50,300); return _nq(orig,`A library has ${a} fiction books and ${b} non-fiction books. How many books are there in all?`,a+b,`Add: ${a} + ${b} = ${a+b}`); },
+      () => { const t=_ri(200,500),s=_ri(50,199); return _nq(orig,`A store had ${t} items. After a sale, ${s} were sold. How many items are left?`,t-s,`Subtract: ${t} − ${s} = ${t-s}`); },
+      () => { const a=_ri(1000,4999),b=_ri(1000,4999); return _nq(orig,`What is ${a} + ${b}?`,a+b,`Line up the digits and add column by column, regrouping as needed. ${a} + ${b} = ${a+b}`); },
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+  'Multiplication': orig => {
+    const v = [
+      () => { const a=_ri(2,12),b=_ri(2,12); return _nq(orig,`What is ${a} × ${b}?`,a*b,`Think: ${a} groups of ${b}. ${a} × ${b} = ${a*b}`); },
+      () => { const r=_ri(2,9),c=_ri(2,9); return _nq(orig,`An auditorium has ${r} rows of seats with ${c} seats in each row. How many seats are there in total?`,r*c,`Rows × seats per row: ${r} × ${c} = ${r*c}`); },
+      () => { const p=_ri(2,8),q=_ri(3,15); return _nq(orig,`Each shelf holds ${q} books. There are ${p} shelves. How many books total?`,p*q,`Multiply: ${p} × ${q} = ${p*q}`); },
+      () => { const a=_ri(2,9),b=_ri(10,99); return _nq(orig,`What is ${a} × ${b}?`,a*b,`Multiply ${b} by ${a}. ${a} × ${b} = ${a*b}`); },
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+  'Division': orig => {
+    const v = [
+      () => { const d=_ri(2,12),q=_ri(2,12); return _nq(orig,`What is ${d*q} ÷ ${d}?`,q,`Ask: what number times ${d} equals ${d*q}? ${d} × ${q} = ${d*q}`); },
+      () => { const n=_ri(2,9),g=_ri(2,9); return _nq(orig,`${n*g} students are divided equally into ${n} groups. How many students are in each group?`,g,`Divide: ${n*g} ÷ ${n} = ${g}`); },
+      () => { const b=_ri(2,8),i=_ri(3,12); return _nq(orig,`${b*i} cookies are shared equally among ${b} friends. How many cookies does each friend get?`,i,`Divide: ${b*i} ÷ ${b} = ${i}`); },
+      () => { const d=_ri(2,9),q=_ri(10,99); return _nq(orig,`What is ${d*q} ÷ ${d}?`,q,`${d*q} ÷ ${d} = ${q}`); },
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+  // Area & Perimeter generators intentionally mix BOTH concepts — Jaden must read
+  // the question carefully and use the right formula, not just the one he expects.
+  'Area': orig => {
+    const l=_ri(3,20), w=_ri(3,20), s=_ri(3,15);
+    const askArea = Math.random() < 0.6; // lean toward area since that's the weak category
+    const v = askArea ? [
+      () => _nq(orig,`A rectangle is ${l} cm long and ${w} cm wide. What is its area in square centimeters?`,l*w,`Area = length × width = ${l} × ${w} = ${l*w} sq cm`),
+      () => _nq(orig,`A square garden has sides of ${s} meters. What is the area of the garden?`,s*s,`Area = side × side = ${s} × ${s} = ${s*s} sq m`),
+      () => _nq(orig,`A classroom floor is ${l} feet long and ${w} feet wide. What is the area?`,l*w,`Area = ${l} × ${w} = ${l*w} square feet`),
+    ] : [
+      () => _nq({...orig,cat:'Perimeter'},`A rectangle is ${l} cm long and ${w} cm wide. What is its perimeter?`,2*(l+w),`Perimeter = 2 × (length + width) = 2 × (${l} + ${w}) = ${2*(l+w)} cm`),
+      () => _nq({...orig,cat:'Perimeter'},`A square has sides of ${s} inches. What is the perimeter of the square?`,4*s,`Perimeter = 4 × side = 4 × ${s} = ${4*s} inches`),
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+  'Perimeter': orig => {
+    const l=_ri(3,20), w=_ri(3,20), s=_ri(3,15), a=_ri(3,12), b=_ri(3,12), c=_ri(3,12);
+    const askPerimeter = Math.random() < 0.6; // lean toward perimeter since that's the weak category
+    const v = askPerimeter ? [
+      () => _nq(orig,`A rectangle is ${l} cm long and ${w} cm wide. What is its perimeter?`,2*(l+w),`Perimeter = 2 × (length + width) = 2 × (${l} + ${w}) = ${2*(l+w)} cm`),
+      () => _nq(orig,`A square has sides of ${s} inches. What is the perimeter?`,4*s,`Perimeter = 4 × side = 4 × ${s} = ${4*s} inches`),
+      () => _nq(orig,`A triangle has sides of ${a} cm, ${b} cm, and ${c} cm. What is its perimeter?`,a+b+c,`Add all sides: ${a} + ${b} + ${c} = ${a+b+c} cm`),
+    ] : [
+      () => _nq({...orig,cat:'Area'},`A rectangle is ${l} cm long and ${w} cm wide. What is its area in square centimeters?`,l*w,`Area = length × width = ${l} × ${w} = ${l*w} sq cm`),
+      () => _nq({...orig,cat:'Area'},`A square has sides of ${s} meters. What is the area of the square?`,s*s,`Area = ${s} × ${s} = ${s*s} sq m`),
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+  'Mult & Division Reasoning': orig => {
+    const v = [
+      () => { const f=_ri(2,8),b=_ri(2,8); return _nq(orig,`A recipe uses ${f} cups of sugar per batch. How many cups are needed for ${b} batches?`,f*b,`Multiply: ${f} × ${b} = ${f*b} cups`); },
+      () => { const t=_ri(2,8),e=_ri(2,8); return _nq(orig,`${t*e} oranges are packed equally into ${t} bags. How many oranges are in each bag?`,e,`Divide: ${t*e} ÷ ${t} = ${e}`); },
+      () => { const r=_ri(2,9),c=_ri(2,9); return _nq(orig,`A garden has ${r} rows with ${c} plants per row. How many plants in total?`,r*c,`Multiply: ${r} × ${c} = ${r*c}`); },
+      () => { const d=_ri(2,9),p=_ri(2,9); return _nq(orig,`${d*p} players are split into teams of ${d}. How many teams are there?`,p,`Divide: ${d*p} ÷ ${d} = ${p} teams`); },
+    ];
+    return v[_ri(0,v.length-1)]();
+  },
+};
+
+function generateVariant(q) {
+  if (q.type !== 'numeric') return null;
+  const gen = VARIANT_GENERATORS[q.cat];
+  return gen ? gen(q) : null;
+}
+
 // ── WEAK AREAS PRACTICE ───────────────────────────────────────────────
 async function showWeakPractice() {
   const bank = await loadWrongBank();
@@ -2229,11 +2334,17 @@ async function showWeakPractice() {
   // Wrong bank first (most-missed order from Supabase), then shuffled similar
   const shuffledSimilar = [...similar].sort(() => Math.random() - .5).slice(0, Math.min(similar.length, bank.length * 2));
 
-  questions = [...bank, ...shuffledSimilar];
-  currentQ = 0; score = 0; streak = 0; bestStreak = 0;
+  // Replace numeric wrong-bank questions with fresh variants (different numbers,
+  // same skill) so Jaden can't memorise the exact answer. Area & Perimeter
+  // variants intentionally mix both concepts.
+  const variantBank = bank.map(q => generateVariant(q) || q);
+
+  questions = [...variantBank, ...shuffledSimilar];
+  currentQ = 0; score = 0; streak = 0; bestStreak = 0; practiceAnswers = [];
   shownPassages = new Set();
   testMode = false;
 
+  await createAttempt(activeSubject, 'weak-practice', 'Weak Areas');
   show('question-screen');
   renderQuestion();
 
