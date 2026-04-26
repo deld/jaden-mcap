@@ -2708,11 +2708,9 @@ function _renderRecent(attempts) {
     row.innerHTML = `
       <div class="ps-date">${dt}<br><span style="font-size:.62rem;">${tm}</span></div>
       <div class="ps-info">${a.subject||'Math'} · ${a.domain||'All'}<br><span class="ps-mode">${mode} · ${a.total||0}q${a.completed===false?' · ⚠️ incomplete':''}</span></div>
-      <div style="display:flex;align-items:center;gap:6px;">
-        <div class="ps-pct ${cls}">${pct}%</div>
-        <button class="ps-expand-btn" onclick="_expandSession('${a.id}',this)">📋 Questions</button>
-        <button class="ps-delete" title="Delete session" onclick="deleteAttempt('${a.id}', this)">🗑</button>
-      </div>`;
+      <div class="ps-pct ${cls}">${pct}%</div>
+      <button class="ps-expand-btn" onclick="_expandSession('${a.id}',this)">📋</button>
+      <button class="ps-delete" title="Delete session" onclick="deleteAttempt('${a.id}', this)">🗑</button>`;
     el.appendChild(row);
   });
 }
