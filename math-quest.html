@@ -2552,6 +2552,10 @@ async function _showParentDash() {
     _fetchHotspots(),
   ]);
 
+  // Backfill any sessions that still show total=0 but have question_attempts saved.
+  // This self-heals sessions created before the live-progress PATCH was added.
+  await _backfillEmptyAttempts(attempts);
+
   // Analytics only count real sessions (completed + at least 1 question answered).
   // Recent Sessions list always shows everything so abandoned sessions are still visible.
   const analyticsAttempts = attempts.filter(a => a.completed === true && (a.total || 0) > 0);
@@ -2562,6 +2566,35 @@ async function _showParentDash() {
   _renderDomains(analyticsAttempts);
   _renderHotspots(hotspots);
   _renderRecent(attempts);
+}
+
+// For sessions stuck at total=0, fetch their question_attempts and recompute score/total/pct.
+// Updates both the DB row and the in-memory attempt object so the render is immediately correct.
+async function _backfillEmptyAttempts(attempts) {
+  const empty = attempts.filter(a => (a.total || 0) === 0);
+  if (!empty.length) return;
+  await Promise.all(empty.map(async a => {
+    try {
+      const res = await fetch(
+        `${SUPABASE_URL}/rest/v1/question_attempts?attempt_id=eq.${a.id}&select=correct`,
+        { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
+      );
+      if (!res.ok) return;
+      const rows = await res.json();
+      if (!rows.length) return; // genuinely empty — nothing to fix
+      const total = rows.length;
+      const score = rows.filter(r => r.correct).length;
+      const pct   = Math.round(score / total * 100);
+      // Patch the DB row so it stays correct going forward
+      fetch(`${SUPABASE_URL}/rest/v1/attempts?id=eq.${a.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({ score, total, pct }),
+      }).catch(() => {});
+      // Update the in-memory object so this render cycle is also correct
+      a.score = score; a.total = total; a.pct = pct;
+    } catch(e) {}
+  }));
 }
 
 async function _fetchAttempts() {
