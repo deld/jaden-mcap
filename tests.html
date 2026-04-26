@@ -457,10 +457,10 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `HTTP ${res.status}`;
   });
 
-  await test('Columns: category, label, youtube_id, ka_url', async () => {
-    const res = await db('lesson_map?select=category,label,youtube_id,ka_url&limit=1');
+  await test('Columns: category, label, youtube_id, youtube_ids, ka_url', async () => {
+    const res = await db('lesson_map?select=category,label,youtube_id,youtube_ids,ka_url&limit=1');
     assert(res.ok, `HTTP ${res.status}`);
-    return 'all columns exist';
+    return 'all columns exist (including youtube_ids)';
   });
 
   // ── 10. Schema — app_config ───────────────────────────────────────────────
@@ -875,17 +875,17 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   // ── 17. Lesson map — YouTube & Khan Academy link verification ────────────
   suite('🎬 Lesson map — YouTube & Khan Academy links');
 
-  // Fetch the full lesson_map from DB
-  const lessonRes = await db('lesson_map?select=category,label,youtube_id,ka_url&order=category.asc');
+  // Fetch the full lesson_map from DB (including youtube_ids array)
+  const lessonRes = await db('lesson_map?select=category,label,youtube_id,youtube_ids,ka_url&order=category.asc');
   assert(lessonRes.ok, `Could not fetch lesson_map: HTTP ${lessonRes.status}`);
   const lessons = await lessonRes.json();
 
-  await test('All 16 categories have a lesson entry', async () => {
+  await test('All 18 categories have a lesson entry', async () => {
     const expected = [
       'Addition & Subtraction','Area','Data & Graphs','Division','Fractions',
       'Geometry','Informational Text','Literary Text','Measurement & Time',
-      'Mult & Division Reasoning','Multiplication','Perimeter','Rounding',
-      'Vocabulary','Word Problems','Word Study',
+      'Mult & Division Reasoning','Multiplication','Ordering Numbers','Perimeter',
+      'Problem Solving','Rounding','Vocabulary','Word Problems','Word Study',
     ];
     const found = lessons.map(l => l.category);
     const missing = expected.filter(c => !found.includes(c));
@@ -897,6 +897,18 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     const missing = lessons.filter(l => !l.youtube_id);
     assert(missing.length === 0, `Missing youtube_id: ${missing.map(l=>l.category).join(', ')}`);
     return 'all entries have youtube_id';
+  });
+
+  await test('No lesson is missing a youtube_ids array', async () => {
+    const missing = lessons.filter(l => !Array.isArray(l.youtube_ids) || l.youtube_ids.length === 0);
+    assert(missing.length === 0, `Missing youtube_ids: ${missing.map(l=>l.category).join(', ')}`);
+    return `all entries have youtube_ids (avg ${(lessons.reduce((s,l)=>s+(l.youtube_ids||[]).length,0)/lessons.length).toFixed(1)} videos each)`;
+  });
+
+  await test('All categories have at least 2 videos', async () => {
+    const thin = lessons.filter(l => (l.youtube_ids||[]).length < 2);
+    assert(thin.length === 0, `Only 1 video: ${thin.map(l=>`${l.category}(${(l.youtube_ids||[]).length})`).join(', ')}`);
+    return 'all categories have ≥ 2 videos';
   });
 
   await test('No lesson is missing a ka_url', async () => {
@@ -911,23 +923,22 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'all ka_url values are khanacademy.org';
   });
 
-  // YouTube oEmbed check — confirms each video ID actually exists (not deleted/private)
-  // Uses the public oEmbed endpoint which returns 404 for missing videos
-  const brokenYt = [];
+  // Verify every video ID in every youtube_ids array via oEmbed (catches deleted/private videos)
   for (const lesson of lessons) {
-    await test(`YouTube video exists: ${lesson.category}`, async () => {
-      const oembed = `https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${lesson.youtube_id}&format=json`;
-      const r = await fetch(oembed);
-      assert(r.ok, `HTTP ${r.status} — video ${lesson.youtube_id} is missing or private`);
-      const data = await r.json();
-      if (!r.ok) brokenYt.push(lesson.category);
-      return `${lesson.youtube_id} → "${(data.title||'').slice(0,50)}"`;
-    });
+    const ids = lesson.youtube_ids || [lesson.youtube_id];
+    for (let i = 0; i < ids.length; i++) {
+      const vid = ids[i];
+      await test(`Video ${i+1}/${ids.length} exists: ${lesson.category} (${vid})`, async () => {
+        const r = await fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${vid}&format=json`);
+        assert(r.ok, `HTTP ${r.status} — video ${vid} is missing or private`);
+        const data = await r.json();
+        return `"${(data.title||'').slice(0,55)}"`;
+      });
+    }
   }
 
   // Verify embed URL uses YouTube Kids (youtubekids.com), not regular youtube.com
   await test('App embeds videos via youtubekids.com (not youtube.com)', async () => {
-    // Check the source of math-quest.html for the embed pattern
     const src = await fetch('/math-quest.html').then(r => r.text());
     assert(src.includes('youtubekids.com/embed/'), 'Embed URL should use youtubekids.com/embed/');
     assert(!src.includes('youtube.com/embed/'), 'Should NOT use regular youtube.com/embed/');

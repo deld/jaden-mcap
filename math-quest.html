@@ -433,6 +433,16 @@
     .video-frame-wrap iframe {
       position: absolute; inset: 0; width: 100%; height: 100%; border: none;
     }
+    .video-nav-row {
+      display: flex; align-items: center; justify-content: center;
+      gap: 14px; padding: 8px 16px; background: #0f1f35;
+    }
+    .video-nav-btn {
+      background: #2563eb; color: #fff; border: none; border-radius: 6px;
+      padding: 5px 14px; font-size: .82rem; font-weight: 700; cursor: pointer;
+    }
+    .video-nav-btn:hover { background: #1d4ed8; }
+    .video-counter { font-size: .78rem; color: #94a3b8; min-width: 80px; text-align: center; }
     .video-modal-footer {
       padding: 10px 16px; background: #1a2740;
       display: flex; align-items: center; justify-content: space-between;
@@ -988,6 +998,11 @@
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
           allowfullscreen>
         </iframe>
+      </div>
+      <div class="video-nav-row">
+        <button id="video-prev" class="video-nav-btn" onclick="videoNav(-1)" style="display:none">◀ Prev</button>
+        <span id="video-counter" class="video-counter"></span>
+        <button id="video-next" class="video-nav-btn" onclick="videoNav(1)" style="display:none">Next ▶</button>
       </div>
       <div class="video-modal-footer">
         <a id="video-ka-link" href="#" target="_blank" rel="noopener" class="video-ka-link">
@@ -2451,25 +2466,48 @@ function closeStoryModal() {
 }
 
 // ── VIDEO LESSON MAP ──────────────────────────────────────────────────
-// yt: YouTube video ID (Khan Academy). ka: Khan Academy page URL.
+// yt: YouTube video ID (Khan Academy). ytIds: full array. ka: Khan Academy page URL.
 // NOTE: Verify video IDs before deploying — search YouTube for each to confirm.
 let LESSON_MAP = {};  // populated by loadAppData()
+let _videoIdx  = 0;  // current video index in the modal
+let _videoLesson = null;
 
 function openVideoModal(cat) {
   const lesson = LESSON_MAP[cat];
   if (!lesson) return;
-  document.getElementById('video-modal-label').textContent = lesson.label;
-  document.getElementById('video-modal-cat').textContent = cat;
-  document.getElementById('video-ka-link').href = lesson.ka;
-  // Embed from YouTube Kids so Qustodio allows it
-  document.getElementById('video-iframe').src =
-    `https://www.youtubekids.com/embed/${lesson.yt}?autoplay=1&rel=0`;
+  _videoLesson = lesson;
+  _videoIdx = 0;
+  _renderVideoModal();
   document.getElementById('video-modal').classList.add('open');
+}
+
+function _renderVideoModal() {
+  const ids = _videoLesson.ytIds || [_videoLesson.yt];
+  const id  = ids[_videoIdx];
+  document.getElementById('video-modal-label').textContent = _videoLesson.label;
+  document.getElementById('video-modal-cat').textContent   = _videoLesson.cat || '';
+  document.getElementById('video-ka-link').href            = _videoLesson.ka;
+  // Embed via YouTube Kids so Qustodio allows it
+  document.getElementById('video-iframe').src =
+    `https://www.youtubekids.com/embed/${id}?autoplay=1&rel=0`;
+  // Counter + nav
+  const total = ids.length;
+  document.getElementById('video-counter').textContent =
+    total > 1 ? `Video ${_videoIdx + 1} of ${total}` : '';
+  document.getElementById('video-prev').style.display = _videoIdx > 0           ? '' : 'none';
+  document.getElementById('video-next').style.display = _videoIdx < total - 1   ? '' : 'none';
+}
+
+function videoNav(dir) {
+  const ids = _videoLesson?.ytIds || [_videoLesson?.yt];
+  _videoIdx = Math.max(0, Math.min(ids.length - 1, _videoIdx + dir));
+  _renderVideoModal();
 }
 
 function closeVideoModal() {
   document.getElementById('video-modal').classList.remove('open');
   document.getElementById('video-iframe').src = '';
+  _videoLesson = null; _videoIdx = 0;
 }
 
 // ── PIN GATE ───────────────────────────────────────────────────────
@@ -2884,7 +2922,7 @@ async function loadAppData() {
   const [passRes, qRes, lessonRes, cfgRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/passages?select=id,title,byline,body`, { headers: h }),
     fetch(`${SUPABASE_URL}/rest/v1/questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage&active=eq.true`, { headers: h }),
-    fetch(`${SUPABASE_URL}/rest/v1/lesson_map?select=category,label,youtube_id,ka_url`, { headers: h }),
+    fetch(`${SUPABASE_URL}/rest/v1/lesson_map?select=category,label,youtube_id,youtube_ids,ka_url`, { headers: h }),
     fetch(`${SUPABASE_URL}/rest/v1/app_config?select=key,value`, { headers: h }),
   ]);
 
@@ -2915,9 +2953,15 @@ async function loadAppData() {
   MATH_QUESTIONS = dbQ.filter(q => q.subject === 'Math').map(dbToQ);
   ELA_QUESTIONS  = dbQ.filter(q => q.subject === 'Reading').map(dbToQ);
 
-  // Lesson map: { category → { label, yt, ka } }
+  // Lesson map: { category → { label, yt, ytIds, ka } }
+  // ytIds is the full array of video IDs (primary first); yt is kept for backward compat
   LESSON_MAP = {};
-  for (const l of dbLesson) LESSON_MAP[l.category] = { label: l.label, yt: l.youtube_id, ka: l.ka_url };
+  for (const l of dbLesson) LESSON_MAP[l.category] = {
+    label: l.label,
+    yt:    l.youtube_id,
+    ytIds: Array.isArray(l.youtube_ids) && l.youtube_ids.length ? l.youtube_ids : [l.youtube_id],
+    ka:    l.ka_url,
+  };
 
   // Config: PINs
   const cfg = {};
