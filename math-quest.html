@@ -2537,10 +2537,14 @@ async function _showParentDash() {
     _fetchHotspots(),
   ]);
 
-  _renderStats(attempts);
-  _renderTrend(attempts);
-  _renderSubjects(attempts);
-  _renderDomains(attempts);
+  // Analytics only count real sessions (completed + at least 1 question answered).
+  // Recent Sessions list always shows everything so abandoned sessions are still visible.
+  const analyticsAttempts = attempts.filter(a => a.completed === true && (a.total || 0) > 0);
+
+  _renderStats(analyticsAttempts);
+  _renderTrend(analyticsAttempts);
+  _renderSubjects(analyticsAttempts);
+  _renderDomains(analyticsAttempts);
   _renderHotspots(hotspots);
   _renderRecent(attempts);
 }
