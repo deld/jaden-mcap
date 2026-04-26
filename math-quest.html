@@ -1987,6 +1987,21 @@ function saveOneQuestionAttempt(q, correct, time_ms) {
       correct, time_ms,
     }),
   }).catch(() => {});
+
+  // Also keep the attempts row up-to-date with running totals so that
+  // abandoned sessions show real progress instead of 0% in the parent dashboard.
+  // testAnswers / practiceAnswers are already updated before this call.
+  const runningAnswers = testMode ? testAnswers : practiceAnswers;
+  if (runningAnswers.length) {
+    const _total   = runningAnswers.length;
+    const _score   = runningAnswers.filter(a => a.correct).length;
+    const _pct     = Math.round(_score / _total * 100);
+    fetch(`${SUPABASE_URL}/rest/v1/attempts?id=eq.${currentAttemptId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
+      body: JSON.stringify({ score: _score, total: _total, pct: _pct }),
+    }).catch(() => {});
+  }
 }
 
 async function saveAttempt(data) {
