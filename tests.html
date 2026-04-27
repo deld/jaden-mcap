@@ -561,7 +561,8 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     iframe.onload = () => {
       const poll = () => {
         const data = iframe.contentWindow._mcapData;
-        if (data && data.MATH_QUESTIONS && data.MATH_QUESTIONS.length > 0) {
+        // New architecture: questions lazy-loaded; check DOMAIN_COUNTS instead
+        if (data && data.DOMAIN_COUNTS && data.DOMAIN_COUNTS.Math && data.DOMAIN_COUNTS.Math.All > 0) {
           resolve(iframe.contentWindow);
         } else if (++attempts < 60) {
           setTimeout(poll, 300);
@@ -577,17 +578,23 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
 
   const appData = appIframe._mcapData;
 
+  // Pre-load question data for suites 13 & 14 (lazy-loaded in new architecture)
+  await appIframe.ensureQuestionsLoaded('Math', 'All');
+  await appIframe.ensureQuestionsLoaded('Reading', 'All');
+
   // ── 12. App Logic — data loading ─────────────────────────────────────────
   suite('🧠 App Logic — data loading (iframe)');
 
-  await test('loadAppData() populates MATH_QUESTIONS with 215+ entries', async () => {
-    assert(appData.MATH_QUESTIONS.length >= 215, `Got ${appData.MATH_QUESTIONS.length}`);
-    return `${appData.MATH_QUESTIONS.length} math questions loaded`;
+  await test('loadAppData() populates DOMAIN_COUNTS with 215+ Math questions', async () => {
+    const total = appData.DOMAIN_COUNTS?.Math?.All || 0;
+    assert(total >= 215, `Got ${total} Math questions in DOMAIN_COUNTS`);
+    return `${total} Math questions counted`;
   });
 
-  await test('loadAppData() populates ELA_QUESTIONS with 143+ entries', async () => {
-    assert(appData.ELA_QUESTIONS.length >= 143, `Got ${appData.ELA_QUESTIONS.length}`);
-    return `${appData.ELA_QUESTIONS.length} ELA questions loaded`;
+  await test('loadAppData() populates DOMAIN_COUNTS with 143+ Reading questions', async () => {
+    const total = appData.DOMAIN_COUNTS?.Reading?.All || 0;
+    assert(total >= 143, `Got ${total} Reading questions in DOMAIN_COUNTS`);
+    return `${total} Reading questions counted`;
   });
 
   await test('loadAppData() populates PASSAGES with all 4 reading passages', async () => {
@@ -619,15 +626,13 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   });
 
   await test('Question objects have correct structure after DB transform (domain, cat, type, text, correct)', async () => {
-    const bad = appData.MATH_QUESTIONS.filter(q =>
-      !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null
-    );
+    const mathQs = appIframe.Q_CACHE[appIframe._qKey('Math','All')] || [];
+    const elaQs  = appIframe.Q_CACHE[appIframe._qKey('Reading','All')] || [];
+    const bad = mathQs.filter(q => !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null);
     assert(bad.length === 0, `${bad.length} Math questions missing required fields`);
-    const badEla = appData.ELA_QUESTIONS.filter(q =>
-      !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null
-    );
+    const badEla = elaQs.filter(q => !q.domain || !q.cat || !q.type || !q.text || q.correct === undefined || q.correct === null);
     assert(badEla.length === 0, `${badEla.length} ELA questions missing required fields`);
-    return `All ${appData.MATH_QUESTIONS.length + appData.ELA_QUESTIONS.length} questions have required fields`;
+    return `All ${mathQs.length + elaQs.length} questions have required fields`;
   });
 
   // ── 13. App Logic — question filtering ───────────────────────────────────
@@ -679,23 +684,22 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `${qs.length} RL questions`;
   });
 
-  await test('practiceQCount limit: startGame with count=5 produces exactly 5 questions', async () => {
+  await test('practiceQCount limit: filteredQuestions() base count matches DOMAIN_COUNTS', async () => {
     appIframe.switchSubject('Math');
     appIframe.switchDomain('All');
-    appIframe.practiceQCount = 5;   // let variable not on window; use workaround
-    // Call startGame which reads practiceQCount from its own scope — set via _mcapData won't work
-    // Instead verify via the questions array after startGame
-    // We access practiceQCount via a closure trick:
     const before = appIframe.filteredQuestions().length;
+    const expected = appData.DOMAIN_COUNTS?.Math?.All || 0;
     assert(before >= 215, `filteredQuestions base count should be ≥215, got ${before}`);
-    return `filteredQuestions() confirmed at ${before} before limit`;
+    assert(before === expected, `filteredQuestions count (${before}) should match DOMAIN_COUNTS.Math.All (${expected})`);
+    return `filteredQuestions() = ${before} (matches DOMAIN_COUNTS)`;
   });
 
   // ── 14. Question data structure validation ────────────────────────────────
   suite('📋 Question data structure (iframe)');
 
   await test('Single-choice questions have an options array with at least 2 entries', async () => {
-    const singles = appData.MATH_QUESTIONS.filter(q => q.type === 'single');
+    const mathQs = appIframe.Q_CACHE[appIframe._qKey('Math','All')] || [];
+    const singles = mathQs.filter(q => q.type === 'single');
     assert(singles.length > 0, 'No single-choice math questions found');
     const bad = singles.filter(q => !Array.isArray(q.options) || q.options.length < 2);
     assert(bad.length === 0, `${bad.length} single-choice questions missing options`);
@@ -703,7 +707,8 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   });
 
   await test('Multi-select questions have a correct array with 2+ entries', async () => {
-    const multis = appData.MATH_QUESTIONS.filter(q => q.type === 'multi');
+    const mathQs = appIframe.Q_CACHE[appIframe._qKey('Math','All')] || [];
+    const multis = mathQs.filter(q => q.type === 'multi');
     assert(multis.length > 0, 'No multi-select math questions found');
     const bad = multis.filter(q => !Array.isArray(q.correct) || q.correct.length < 2);
     assert(bad.length === 0, `${bad.length} multi questions have fewer than 2 correct answers`);
@@ -711,7 +716,8 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   });
 
   await test('Numeric questions have a numeric correct value (not array, not null)', async () => {
-    const numerics = appData.MATH_QUESTIONS.filter(q => q.type === 'numeric');
+    const mathQs = appIframe.Q_CACHE[appIframe._qKey('Math','All')] || [];
+    const numerics = mathQs.filter(q => q.type === 'numeric');
     assert(numerics.length > 0, 'No numeric math questions found');
     const bad = numerics.filter(q => q.correct === null || q.correct === undefined || typeof q.correct !== 'number');
     assert(bad.length === 0, `${bad.length} numeric questions have non-numeric correct value: ${bad.slice(0,3).map(q=>JSON.stringify(q.correct)).join(', ')}`);
@@ -719,7 +725,8 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   });
 
   await test('ELA questions with passageId reference passages that exist in PASSAGES', async () => {
-    const withId = appData.ELA_QUESTIONS.filter(q => q.passageId);
+    const elaQs = appIframe.Q_CACHE[appIframe._qKey('Reading','All')] || [];
+    const withId = elaQs.filter(q => q.passageId);
     assert(withId.length > 0, 'No ELA questions with passageId found');
     const missing = withId.filter(q => !appData.PASSAGES[q.passageId]);
     assert(missing.length === 0, `${missing.length} ELA questions reference missing passageIds: ${[...new Set(missing.map(q=>q.passageId))].join(', ')}`);
@@ -727,9 +734,12 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   });
 
   await test('All questions have a non-empty hint', async () => {
-    const noHint = [...appData.MATH_QUESTIONS, ...appData.ELA_QUESTIONS].filter(q => !q.hint || q.hint.trim() === '');
+    const mathQs = appIframe.Q_CACHE[appIframe._qKey('Math','All')] || [];
+    const elaQs  = appIframe.Q_CACHE[appIframe._qKey('Reading','All')] || [];
+    const allQs  = [...mathQs, ...elaQs];
+    const noHint = allQs.filter(q => !q.hint || q.hint.trim() === '');
     assert(noHint.length === 0, `${noHint.length} questions are missing hints`);
-    return `All ${appData.MATH_QUESTIONS.length + appData.ELA_QUESTIONS.length} questions have hints`;
+    return `All ${allQs.length} questions have hints`;
   });
 
   // ── 15. Save functions via app iframe ─────────────────────────────────────

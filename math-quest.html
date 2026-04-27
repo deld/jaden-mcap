@@ -1189,9 +1189,58 @@ const CAT_STYLE = {
 // ═══════════════════════════════════════════════════════════════════
 let PASSAGES   = {};  // populated by loadAppData()
 
-let MATH_QUESTIONS = [];  // populated by loadAppData()
+// Domain counts for UI (loaded at startup — lightweight, no question content)
+let DOMAIN_COUNTS = {}; // { Math: { All: 1840, OA: 624, ... }, Reading: { All: 50 } }
 
-let ELA_QUESTIONS  = [];  // populated by loadAppData()
+// Question cache — populated lazily when a session starts, keyed by "Subject_Domain"
+let Q_CACHE = {};
+function _qKey(subj, dom) { return `${subj}_${dom||'All'}`; }
+
+// Convert a DB question row to the app's internal format
+function dbToQ(q) {
+  const out = {
+    domain: q.domain, cat: q.category, type: q.type, text: q.text,
+    options: q.options || undefined,
+    correct: q.correct,
+    hint: q.hint || undefined,
+  };
+  if (q.passage_id) out.passageId = q.passage_id;
+  if (q.passage)    out.passage   = q.passage;
+  return out;
+}
+
+// Fetch questions for a subject+domain into Q_CACHE if not already there.
+// Only called on session start, never on app load.
+async function ensureQuestionsLoaded(subject, domain) {
+  const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
+  const domKey = _qKey(subject, domain);
+  const allKey = _qKey(subject, 'All');
+
+  // Already cached
+  if (Q_CACHE[domKey]) return;
+  // If 'All' is cached we can derive any domain from it
+  if (Q_CACHE[allKey]) {
+    if (domain && domain !== 'All')
+      Q_CACHE[domKey] = Q_CACHE[allKey].filter(q => q.domain === domain);
+    return;
+  }
+
+  // Fetch from Supabase (paginated)
+  const domFilter = (!domain || domain === 'All') ? '' : `&domain=eq.${encodeURIComponent(domain)}`;
+  const rows = await _fetchAll(
+    `questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage` +
+    `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${domFilter}`,
+    h
+  );
+  Q_CACHE[domKey] = rows.map(dbToQ);
+
+  // Pre-populate per-domain sub-caches when 'All' was fetched
+  if (!domain || domain === 'All') {
+    const byDom = {};
+    Q_CACHE[domKey].forEach(q => { (byDom[q.domain] = byDom[q.domain]||[]).push(q); });
+    Object.entries(byDom).forEach(([d, qs]) => { Q_CACHE[_qKey(subject, d)] = qs; });
+  }
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  STATE
@@ -1200,8 +1249,11 @@ let activeSubject  = 'Math';
 let activeDomain   = 'All';
 let practiceQCount = 0; // 0 = all available
 
-function currentDomains()   { return activeSubject === 'Math' ? MATH_DOMAINS   : ELA_DOMAINS; }
-function currentQuestions() { return activeSubject === 'Math' ? MATH_QUESTIONS : ELA_QUESTIONS; }
+function currentDomains() { return activeSubject === 'Math' ? MATH_DOMAINS : ELA_DOMAINS; }
+// Returns cached questions for the active subject (all domains)
+function currentQuestions() {
+  return Q_CACHE[_qKey(activeSubject, 'All')] || Q_CACHE[_qKey(activeSubject, activeDomain)] || [];
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  NAV SETUP
@@ -1214,13 +1266,10 @@ function buildNav() {
   const nav = document.getElementById('domain-nav');
   nav.innerHTML = '';
   const domains = currentDomains();
-  const qs = currentQuestions();
-  const counts = {};
-  qs.forEach(q => { counts[q.domain] = (counts[q.domain]||0)+1; });
-  const total = qs.length;
+  const subCounts = DOMAIN_COUNTS[activeSubject] || {};
 
   domains.forEach(d => {
-    const cnt = d.id==='All' ? total : (counts[d.id]||0);
+    const cnt = d.id==='All' ? (subCounts.All||0) : (subCounts[d.id]||0);
     const btn = document.createElement('button');
     btn.className = 'nav-btn' + (d.id===activeDomain ? ' active' : '');
     btn.innerHTML = `<span class="nav-icon">${d.icon}</span><span class="nav-code">${d.code}</span><span class="nav-count">${cnt}q</span>`;
@@ -1251,7 +1300,8 @@ function updateStartScreen() {
   banner.style.background = d.bg;
   banner.style.color = d.fg;
 
-  const qs = filteredQuestions();
+  const subCounts = DOMAIN_COUNTS[activeSubject] || {};
+  const qTotal = activeDomain === 'All' ? (subCounts.All||0) : (subCounts[activeDomain]||0);
   banner.textContent = `${d.icon}  ${d.label}`;
 
   // Title & icon based on subject + domain
@@ -1266,31 +1316,33 @@ function updateStartScreen() {
   const desc = document.getElementById('start-desc');
   const domainName = activeSubject === 'Math' ? 'Grade 3 MCAP math topics' : 'Grade 3 MCAP reading skills';
   if (activeDomain === 'All') {
-    desc.innerHTML = `<strong>${qs.length} questions</strong> covering all ${domainName}!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
+    desc.innerHTML = `<strong>${qTotal} questions</strong> covering all ${domainName}!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   } else {
-    desc.innerHTML = `<strong>${qs.length} questions</strong> focused on <em>${d.label}</em>.<br>Get 3 correct in a row for a 🔥 streak bonus!`;
+    desc.innerHTML = `<strong>${qTotal} questions</strong> focused on <em>${d.label}</em>.<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   }
 
   // Build question count picker
-  const total = qs.length;
-  const counts = [10, 20, 30, 50, 100].filter(n => n < total);
-  counts.push(total); // "All"
-  if (practiceQCount === 0 || practiceQCount > total) practiceQCount = total;
+  const counts = [10, 20, 30, 50, 100].filter(n => n < qTotal);
+  counts.push(qTotal); // "All"
+  if (practiceQCount === 0 || practiceQCount > qTotal) practiceQCount = qTotal;
   const btnWrap = document.getElementById('q-count-btns');
   btnWrap.innerHTML = '';
   counts.forEach(n => {
     const b = document.createElement('button');
     b.className = 'count-btn' + (practiceQCount === n ? ' active' : '');
-    b.textContent = n === total ? `All ${n}` : n;
+    b.textContent = n === qTotal ? `All ${n}` : n;
     b.onclick = () => { practiceQCount = n; updateStartScreen(); };
     btnWrap.appendChild(b);
   });
 }
 
 function filteredQuestions() {
-  const qs = currentQuestions();
-  if (activeDomain === 'All') return [...qs];
-  return qs.filter(q => q.domain === activeDomain);
+  // Use the domain-specific cache if available, otherwise filter from 'All'
+  const domKey = _qKey(activeSubject, activeDomain);
+  if (Q_CACHE[domKey]) return [...Q_CACHE[domKey]];
+  const allKey = _qKey(activeSubject, 'All');
+  if (Q_CACHE[allKey]) return activeDomain === 'All' ? [...Q_CACHE[allKey]] : Q_CACHE[allKey].filter(q => q.domain === activeDomain);
+  return [];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1348,6 +1400,7 @@ function show(id) {
 }
 
 async function startGame(shuffle = true) {
+  await ensureQuestionsLoaded(activeSubject, activeDomain);
   questions = filteredQuestions();
   // Apply question count limit (always shuffle first so count picks a random subset)
   if (practiceQCount > 0 && practiceQCount < questions.length) {
@@ -1768,8 +1821,9 @@ async function startTest() {
   const qCount = testModeType === 'mcap' ? preset.questions : testQCount;
   const mins   = testModeType === 'mcap' ? preset.minutes   : testMinutes;
 
-  // Set subject context to what's selected in test config
+  // Set subject context and ensure questions are loaded for this subject
   activeSubject = testSubject;
+  await ensureQuestionsLoaded(testSubject, 'All');
   buildNav();
 
   // Pick all questions for the subject and shuffle
@@ -2934,6 +2988,7 @@ async function _fetchAll(path, headers) {
 async function loadAppData() {
   const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
 
+  // Fetch everything except question content (counts only — tiny payload)
   const [passRes, lessonRes, cfgRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/passages?select=id,title,byline,body`, { headers: h }),
     fetch(`${SUPABASE_URL}/rest/v1/lesson_map?select=category,label,youtube_id,youtube_ids,ka_url`, { headers: h }),
@@ -2944,11 +2999,15 @@ async function loadAppData() {
     throw new Error('Failed to load app data from Supabase');
   }
 
-  // Questions are paginated (may exceed PostgREST's 1000-row default limit)
-  const dbQ = await _fetchAll(
-    'questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage&active=eq.true',
-    h
-  );
+  // Lightweight count fetch: just subject+domain, paginated (no question content)
+  const countRows = await _fetchAll('questions?select=subject,domain&active=eq.true', h);
+  DOMAIN_COUNTS = {};
+  for (const r of countRows) {
+    const s = r.subject || 'Math';
+    if (!DOMAIN_COUNTS[s]) DOMAIN_COUNTS[s] = { All: 0 };
+    DOMAIN_COUNTS[s].All++;
+    DOMAIN_COUNTS[s][r.domain] = (DOMAIN_COUNTS[s][r.domain] || 0) + 1;
+  }
 
   const [dbPass, dbLesson, dbCfg] = await Promise.all([
     passRes.json(), lessonRes.json(), cfgRes.json()
@@ -2958,23 +3017,7 @@ async function loadAppData() {
   PASSAGES = {};
   for (const p of dbPass) PASSAGES[p.id] = { title: p.title, byline: p.byline || '', text: p.body };
 
-  // Questions → JS format (cat ← category, passageId ← passage_id)
-  function dbToQ(q) {
-    const out = {
-      domain: q.domain, cat: q.category, type: q.type, text: q.text,
-      options: q.options || undefined,
-      correct: q.correct,
-      hint: q.hint || undefined,
-    };
-    if (q.passage_id) out.passageId = q.passage_id;
-    if (q.passage)    out.passage   = q.passage;
-    return out;
-  }
-  MATH_QUESTIONS = dbQ.filter(q => q.subject === 'Math').map(dbToQ);
-  ELA_QUESTIONS  = dbQ.filter(q => q.subject === 'Reading').map(dbToQ);
-
   // Lesson map: { category → { label, yt, ytIds, ka } }
-  // ytIds is the full array of video IDs (primary first); yt is kept for backward compat
   LESSON_MAP = {};
   for (const l of dbLesson) LESSON_MAP[l.category] = {
     label: l.label,
@@ -2989,8 +3032,10 @@ async function loadAppData() {
   if (cfg['pin_student']) PIN_CORRECT = cfg['pin_student'];
   if (cfg['pin_parent'])  PIN_PARENT  = cfg['pin_parent'];
 
-  // Keep migration helper up to date
-  window._mcapData = { PASSAGES, MATH_QUESTIONS, ELA_QUESTIONS, LESSON_MAP, PIN_CORRECT, PIN_PARENT };
+  // Expose for tests — Q_CACHE populated lazily; _qKey needed to look up entries
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS };
+  window._qKey      = _qKey;      // key builder: (subject, domain) → string
+  window.Q_CACHE    = Q_CACHE;    // live reference: tests can read after ensureQuestionsLoaded
 }
 
 // ── STARS BG ───────────────────────────────────────────────────────
