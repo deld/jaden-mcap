@@ -937,12 +937,13 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     }
   }
 
-  // Verify embed URL uses youtube.com/embed (not youtubekids.com which blocks iframes via X-Frame-Options: SAMEORIGIN)
-  await test('App embeds videos via youtube.com/embed (iframe-compatible)', async () => {
+  // Verify videos link to youtubekids.com/watch (not embedded — youtubekids.com blocks cross-origin iframes)
+  await test('App links videos to youtubekids.com/watch (no iframe embed)', async () => {
     const src = await fetch('/math-quest.html').then(r => r.text());
-    assert(src.includes('youtube.com/embed/'), 'Embed URL should use youtube.com/embed/');
-    assert(!src.includes('youtubekids.com/embed/'), 'Should NOT use youtubekids.com (blocks cross-origin iframes)');
-    return 'youtube.com/embed/ confirmed';
+    assert(src.includes('youtubekids.com/watch?v='), 'Should link to youtubekids.com/watch?v=...');
+    assert(!src.includes('youtubekids.com/embed/'), 'Should NOT use youtubekids.com/embed/ (blocked by X-Frame-Options)');
+    assert(!src.includes('youtube.com/embed/'), 'Should NOT use youtube.com/embed/ (youtube.com is blocked on device)');
+    return 'youtubekids.com/watch links confirmed';
   });
 
   document.getElementById('run-btn').disabled = false;
