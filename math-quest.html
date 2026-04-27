@@ -2915,22 +2915,43 @@ async function deleteAttempt(id, btn) {
 }
 
 // ── LOAD APP DATA FROM SUPABASE ────────────────────────────────────
+// Fetch all rows from a Supabase table, paginating 1000 at a time
+async function _fetchAll(path, headers) {
+  const PAGE = 1000;
+  let all = [], offset = 0;
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}offset=${offset}&limit=${PAGE}`, { headers });
+    if (!res.ok) throw new Error(`Fetch failed: ${path}`);
+    const rows = await res.json();
+    all = all.concat(rows);
+    if (rows.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
+}
+
 async function loadAppData() {
   const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
 
-  const [passRes, qRes, lessonRes, cfgRes] = await Promise.all([
+  const [passRes, lessonRes, cfgRes] = await Promise.all([
     fetch(`${SUPABASE_URL}/rest/v1/passages?select=id,title,byline,body`, { headers: h }),
-    fetch(`${SUPABASE_URL}/rest/v1/questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage&active=eq.true`, { headers: h }),
     fetch(`${SUPABASE_URL}/rest/v1/lesson_map?select=category,label,youtube_id,youtube_ids,ka_url`, { headers: h }),
     fetch(`${SUPABASE_URL}/rest/v1/app_config?select=key,value`, { headers: h }),
   ]);
 
-  if (!passRes.ok || !qRes.ok || !lessonRes.ok || !cfgRes.ok) {
+  if (!passRes.ok || !lessonRes.ok || !cfgRes.ok) {
     throw new Error('Failed to load app data from Supabase');
   }
 
-  const [dbPass, dbQ, dbLesson, dbCfg] = await Promise.all([
-    passRes.json(), qRes.json(), lessonRes.json(), cfgRes.json()
+  // Questions are paginated (may exceed PostgREST's 1000-row default limit)
+  const dbQ = await _fetchAll(
+    'questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage&active=eq.true',
+    h
+  );
+
+  const [dbPass, dbLesson, dbCfg] = await Promise.all([
+    passRes.json(), lessonRes.json(), cfgRes.json()
   ]);
 
   // Passages: { id → { title, byline, text } }
