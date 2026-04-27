@@ -937,12 +937,12 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     }
   }
 
-  // Verify embed URL uses YouTube Kids (youtubekids.com), not regular youtube.com
-  await test('App embeds videos via youtubekids.com (not youtube.com)', async () => {
+  // Verify embed URL uses youtube.com/embed (not youtubekids.com which blocks iframes via X-Frame-Options: SAMEORIGIN)
+  await test('App embeds videos via youtube.com/embed (iframe-compatible)', async () => {
     const src = await fetch('/math-quest.html').then(r => r.text());
-    assert(src.includes('youtubekids.com/embed/'), 'Embed URL should use youtubekids.com/embed/');
-    assert(!src.includes('youtube.com/embed/'), 'Should NOT use regular youtube.com/embed/');
-    return 'youtubekids.com/embed/ confirmed';
+    assert(src.includes('youtube.com/embed/'), 'Embed URL should use youtube.com/embed/');
+    assert(!src.includes('youtubekids.com/embed/'), 'Should NOT use youtubekids.com (blocks cross-origin iframes)');
+    return 'youtube.com/embed/ confirmed';
   });
 
   document.getElementById('run-btn').disabled = false;

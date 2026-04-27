@@ -2487,9 +2487,8 @@ function _renderVideoModal() {
   document.getElementById('video-modal-label').textContent = _videoLesson.label;
   document.getElementById('video-modal-cat').textContent   = _videoLesson.cat || '';
   document.getElementById('video-ka-link').href            = _videoLesson.ka;
-  // Embed via YouTube Kids so Qustodio allows it
   document.getElementById('video-iframe').src =
-    `https://www.youtubekids.com/embed/${id}?autoplay=1&rel=0`;
+    `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
   // Counter + nav
   const total = ids.length;
   document.getElementById('video-counter').textContent =
