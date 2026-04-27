@@ -2398,26 +2398,11 @@ async function showWeakPractice() {
   const bank = await loadWrongBank();
   if (!bank.length) return;
 
-  // Gather categories and domains from wrong bank
-  const weakCats = new Set(bank.map(q => q.cat));
-  const weakDoms = new Set(bank.map(q => q.domain));
-
-  // Pull similar questions from full bank (same domain or category, not in wrong bank)
-  const allQ = currentQuestions();
-  const similar = allQ.filter(q =>
-    !bank.some(b => b.text === q.text) &&
-    (weakCats.has(q.cat) || weakDoms.has(q.domain))
-  );
-
-  // Wrong bank first (most-missed order from Supabase), then shuffled similar
-  const shuffledSimilar = [...similar].sort(() => Math.random() - .5).slice(0, Math.min(similar.length, bank.length * 2));
-
   // Replace numeric wrong-bank questions with fresh variants (different numbers,
-  // same skill) so Jaden can't memorise the exact answer. Area & Perimeter
-  // variants intentionally mix both concepts.
+  // same skill) so Jaden can't memorise the exact answer.
   const variantBank = bank.map(q => generateVariant(q) || q);
 
-  questions = [...variantBank, ...shuffledSimilar];
+  questions = [...variantBank];
   currentQ = 0; score = 0; streak = 0; bestStreak = 0; practiceAnswers = [];
   shownPassages = new Set();
   testMode = false;
@@ -2429,7 +2414,7 @@ async function showWeakPractice() {
   // Brief banner
   const popup = document.getElementById('streak-popup');
   popup.style.display = 'block';
-  popup.textContent = `🎯 ${bank.length} missed + ${shuffledSimilar.length} similar questions`;
+  popup.textContent = `🎯 Practising ${bank.length} missed question${bank.length !== 1 ? 's' : ''}`;
   setTimeout(() => { popup.style.display = 'none'; }, 2800);
 }
 
