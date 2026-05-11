@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jaden's MCAP Quest!</title>
+  <title>Jaden's Quest</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -774,7 +774,7 @@
   <!-- START SCREEN -->
   <div id="start-screen" class="card">
     <span class="subject-icon" id="subject-icon">🚀</span>
-    <h1 id="start-title">Jaden's Math Quest!</h1>
+    <h1 id="start-title">Jaden's Quest</h1>
     <div class="domain-banner" id="domain-banner"></div>
     <p id="start-desc"></p>
     <!-- Question count picker -->
@@ -1021,7 +1021,7 @@
         <a id="video-ka-link" href="#" target="_blank" rel="noopener" class="video-ka-link">
           🎓 Open full lesson on Khan Academy →
         </a>
-        <span class="video-note">Khan Academy · Grade 3</span>
+        <span class="video-note" id="video-grade-note">Khan Academy · Grade 3</span>
       </div>
     </div>
   </div>
@@ -1048,7 +1048,7 @@
     <div class="parent-dash-card" style="display:flex;justify-content:space-between;align-items:center;padding:14px 22px;">
       <div>
         <div style="font-size:1.25rem;font-weight:900;color:#0f3460;">👨‍👩‍👧 Parent Dashboard</div>
-        <div style="font-size:.8rem;color:#888;">Jaden · Grade 3 · MCAP Prep</div>
+        <div style="font-size:.8rem;color:#888;" id="test-config-grade-label">Jaden · Grade 3</div>
       </div>
       <button class="btn btn-outlined" style="padding:7px 16px;font-size:.82rem;" onclick="exitParentMode()">← Back to App</button>
     </div>
@@ -1100,7 +1100,7 @@
 <div id="pin-gate">
   <div class="pin-card">
     <span class="pin-icon">🔐</span>
-    <h2>Jaden's MCAP Quest</h2>
+    <h2>Jaden's Quest</h2>
     <p>Enter your PIN to continue</p>
     <div class="pin-dots">
       <div class="pin-dot" id="pd0"></div>
@@ -1225,11 +1225,12 @@ async function ensureQuestionsLoaded(subject, domain) {
     return;
   }
 
-  // Fetch from Supabase (paginated)
-  const domFilter = (!domain || domain === 'All') ? '' : `&domain=eq.${encodeURIComponent(domain)}`;
+  // Fetch from Supabase (paginated) — filtered by grade once migration is applied
+  const domFilter   = (!domain || domain === 'All') ? '' : `&domain=eq.${encodeURIComponent(domain)}`;
+  const gradeFilter = `&grade=eq.${studentGrade}`;
   const rows = await _fetchAll(
     `questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage` +
-    `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${domFilter}`,
+    `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${gradeFilter}${domFilter}`,
     h
   );
   Q_CACHE[domKey] = rows.map(dbToQ);
@@ -1307,14 +1308,14 @@ function updateStartScreen() {
   // Title & icon based on subject + domain
   if (activeSubject === 'Math') {
     document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '🚀' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'🚀'}).icon;
-    document.getElementById('start-title').textContent = 'Jaden\'s Math Quest!';
+    document.getElementById('start-title').textContent = 'Jaden\'s Quest';
   } else {
     document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '📚' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'📚'}).icon;
-    document.getElementById('start-title').textContent = 'Jaden\'s Reading Quest!';
+    document.getElementById('start-title').textContent = 'Jaden\'s Quest';
   }
 
   const desc = document.getElementById('start-desc');
-  const domainName = activeSubject === 'Math' ? 'Grade 3 MCAP math topics' : 'Grade 3 MCAP reading skills';
+  const domainName = activeSubject === 'Math' ? `Grade ${studentGrade} math topics` : `Grade ${studentGrade} reading skills`;
   if (activeDomain === 'All') {
     desc.innerHTML = `<strong>${qTotal} questions</strong> covering all ${domainName}!<br>Get 3 correct in a row for a 🔥 streak bonus!`;
   } else {
@@ -1724,7 +1725,7 @@ function showEndScreen() {
   const total=questions.length, pct=score/total;
   let trophy,starsHtml,msg;
   const isReading = activeSubject === 'Reading';
-  if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg=isReading ? 'PERFECT SCORE! You are an absolute reading champion, Jaden! 🎉 Ready for MCAP ELA!' : 'PERFECT SCORE! You are an absolute math champion, Jaden! 🎉 Totally ready for the MCAP!'; }
+  if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg=isReading ? 'PERFECT SCORE! You are an absolute reading champion, Jaden! 🎉' : 'PERFECT SCORE! You are an absolute math champion, Jaden! 🎉'; }
   else if(pct>=.85) { trophy='🥇'; starsHtml='⭐⭐⭐⭐✨'; msg='Amazing job! You really know your stuff! Review the ones you missed and you\'ll be unbeatable! 💪'; }
   else if(pct>=.7)  { trophy='🥈'; starsHtml='⭐⭐⭐✨✨'; msg='Great work! You\'re getting stronger every practice! Keep going! 🌟'; }
   else if(pct>=.5)  { trophy='🌟'; starsHtml='⭐⭐✨✨✨'; msg='Good effort! Every practice makes you better. Play again and watch your score climb! 💫'; }
@@ -1737,7 +1738,7 @@ function showEndScreen() {
   document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
   document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
   document.getElementById('stat-domain').textContent=d?d.icon+' '+d.code:'ALL';
-  document.getElementById('end-title').textContent = isReading ? 'Reading Quest Complete!' : 'Math Quest Complete!';
+  document.getElementById('end-title').textContent = 'Quest Complete!';
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
@@ -2563,9 +2564,19 @@ function closeVideoModal() {
   _videoLesson = null; _videoIdx = 0;
 }
 
+// ── GRADE-AWARE LABELS ─────────────────────────────────────────────
+function _applyGradeLabels() {
+  const g = studentGrade;
+  const noteEl = document.getElementById('video-grade-note');
+  if (noteEl) noteEl.textContent = `Khan Academy · Grade ${g}`;
+  const configEl = document.getElementById('test-config-grade-label');
+  if (configEl) configEl.textContent = `Jaden · Grade ${g}`;
+}
+
 // ── PIN GATE ───────────────────────────────────────────────────────
-let PIN_CORRECT = '2016';  // overwritten by loadAppData()
-let PIN_PARENT  = '1713';
+let PIN_CORRECT   = '2016';  // overwritten by loadAppData()
+let PIN_PARENT    = '1713';
+let studentGrade  = 3;       // overwritten by loadAppData() from app_config.student_grade
 let pinEntry = '';
 
 function pinUpdateDots() {
@@ -3000,7 +3011,8 @@ async function loadAppData() {
   }
 
   // Lightweight count fetch: just subject+domain, paginated (no question content)
-  const countRows = await _fetchAll('questions?select=subject,domain&active=eq.true', h);
+  // studentGrade is set from cfg above before this line
+  const countRows = await _fetchAll(`questions?select=subject,domain&active=eq.true&grade=eq.${studentGrade}`, h);
   DOMAIN_COUNTS = {};
   for (const r of countRows) {
     const s = r.subject || 'Math';
@@ -3029,11 +3041,15 @@ async function loadAppData() {
   // Config: PINs
   const cfg = {};
   for (const c of dbCfg) cfg[c.key] = c.value;
-  if (cfg['pin_student']) PIN_CORRECT = cfg['pin_student'];
-  if (cfg['pin_parent'])  PIN_PARENT  = cfg['pin_parent'];
+  if (cfg['pin_student'])   PIN_CORRECT  = cfg['pin_student'];
+  if (cfg['pin_parent'])    PIN_PARENT   = cfg['pin_parent'];
+  if (cfg['student_grade']) studentGrade = parseInt(cfg['student_grade'], 10) || 3;
+
+  // Update any grade-aware UI labels
+  _applyGradeLabels();
 
   // Expose for tests — Q_CACHE populated lazily; _qKey needed to look up entries
-  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS };
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade };
   window._qKey      = _qKey;      // key builder: (subject, domain) → string
   window.Q_CACHE    = Q_CACHE;    // live reference: tests can read after ensureQuestionsLoaded
 }
