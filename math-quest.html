@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jaden's Quest</title>
+  <title>After School Knowledge (ASK)</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -774,7 +774,7 @@
   <!-- START SCREEN -->
   <div id="start-screen" class="card">
     <span class="subject-icon" id="subject-icon">🚀</span>
-    <h1 id="start-title">Jaden's Quest</h1>
+    <h1 id="start-title">After School Knowledge</h1>
     <div class="domain-banner" id="domain-banner"></div>
     <p id="start-desc"></p>
     <!-- Question count picker -->
@@ -854,7 +854,7 @@
   <!-- END SCREEN -->
   <div id="end-screen" class="card hidden">
     <span class="trophy" id="trophy-icon">🏆</span>
-    <h2 id="end-title">Quest Complete!</h2>
+    <h2 id="end-title">Session Complete!</h2>
     <div class="stars-row" id="stars-row"></div>
     <div class="final-score" id="final-score"></div>
     <div class="stats-row">
@@ -1100,7 +1100,7 @@
 <div id="pin-gate">
   <div class="pin-card">
     <span class="pin-icon">🔐</span>
-    <h2>Jaden's Quest</h2>
+    <h2>After School Knowledge</h2>
     <p>Enter your PIN to continue</p>
     <div class="pin-dots">
       <div class="pin-dot" id="pd0"></div>
@@ -1738,7 +1738,7 @@ function showEndScreen() {
   document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
   document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
   document.getElementById('stat-domain').textContent=d?d.icon+' '+d.code:'ALL';
-  document.getElementById('end-title').textContent = 'Quest Complete!';
+  document.getElementById('end-title').textContent = 'Session Complete!';
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
