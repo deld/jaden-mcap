@@ -556,7 +556,7 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   const appIframe = await new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-    iframe.src = './math-quest.html';
+    iframe.src = './index.html';
     let attempts = 0;
     iframe.onload = () => {
       const poll = () => {
@@ -572,7 +572,7 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
       };
       poll();
     };
-    iframe.onerror = () => reject(new Error('Failed to load math-quest.html in iframe'));
+    iframe.onerror = () => reject(new Error('Failed to load index.html in iframe'));
     document.body.appendChild(iframe);
   });
 
@@ -823,7 +823,7 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   const pinIframe = await new Promise((resolve, reject) => {
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-    iframe.src = './math-quest.html';
+    iframe.src = './index.html';
     let attempts = 0;
     iframe.onload = () => {
       const poll = () => {
@@ -949,7 +949,7 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
 
   // Verify videos link to youtubekids.com/watch (not embedded — youtubekids.com blocks cross-origin iframes)
   await test('App links videos to youtubekids.com/watch (no iframe embed)', async () => {
-    const src = await fetch('/math-quest.html').then(r => r.text());
+    const src = await fetch('/index.html').then(r => r.text());
     assert(src.includes('youtubekids.com/watch?v='), 'Should link to youtubekids.com/watch?v=...');
     assert(!src.includes('youtubekids.com/embed/'), 'Should NOT use youtubekids.com/embed/ (blocked by X-Frame-Options)');
     assert(!src.includes('youtube.com/embed/'), 'Should NOT use youtube.com/embed/ (youtube.com is blocked on device)');
