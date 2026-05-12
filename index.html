@@ -28,6 +28,28 @@
     @keyframes twinkle { from{opacity:.12} to{opacity:.8} }
     @keyframes spin { to{transform:rotate(360deg)} }
 
+    /* ── SECTION NAV ── */
+    #section-nav {
+      position: relative; z-index: 13;
+      display: flex; gap: 4px;
+      background: rgba(255,255,255,.1);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 50px;
+      padding: 4px;
+    }
+    .section-btn {
+      padding: 7px 20px; border: none; border-radius: 40px;
+      font-size: .88rem; font-weight: 800; cursor: pointer;
+      transition: all .2s; color: rgba(255,255,255,.65);
+      background: transparent; letter-spacing: .2px;
+    }
+    .section-btn.active {
+      background: white; color: #0f3460;
+      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+    }
+    .section-btn:hover:not(.active) { background: rgba(255,255,255,.2); color: white; }
+
     /* ── SUBJECT TOGGLE ── */
     #subject-toggle {
       position: relative; z-index: 12;
@@ -761,6 +783,12 @@
 
 <div class="stars" id="stars"></div>
 
+<!-- ══ SECTION NAV ══ -->
+<nav id="section-nav">
+  <button class="section-btn active" id="sec-btn-practice"  onclick="switchSection('practice')">🎯 Practice</button>
+  <button class="section-btn"        id="sec-btn-tests"     onclick="switchSection('tests')">📝 Standardized Tests</button>
+</nav>
+
 <!-- ══ SUBJECT TOGGLE ══ -->
 <div id="subject-toggle">
   <button class="subject-btn active" id="btn-math" onclick="switchSubject('Math')">🔢 Math</button>
@@ -789,7 +817,6 @@
       <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)">▶ In Order</button>
     </div>
     <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn btn-outlined" onclick="show('test-config-screen')">🎯 Test Mode</button>
       <button class="btn home-wrong-btn hidden" id="home-wrong-btn" onclick="showWeakPractice()">❌ Wrong Answers <span id="home-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
     </div>
     <div style="margin-top:10px;">
@@ -873,8 +900,8 @@
   </div>
   <!-- TEST CONFIG SCREEN -->
   <div id="test-config-screen" class="card hidden">
-    <h2>🎯 Test Mode</h2>
-    <p class="test-subtitle">Practice like it's the real thing — no hints!</p>
+    <h2>📝 Standardized Tests</h2>
+    <p class="test-subtitle">Simulate a real test — timed, no hints, scored by domain.</p>
 
     <!-- Subject -->
     <div style="margin-bottom:16px;">
@@ -932,7 +959,7 @@
     </div>
     <div class="test-links">
       <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
-      <button class="link-btn" onclick="show('start-screen')">← Practice Mode</button>
+      <button class="link-btn" onclick="switchSection('practice')">← Practice</button>
     </div>
     <div style="text-align:center;" id="weak-areas-row">
       <button class="weak-areas-btn hidden" id="weak-areas-btn" onclick="showWeakPractice()">
@@ -965,7 +992,7 @@
     <div class="test-result-btns">
       <button class="btn btn-shuffle" onclick="show('test-config-screen')">🔁 Try Again</button>
       <button class="btn btn-next" onclick="showHistory()">📋 View History</button>
-      <button class="btn btn-primary" onclick="show('start-screen')">🏠 Practice Mode</button>
+      <button class="btn btn-primary" onclick="switchSection('practice')">🏠 Practice</button>
     </div>
   </div>
 
@@ -1308,10 +1335,10 @@ function updateStartScreen() {
   // Title & icon based on subject + domain
   if (activeSubject === 'Math') {
     document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '🚀' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'🚀'}).icon;
-    document.getElementById('start-title').textContent = 'Jaden\'s Quest';
+    document.getElementById('start-title').textContent = 'After School Knowledge';
   } else {
     document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '📚' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'📚'}).icon;
-    document.getElementById('start-title').textContent = 'Jaden\'s Quest';
+    document.getElementById('start-title').textContent = 'After School Knowledge';
   }
 
   const desc = document.getElementById('start-desc');
@@ -1388,14 +1415,37 @@ const MCAP_PRESETS = {
   }
 };
 
+let activeSection = 'practice'; // 'practice' | 'tests'
+
+function switchSection(sec) {
+  activeSection = sec;
+  document.getElementById('sec-btn-practice').classList.toggle('active', sec === 'practice');
+  document.getElementById('sec-btn-tests').classList.toggle('active', sec === 'tests');
+  // Subject toggle only shown in Practice (test-config has its own inline picker)
+  document.getElementById('subject-toggle').style.display = sec === 'practice' ? '' : 'none';
+  if (sec === 'practice') {
+    show('start-screen');
+  } else {
+    show('test-config-screen');
+  }
+}
+
 function show(id) {
   ['start-screen','reading-screen','question-screen','end-screen',
    'test-config-screen','test-results-screen','history-screen',
    'test-review-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
-  // Hide domain nav when in test screens
-  const hideNav = ['test-config-screen','test-results-screen','history-screen','test-review-screen'].includes(id);
-  document.getElementById('domain-nav').style.display = hideNav ? 'none' : '';
+  // Hide domain nav when in test screens or standardized-tests section
+  const testScreen = ['test-config-screen','test-results-screen','history-screen','test-review-screen'].includes(id);
+  document.getElementById('domain-nav').style.display = (testScreen || activeSection === 'tests') ? 'none' : '';
+  // Keep section nav active state in sync with current screen
+  if (id === 'test-config-screen' || id === 'test-results-screen') {
+    document.getElementById('sec-btn-tests').classList.add('active');
+    document.getElementById('sec-btn-practice').classList.remove('active');
+  } else if (id === 'start-screen') {
+    document.getElementById('sec-btn-practice').classList.add('active');
+    document.getElementById('sec-btn-tests').classList.remove('active');
+  }
   // Refresh weak areas count on home and test config
   if (id === 'start-screen' || id === 'test-config-screen') updateWeakButton();
 }
