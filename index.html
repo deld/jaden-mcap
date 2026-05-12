@@ -357,6 +357,25 @@
     .mcap-stat-label { font-size:.75rem; color:#555; font-weight:600; margin-top:2px; }
     .mcap-sections { font-size:.8rem; color:#64748b; margin-top:10px; }
     .btn-outlined:hover { background: #0f3460; color: white; }
+    /* ── GRADE TABS ── */
+    .grade-tabs {
+      display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .grade-tab {
+      padding: 10px 22px; border: 2px solid #ddd; border-radius: 30px;
+      font-size: .92rem; font-weight: 800; cursor: pointer;
+      background: white; color: #555; transition: all .15s;
+    }
+    .grade-tab.active { border-color: #0f3460; background: #0f3460; color: white; }
+    .grade-tab:hover:not(.active):not(:disabled) { border-color: #0f3460; color: #0f3460; }
+    .grade-tab:disabled { opacity: .4; cursor: not-allowed; }
+    .grade-tab .soon-tag {
+      display: inline-block; font-size: .6rem; font-weight: 700;
+      background: #e2e8f0; color: #64748b; border-radius: 8px;
+      padding: 1px 6px; margin-left: 5px; vertical-align: middle;
+      text-transform: uppercase; letter-spacing: .3px;
+    }
     .test-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
     .link-btn {
       background: none; border: none; cursor: pointer;
@@ -903,60 +922,69 @@
     <h2>📝 Standardized Tests</h2>
     <p class="test-subtitle">Simulate a real test — timed, no hints, scored by domain.</p>
 
-    <!-- Subject -->
-    <div style="margin-bottom:16px;">
-      <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
-        <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math')">🔢 Math</button>
-        <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading')">📚 Reading</button>
-      </div>
+    <!-- Grade tabs -->
+    <div class="grade-tabs">
+      <button class="grade-tab active" id="grade-tab-3" onclick="switchTestGrade(3)">3rd Grade</button>
+      <button class="grade-tab" id="grade-tab-4" onclick="switchTestGrade(4)" disabled>4th Grade <span class="soon-tag">Soon</span></button>
     </div>
 
-    <!-- Mode toggle: Custom vs MCAP Real -->
-    <div class="test-mode-toggle">
-      <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
-      <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
-    </div>
-
-    <!-- Custom pickers -->
-    <div id="custom-pickers">
-      <div class="test-config-label">Number of Questions</div>
-      <div class="test-config-row" id="count-btns">
-        <button class="count-btn" data-val="10" onclick="setTestQCount(10)">10</button>
-        <button class="count-btn active" data-val="20" onclick="setTestQCount(20)">20</button>
-        <button class="count-btn" data-val="30" onclick="setTestQCount(30)">30</button>
-      </div>
-      <div class="test-config-label" style="margin-top:10px;">Time Limit</div>
-      <div class="test-config-row" id="time-btns">
-        <button class="time-btn" data-val="10" onclick="setTestMinutes(10)">10 min</button>
-        <button class="time-btn active" data-val="20" onclick="setTestMinutes(20)">20 min</button>
-        <button class="time-btn" data-val="30" onclick="setTestMinutes(30)">30 min</button>
-      </div>
-    </div>
-
-    <!-- MCAP preset box (hidden until MCAP mode selected) -->
-    <div id="mcap-preset-box" class="mcap-preset-box hidden">
-      <div class="mcap-badge">Official MCAP Grade 3</div>
-      <div id="mcap-preset-desc" style="font-size:.9rem;color:#1e3a5f;font-weight:600;margin-bottom:8px;"></div>
-      <div class="mcap-stats">
-        <div class="mcap-stat">
-          <div class="mcap-stat-num" id="mcap-q-num">—</div>
-          <div class="mcap-stat-label">Questions</div>
-        </div>
-        <div class="mcap-stat">
-          <div class="mcap-stat-num" id="mcap-t-num">—</div>
-          <div class="mcap-stat-label">Minutes</div>
-        </div>
-        <div class="mcap-stat">
-          <div class="mcap-stat-num" id="mcap-s-num">—</div>
-          <div class="mcap-stat-label">Sections</div>
+    <!-- 3rd Grade content -->
+    <div id="grade-content-3">
+      <!-- Subject -->
+      <div style="margin-bottom:16px;">
+        <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
+          <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math')">🔢 Math</button>
+          <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading')">📚 Reading</button>
         </div>
       </div>
-      <div class="mcap-sections" id="mcap-sections-detail"></div>
-    </div>
 
-    <div>
-      <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
-    </div>
+      <!-- Mode toggle: Custom vs MCAP Real -->
+      <div class="test-mode-toggle">
+        <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
+        <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
+      </div>
+
+      <!-- Custom pickers -->
+      <div id="custom-pickers">
+        <div class="test-config-label">Number of Questions</div>
+        <div class="test-config-row" id="count-btns">
+          <button class="count-btn" data-val="10" onclick="setTestQCount(10)">10</button>
+          <button class="count-btn active" data-val="20" onclick="setTestQCount(20)">20</button>
+          <button class="count-btn" data-val="30" onclick="setTestQCount(30)">30</button>
+        </div>
+        <div class="test-config-label" style="margin-top:10px;">Time Limit</div>
+        <div class="test-config-row" id="time-btns">
+          <button class="time-btn" data-val="10" onclick="setTestMinutes(10)">10 min</button>
+          <button class="time-btn active" data-val="20" onclick="setTestMinutes(20)">20 min</button>
+          <button class="time-btn" data-val="30" onclick="setTestMinutes(30)">30 min</button>
+        </div>
+      </div>
+
+      <!-- MCAP preset box (hidden until MCAP mode selected) -->
+      <div id="mcap-preset-box" class="mcap-preset-box hidden">
+        <div class="mcap-badge">Official MCAP Grade 3</div>
+        <div id="mcap-preset-desc" style="font-size:.9rem;color:#1e3a5f;font-weight:600;margin-bottom:8px;"></div>
+        <div class="mcap-stats">
+          <div class="mcap-stat">
+            <div class="mcap-stat-num" id="mcap-q-num">—</div>
+            <div class="mcap-stat-label">Questions</div>
+          </div>
+          <div class="mcap-stat">
+            <div class="mcap-stat-num" id="mcap-t-num">—</div>
+            <div class="mcap-stat-label">Minutes</div>
+          </div>
+          <div class="mcap-stat">
+            <div class="mcap-stat-num" id="mcap-s-num">—</div>
+            <div class="mcap-stat-label">Sections</div>
+          </div>
+        </div>
+        <div class="mcap-sections" id="mcap-sections-detail"></div>
+      </div>
+
+      <div>
+        <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
+      </div>
+    </div><!-- /grade-content-3 -->
     <div class="test-links">
       <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
       <button class="link-btn" onclick="switchSection('practice')">← Practice</button>
@@ -1415,7 +1443,18 @@ const MCAP_PRESETS = {
   }
 };
 
-let activeSection = 'practice'; // 'practice' | 'tests'
+let activeSection   = 'practice'; // 'practice' | 'tests'
+let activeTestGrade = 3;
+
+function switchTestGrade(grade) {
+  activeTestGrade = grade;
+  [3, 4].forEach(g => {
+    const tab = document.getElementById(`grade-tab-${g}`);
+    const content = document.getElementById(`grade-content-${g}`);
+    if (tab) tab.classList.toggle('active', g === grade);
+    if (content) content.classList.toggle('hidden', g !== grade);
+  });
+}
 
 function switchSection(sec) {
   activeSection = sec;
