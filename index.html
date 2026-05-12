@@ -928,10 +928,11 @@
     <h2 style="color:#0f3460;margin-bottom:6px;">📚 Grades</h2>
     <p style="color:#64748b;font-size:.9rem;margin-bottom:4px;">Select a grade to practice that year's content.</p>
     <div class="grade-cards">
-      <div class="grade-card grade-card-active" onclick="selectGrade(3)">
+      <div class="grade-card grade-card-soon">
         <span class="grade-card-icon">🚀</span>
         <div class="grade-card-label">3rd Grade</div>
-        <div class="grade-card-sub">1,983 questions</div>
+        <div class="grade-card-sub">No uploads yet</div>
+        <div class="soon-tag">Upload to unlock</div>
       </div>
       <div class="grade-card grade-card-soon">
         <span class="grade-card-icon">🔭</span>
@@ -1522,10 +1523,8 @@ function switchSection(sec) {
 }
 
 function selectGrade(grade) {
-  if (grade === 3) {
-    switchSection('tests');
-    setTestsMode('practice');
-  }
+  // Grades section will be populated from uploaded homework packets.
+  // No content yet — cards are disabled until uploads are processed.
 }
 
 function show(id) {
