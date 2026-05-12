@@ -810,9 +810,8 @@
 
 <!-- ══ SECTION NAV ══ -->
 <nav id="section-nav">
-  <button class="section-btn active" id="sec-btn-practice" onclick="switchSection('practice')">🎯 Practice</button>
-  <button class="section-btn"        id="sec-btn-grades"   onclick="switchSection('grades')">📚 Grades</button>
-  <button class="section-btn"        id="sec-btn-tests"    onclick="switchSection('tests')">📝 Tests</button>
+  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')">📚 Grades</button>
+  <button class="section-btn"        id="sec-btn-tests"  onclick="switchSection('tests')">📝 Standardized Tests</button>
 </nav>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
@@ -946,21 +945,51 @@
   <!-- TEST CONFIG SCREEN -->
   <div id="test-config-screen" class="card hidden">
     <h2>📝 Standardized Tests</h2>
-    <p class="test-subtitle">Simulate a real test — timed, no hints, scored by domain.</p>
 
-    <!-- Subject -->
-    <div style="margin-bottom:16px;">
-      <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
-        <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math')">🔢 Math</button>
-        <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading')">📚 Reading</button>
+    <!-- Practice vs Take a Test toggle -->
+    <div class="test-mode-toggle" style="margin-bottom:20px;">
+      <button class="test-mode-btn active" id="tests-mode-practice" onclick="setTestsMode('practice')">🎯 Practice</button>
+      <button class="test-mode-btn"        id="tests-mode-test"     onclick="setTestsMode('test')">📝 Take a Test</button>
+    </div>
+
+    <!-- ── Practice panel ── -->
+    <div id="tests-practice-panel">
+      <!-- subject toggle mirrors the main one -->
+      <div style="margin-bottom:12px;">
+        <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
+          <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math');switchSubject('Math')">🔢 Math</button>
+          <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading');switchSubject('Reading')">📚 Reading</button>
+        </div>
+      </div>
+      <!-- domain nav placeholder — the real #domain-nav lives outside, we show it here -->
+      <div id="tests-domain-nav-placeholder" style="margin-bottom:12px;"></div>
+      <p class="test-subtitle" style="margin-bottom:16px;">Pick a topic and drill questions — no timer, hints available.</p>
+      <button class="btn btn-test-start" onclick="startGame(true)">🔀 Let's Practice!</button>
+      <div style="margin-top:8px;">
+        <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)">▶ In Order</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn home-wrong-btn hidden" id="tests-wrong-btn" onclick="showWeakPractice()">❌ Wrong Answers <span id="tests-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
       </div>
     </div>
 
-    <!-- Mode toggle: Custom vs MCAP Real -->
-    <div class="test-mode-toggle">
-      <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
-      <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
-    </div>
+    <!-- ── Take a Test panel ── -->
+    <div id="tests-test-panel" class="hidden">
+      <p class="test-subtitle" style="margin-bottom:16px;">Timed, no hints, scored by domain.</p>
+
+      <!-- Subject -->
+      <div style="margin-bottom:16px;">
+        <div style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
+          <button class="subject-btn active" id="test-btn-math2" onclick="setTestSubject('Math')">🔢 Math</button>
+          <button class="subject-btn" id="test-btn-reading2" onclick="setTestSubject('Reading')">📚 Reading</button>
+        </div>
+      </div>
+
+      <!-- Mode toggle: Custom vs MCAP Real -->
+      <div class="test-mode-toggle">
+        <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
+        <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
+      </div>
 
     <!-- Custom pickers -->
     <div id="custom-pickers">
@@ -999,17 +1028,18 @@
       <div class="mcap-sections" id="mcap-sections-detail"></div>
     </div>
 
-    <div>
-      <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
-    </div>
-    <div class="test-links">
+      <div style="margin-top:4px;">
+        <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
+      </div>
+      <div style="text-align:center;" id="weak-areas-row">
+        <button class="weak-areas-btn hidden" id="weak-areas-btn" onclick="showWeakPractice()">
+          🎯 Practice Weak Areas <span class="weak-badge" id="weak-count-badge">0</span>
+        </button>
+      </div>
+    </div><!-- /tests-test-panel -->
+
+    <div class="test-links" style="margin-top:14px;">
       <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
-      <button class="link-btn" onclick="switchSection('practice')">← Practice</button>
-    </div>
-    <div style="text-align:center;" id="weak-areas-row">
-      <button class="weak-areas-btn hidden" id="weak-areas-btn" onclick="showWeakPractice()">
-        🎯 Practice Weak Areas <span class="weak-badge" id="weak-count-badge">0</span>
-      </button>
     </div>
   </div>
 
@@ -1037,7 +1067,7 @@
     <div class="test-result-btns">
       <button class="btn btn-shuffle" onclick="show('test-config-screen')">🔁 Try Again</button>
       <button class="btn btn-next" onclick="showHistory()">📋 View History</button>
-      <button class="btn btn-primary" onclick="switchSection('practice')">🏠 Practice</button>
+      <button class="btn btn-primary" onclick="switchSection('tests');setTestsMode('practice')">🏠 Practice</button>
     </div>
   </div>
 
@@ -1357,14 +1387,17 @@ function switchSubject(subj) {
   activeDomain  = 'All';
   buildNav();
   updateStartScreen();
-  show('start-screen');
+  // Stay within tests section
+  show('test-config-screen');
+  setTestsMode('practice');
 }
 
 function switchDomain(id) {
   activeDomain = id;
   buildNav();
   updateStartScreen();
-  show('start-screen');
+  show('test-config-screen');
+  setTestsMode('practice');
 }
 
 function updateStartScreen() {
@@ -1460,22 +1493,39 @@ const MCAP_PRESETS = {
   }
 };
 
-let activeSection = 'practice'; // 'practice' | 'grades' | 'tests'
+let activeSection = 'grades'; // 'grades' | 'tests'
+let testsMode     = 'practice'; // 'practice' | 'test'
+
+function setTestsMode(mode) {
+  testsMode = mode;
+  document.getElementById('tests-mode-practice').classList.toggle('active', mode === 'practice');
+  document.getElementById('tests-mode-test').classList.toggle('active', mode === 'test');
+  document.getElementById('tests-practice-panel').classList.toggle('hidden', mode !== 'practice');
+  document.getElementById('tests-test-panel').classList.toggle('hidden', mode !== 'test');
+  // Show domain nav only in practice mode within tests
+  document.getElementById('domain-nav').style.display = mode === 'practice' ? '' : 'none';
+  if (mode === 'practice') updateWeakButton();
+}
 
 function switchSection(sec) {
   activeSection = sec;
-  ['practice','grades','tests'].forEach(s =>
+  ['grades','tests'].forEach(s =>
     document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
-  // Subject toggle only shown in Practice
-  document.getElementById('subject-toggle').style.display = sec === 'practice' ? '' : 'none';
-  if (sec === 'practice') show('start-screen');
-  else if (sec === 'grades') show('grades-screen');
-  else show('test-config-screen');
+  // Subject toggle only shown for tests-practice (domain nav handles subject there)
+  document.getElementById('subject-toggle').style.display = 'none';
+  if (sec === 'grades') {
+    show('grades-screen');
+  } else {
+    show('test-config-screen');
+    setTestsMode(testsMode); // restore last sub-mode
+  }
 }
 
 function selectGrade(grade) {
-  // For now grade 3 is the only active grade — go to practice
-  if (grade === 3) switchSection('practice');
+  if (grade === 3) {
+    switchSection('tests');
+    setTestsMode('practice');
+  }
 }
 
 function show(id) {
@@ -1483,22 +1533,23 @@ function show(id) {
    'test-config-screen','test-results-screen','history-screen',
    'test-review-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
-  // Hide domain nav when not in practice flow
-  const practiceFlow = ['start-screen','reading-screen','question-screen','end-screen'].includes(id);
-  document.getElementById('domain-nav').style.display = practiceFlow ? '' : 'none';
-  // Keep section nav in sync
-  if (['test-config-screen','test-results-screen'].includes(id)) {
-    ['practice','grades','tests'].forEach(s =>
+  // Domain nav: only show during practice-mode within tests, or during question flow
+  const questionFlow = ['reading-screen','question-screen','end-screen'].includes(id);
+  const practicePanelActive = (id === 'test-config-screen' && testsMode === 'practice');
+  document.getElementById('domain-nav').style.display =
+    (questionFlow || practicePanelActive) ? '' : 'none';
+  // Subject toggle always hidden (managed per-section)
+  document.getElementById('subject-toggle').style.display = 'none';
+  // Sync section nav
+  if (['test-config-screen','test-results-screen','start-screen',
+       'reading-screen','question-screen','end-screen'].includes(id)) {
+    ['grades','tests'].forEach(s =>
       document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === 'tests'));
   } else if (id === 'grades-screen') {
-    ['practice','grades','tests'].forEach(s =>
+    ['grades','tests'].forEach(s =>
       document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === 'grades'));
-  } else if (id === 'start-screen') {
-    ['practice','grades','tests'].forEach(s =>
-      document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === 'practice'));
   }
-  // Refresh weak areas count on home and test config
-  if (id === 'start-screen' || id === 'test-config-screen') updateWeakButton();
+  if (id === 'test-config-screen') updateWeakButton();
 }
 
 async function startGame(shuffle = true) {
@@ -2329,9 +2380,17 @@ async function updateWeakButton() {
       homeBtn.classList.toggle('hidden', count === 0);
       if (homeCount) homeCount.textContent = count;
     }
+    // Tests practice panel button
+    const testsBtn = document.getElementById('tests-wrong-btn');
+    const testsCount = document.getElementById('tests-wrong-count');
+    if (testsBtn) {
+      testsBtn.classList.toggle('hidden', count === 0);
+      if (testsCount) testsCount.textContent = count;
+    }
   } catch(e) {
     document.getElementById('weak-areas-btn')?.classList.add('hidden');
     document.getElementById('home-wrong-btn')?.classList.add('hidden');
+    document.getElementById('tests-wrong-btn')?.classList.add('hidden');
   }
 }
 
@@ -3174,7 +3233,7 @@ async function initApp() {
     overlay.style.display = 'none';
     buildNav();
     updateStartScreen();
-    show('start-screen');
+    switchSection('grades');
     updateWeakButton();
   } catch(e) {
     console.error('loadAppData failed:', e);
