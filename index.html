@@ -928,11 +928,10 @@
     <h2 style="color:#0f3460;margin-bottom:6px;">📚 Grades</h2>
     <p style="color:#64748b;font-size:.9rem;margin-bottom:4px;">Select a grade to practice that year's content.</p>
     <div class="grade-cards">
-      <div class="grade-card grade-card-soon">
+      <div class="grade-card" onclick="selectGrade(3)" style="cursor:pointer;">
         <span class="grade-card-icon">🚀</span>
         <div class="grade-card-label">3rd Grade</div>
-        <div class="grade-card-sub">No uploads yet</div>
-        <div class="soon-tag">Upload to unlock</div>
+        <div class="grade-card-sub">Practice questions ready</div>
       </div>
       <div class="grade-card" onclick="selectGrade(4)" style="cursor:pointer;">
         <span class="grade-card-icon">🔭</span>
@@ -1524,6 +1523,11 @@ function switchSection(sec) {
 async function selectGrade(grade) {
   studentGrade = grade;
 
+  // Highlight selected card
+  document.querySelectorAll('.grade-card').forEach(el => {
+    el.classList.toggle('grade-card-active', el.onclick?.toString().includes(`(${grade})`));
+  });
+
   // Persist to Supabase (fire-and-forget)
   const h = {
     'apikey': SUPABASE_ANON,
@@ -1553,7 +1557,9 @@ async function selectGrade(grade) {
   _applyGradeLabels();
   if (window._mcapData) window._mcapData.studentGrade = grade;
 
-  // Drop into the practice section
+  // Re-render domain nav with freshly loaded counts, then drop into practice
+  buildNav();
+  updateWeakButton();
   switchSection('tests');
 }
 
@@ -3199,17 +3205,6 @@ async function loadAppData() {
     throw new Error('Failed to load app data from Supabase');
   }
 
-  // Lightweight count fetch: just subject+domain, paginated (no question content)
-  // studentGrade is set from cfg above before this line
-  const countRows = await _fetchAll(`questions?select=subject,domain&active=eq.true&grade=eq.${studentGrade}`, h);
-  DOMAIN_COUNTS = {};
-  for (const r of countRows) {
-    const s = r.subject || 'Math';
-    if (!DOMAIN_COUNTS[s]) DOMAIN_COUNTS[s] = { All: 0 };
-    DOMAIN_COUNTS[s].All++;
-    DOMAIN_COUNTS[s][r.domain] = (DOMAIN_COUNTS[s][r.domain] || 0) + 1;
-  }
-
   const [dbPass, dbLesson, dbCfg] = await Promise.all([
     passRes.json(), lessonRes.json(), cfgRes.json()
   ]);
@@ -3227,20 +3222,17 @@ async function loadAppData() {
     ka:    l.ka_url,
   };
 
-  // Config: PINs
+  // Config: PINs only — grade is chosen on the grades screen, not pre-loaded
   const cfg = {};
   for (const c of dbCfg) cfg[c.key] = c.value;
-  if (cfg['pin_student'])   PIN_CORRECT  = cfg['pin_student'];
-  if (cfg['pin_parent'])    PIN_PARENT   = cfg['pin_parent'];
-  if (cfg['student_grade']) studentGrade = parseInt(cfg['student_grade'], 10) || 3;
+  if (cfg['pin_student']) PIN_CORRECT = cfg['pin_student'];
+  if (cfg['pin_parent'])  PIN_PARENT  = cfg['pin_parent'];
+  // Do NOT restore student_grade here — user must pick a grade each session
 
-  // Update any grade-aware UI labels
-  _applyGradeLabels();
-
-  // Expose for tests — Q_CACHE populated lazily; _qKey needed to look up entries
+  // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade };
-  window._qKey      = _qKey;      // key builder: (subject, domain) → string
-  window.Q_CACHE    = Q_CACHE;    // live reference: tests can read after ensureQuestionsLoaded
+  window._qKey      = _qKey;
+  window.Q_CACHE    = Q_CACHE;
 }
 
 // ── STARS BG ───────────────────────────────────────────────────────
@@ -3261,9 +3253,8 @@ async function initApp() {
     await loadAppData();
     overlay.style.display = 'none';
     buildNav();
-    updateStartScreen();
+    // Always land on grade picker — no questions load until user picks a grade
     switchSection('grades');
-    updateWeakButton();
   } catch(e) {
     console.error('loadAppData failed:', e);
     overlay.innerHTML = `<div style="text-align:center;padding:40px;">
