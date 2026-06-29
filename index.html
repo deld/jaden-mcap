@@ -2361,6 +2361,7 @@ async function saveWrongAnswers(wrongQs) {
   const rows = wrongQs.map(q => ({
     student: 'Jaden',
     subject: activeSubject,
+    grade: studentGrade,
     question_text: q.text,
     question_json: q,
   }));
@@ -2385,7 +2386,7 @@ async function loadWrongBank(subject) {
   subject = subject || activeSubject;
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&subject=eq.${encodeURIComponent(subject)}&select=question_json,times_missed&order=times_missed.desc&limit=200`,
+      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&grade=eq.${studentGrade}&subject=eq.${encodeURIComponent(subject)}&select=question_json,times_missed&order=times_missed.desc&limit=200`,
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
     );
     if (!res.ok) return [];
@@ -2397,7 +2398,7 @@ async function loadWrongBank(subject) {
 async function updateWeakButton() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&subject=eq.${encodeURIComponent(activeSubject)}&select=id`,
+      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&grade=eq.${studentGrade}&subject=eq.${encodeURIComponent(activeSubject)}&select=id`,
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'count=exact', 'Range': '0-0' } }
     );
     const count = parseInt(res.headers.get('Content-Range')?.split('/')[1] || '0', 10);
@@ -2907,7 +2908,7 @@ async function _fetchAttempts() {
 async function _fetchHotspots() {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&select=question_json,times_missed&order=times_missed.desc&limit=200`,
+      `${SUPABASE_URL}/rest/v1/wrong_answers?student=eq.Jaden&grade=eq.${studentGrade}&select=question_json,times_missed&order=times_missed.desc&limit=200`,
       { headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` } }
     );
     if (!res.ok) return [];
