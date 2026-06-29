@@ -934,11 +934,10 @@
         <div class="grade-card-sub">No uploads yet</div>
         <div class="soon-tag">Upload to unlock</div>
       </div>
-      <div class="grade-card grade-card-soon">
+      <div class="grade-card" onclick="selectGrade(4)" style="cursor:pointer;">
         <span class="grade-card-icon">🔭</span>
         <div class="grade-card-label">4th Grade</div>
-        <div class="grade-card-sub">Coming next year</div>
-        <div class="soon-tag">Soon</div>
+        <div class="grade-card-sub">Week 1 packet loaded</div>
       </div>
     </div>
   </div>
@@ -1522,9 +1521,40 @@ function switchSection(sec) {
   }
 }
 
-function selectGrade(grade) {
-  // Grades section will be populated from uploaded homework packets.
-  // No content yet — cards are disabled until uploads are processed.
+async function selectGrade(grade) {
+  studentGrade = grade;
+
+  // Persist to Supabase (fire-and-forget)
+  const h = {
+    'apikey': SUPABASE_ANON,
+    'Authorization': `Bearer ${SUPABASE_ANON}`,
+    'Content-Type': 'application/json',
+    'Prefer': 'return=minimal',
+  };
+  fetch(`${SUPABASE_URL}/rest/v1/app_config?key=eq.student_grade`, {
+    method: 'PATCH', headers: h,
+    body: JSON.stringify({ value: String(grade) }),
+  }).catch(() => {});
+
+  // Clear question cache so new grade's questions load fresh
+  Object.keys(Q_CACHE).forEach(k => delete Q_CACHE[k]);
+
+  // Re-fetch domain counts for the selected grade
+  const countRows = await _fetchAll(
+    `questions?select=subject,domain&active=eq.true&grade=eq.${grade}`, h);
+  DOMAIN_COUNTS = {};
+  for (const r of countRows) {
+    const s = r.subject || 'Math';
+    if (!DOMAIN_COUNTS[s]) DOMAIN_COUNTS[s] = { All: 0 };
+    DOMAIN_COUNTS[s].All++;
+    DOMAIN_COUNTS[s][r.domain] = (DOMAIN_COUNTS[s][r.domain] || 0) + 1;
+  }
+
+  _applyGradeLabels();
+  if (window._mcapData) window._mcapData.studentGrade = grade;
+
+  // Drop into the practice section
+  switchSection('tests');
 }
 
 function show(id) {
