@@ -28,9 +28,6 @@ jobs:
         with:
           enablement: true
 
-      - name: Rename entry point
-        run: cp math-quest.html index.html
-
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
