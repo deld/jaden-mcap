@@ -698,6 +698,11 @@
     .ro-correct-ans  .ro-letter { background: #10b981; color: white; }
     .ro-chosen-right .ro-letter { background: #10b981; color: white; }
     .review-hint { margin-top: 8px; font-size: .82rem; color: #555; font-style: italic; padding: 7px 10px; background: #f1f5f9; border-radius: 8px; border-left: 3px solid #94a3b8; }
+    .review-solution { margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1.5px solid #c4b5fd; }
+    .review-solution-toggle { width: 100%; text-align: left; background: #f5f3ff; border: none; padding: 8px 12px; font-size: .82rem; font-weight: 700; color: #6d28d9; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .review-solution-toggle:hover { background: #ede9fe; }
+    .review-solution-body { display: none; padding: 10px 14px; background: #faf8ff; font-size: .84rem; color: #374151; line-height: 1.6; white-space: pre-wrap; }
+    .review-solution-body.open { display: block; }
 
     /* ── WEAK AREAS BUTTON ── */
     .weak-areas-btn {
@@ -1304,6 +1309,7 @@ function dbToQ(q) {
     options: q.options || undefined,
     correct: q.correct,
     hint: q.hint || undefined,
+    solution: q.solution || undefined,
   };
   if (q.passage_id) out.passageId = q.passage_id;
   if (q.passage)    out.passage   = q.passage;
@@ -1330,7 +1336,7 @@ async function ensureQuestionsLoaded(subject, domain) {
   const domFilter   = (!domain || domain === 'All') ? '' : `&domain=eq.${encodeURIComponent(domain)}`;
   const gradeFilter = `&grade=eq.${studentGrade}`;
   const rows = await _fetchAll(
-    `questions?select=subject,domain,category,type,text,options,correct,hint,passage_id,passage` +
+    `questions?select=subject,domain,category,type,text,options,correct,hint,solution,passage_id,passage` +
     `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${gradeFilter}${domFilter}`,
     h
   );
@@ -2525,6 +2531,15 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
     const hintHTML = q.hint && !correct
       ? `<div class="review-hint">💡 ${q.hint}</div>` : '';
 
+    const solutionId = `sol-${idx}`;
+    const solutionHTML = q.solution
+      ? `<div class="review-solution">
+           <button class="review-solution-toggle" onclick="toggleSolution('${solutionId}')">
+             <span id="${solutionId}-arrow">▶</span> How to solve it
+           </button>
+           <div class="review-solution-body" id="${solutionId}">${q.solution.replace(/\n/g,'<br>')}</div>
+         </div>` : '';
+
     const watchHTML = !correct && LESSON_MAP[q.cat]
       ? `<button class="watch-btn" onclick="openVideoModal('${q.cat.replace(/'/g,"\\'")}')">📺 Watch a lesson on ${q.cat}</button>`
       : '';
@@ -2539,6 +2554,7 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
       <div class="review-q-text">${q.text.replace(/\n/g,'<br>')}</div>
       ${optionsHTML}
       ${hintHTML}
+      ${solutionHTML}
       ${watchHTML}`;
     list.appendChild(item);
   });
@@ -2720,6 +2736,14 @@ function closeStoryModal() {
 let LESSON_MAP = {};  // populated by loadAppData()
 let _videoIdx  = 0;  // current video index in the modal
 let _videoLesson = null;
+
+function toggleSolution(id) {
+  const body = document.getElementById(id);
+  const arrow = document.getElementById(id + '-arrow');
+  if (!body) return;
+  const open = body.classList.toggle('open');
+  if (arrow) arrow.textContent = open ? '▼' : '▶';
+}
 
 function openVideoModal(cat) {
   const lesson = LESSON_MAP[cat];
