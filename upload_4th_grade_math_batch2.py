@@ -1,3 +1,5 @@
+# Tracked by: https://github.com/deld/jaden-mcap/issues/13
+# Run this script from an environment with network access to Supabase, then close the issue.
 import json, urllib.request, time
 
 URL = "https://zvffmucghcrqackghhlf.supabase.co/rest/v1/questions"
