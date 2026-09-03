@@ -644,6 +644,130 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   await appIframe.ensureQuestionsLoaded('Math', 'All');
   await appIframe.ensureQuestionsLoaded('Reading', 'All');
 
+  // ── Progress engine (pure functions, via iframe) ─────────────────────────
+  suite('\u{1F3AE} Progress engine \u2014 XP, levels, streaks (iframe)');
+
+  const P = appData;
+  // Synthetic day-offset attempt so streak tests never depend on the clock.
+  const mkA = (dayOffset, score = 5, total = 5) => {
+    const d = new Date();
+    d.setDate(d.getDate() + dayOffset);
+    d.setHours(19, 30, 0, 0);
+    return { completed: true, score, total, created_at: d.toISOString(), domain: 'OA' };
+  };
+  const TODAY = P.localDayKey(new Date());
+
+  await test('Level curve round-trips: xpAtLevelStart(n) maps back to level n', async () => {
+    const levels = [1, 2, 3, 5, 8, 10, 11, 15, 20, 30];
+    for (const n of levels) {
+      const back = P.levelFromXp(P.xpAtLevelStart(n));
+      assert(back === n, `level ${n} round-tripped to ${back}`);
+    }
+    return `${levels.length} levels round-trip`;
+  });
+
+  await test('Level curve is monotonic and never cheaper to climb later', async () => {
+    let prevStart = -1;
+    for (let n = 1; n <= 40; n++) {
+      const start = P.xpAtLevelStart(n);
+      assert(start > prevStart, `xpAtLevelStart(${n}) not increasing`);
+      prevStart = start;
+      assert(P.xpToClearLevel(n) > 0, `level ${n} costs nothing`);
+    }
+    return '40 levels monotonic';
+  });
+
+  await test('XP: 15 per correct, +25 bonus only for a perfect set of 5+', async () => {
+    assert(P.xpForAttempt({ score: 5, total: 5 }) === 100, 'perfect 5/5 should be 5*15+25');
+    assert(P.xpForAttempt({ score: 4, total: 4 }) === 60,  'perfect 4/4 is under the 5-question floor, no bonus');
+    assert(P.xpForAttempt({ score: 4, total: 5 }) === 60,  'imperfect set should get no bonus');
+    return '15/correct, +25 perfect-set bonus';
+  });
+
+  await test('Daily streak counts consecutive days ending today', async () => {
+    const p = P.computeProgress([mkA(0), mkA(-1), mkA(-2)], TODAY);
+    assert(p.dailyStreak === 3, `got ${p.dailyStreak}`);
+    assert(p.todayDone === true, 'todayDone should be true');
+    return 'streak = 3';
+  });
+
+  await test('Daily streak survives until a full day is missed', async () => {
+    // Ending yesterday must still count, or the streak would break every
+    // morning before the first session of the day.
+    const p = P.computeProgress([mkA(-1), mkA(-2), mkA(-3)], TODAY);
+    assert(p.dailyStreak === 3, `got ${p.dailyStreak}`);
+    assert(p.todayDone === false, 'todayDone should be false');
+    return 'streak = 3, today not yet done';
+  });
+
+  await test('Daily streak breaks after a missed day, best streak is retained', async () => {
+    const p = P.computeProgress([mkA(-2), mkA(-3), mkA(-4)], TODAY);
+    assert(p.dailyStreak === 0, `current streak should be 0, got ${p.dailyStreak}`);
+    assert(p.bestDailyStreak === 3, `best should be 3, got ${p.bestDailyStreak}`);
+    return 'current 0, best 3';
+  });
+
+  await test('Two sessions in one day count as one streak day', async () => {
+    const p = P.computeProgress([mkA(0), mkA(0), mkA(-1)], TODAY);
+    assert(p.dailyStreak === 2, `got ${p.dailyStreak}`);
+    assert(p.sessions === 3, `sessions should be 3, got ${p.sessions}`);
+    return '3 sessions across 2 days';
+  });
+
+  await test('Streak uses local calendar days, not UTC', async () => {
+    // A late-evening session must land on today, not roll into tomorrow.
+    const late = new Date(); late.setHours(23, 45, 0, 0);
+    assert(P.localDayKey(late) === TODAY, 'late-evening session drifted to another day');
+    const early = new Date(); early.setHours(0, 15, 0, 0);
+    assert(P.localDayKey(early) === TODAY, 'early-morning session drifted to another day');
+    return 'local day boundaries hold';
+  });
+
+  await test('Incomplete and zero-question attempts are excluded', async () => {
+    const noise = [
+      { completed: false, score: 9, total: 9, created_at: new Date().toISOString() },
+      { completed: true,  score: 0, total: 0, created_at: new Date().toISOString() },
+    ];
+    const p = P.computeProgress(noise, TODAY);
+    assert(p.xp === 0 && p.sessions === 0, `got xp=${p.xp} sessions=${p.sessions}`);
+    return 'noise excluded';
+  });
+
+  await test('Empty history is safe (level 1, no NaN)', async () => {
+    const p = P.computeProgress([], TODAY);
+    assert(p.level === 1 && p.xp === 0 && p.dailyStreak === 0 && p.accuracy === 0,
+      JSON.stringify(p));
+    assert(Object.values(p).every(v => typeof v !== 'number' || Number.isFinite(v)), 'NaN leaked');
+    return 'level 1, all finite';
+  });
+
+  await test('Badges derive from history and are retroactive', async () => {
+    const p = P.computeProgress([mkA(0), mkA(-1), mkA(-2)], TODAY);
+    const b = P.computeBadges(p, [mkA(0), mkA(-1), mkA(-2)]);
+    assert(Array.isArray(b) && b.length >= 8, `expected the full rule set, got ${b.length}`);
+    const byId = Object.fromEntries(b.map(x => [x.id, x.earned]));
+    assert(byId['first-steps'] === true, 'First Steps should be earned after a session');
+    assert(byId['perfect-set'] === true, 'three perfect 5/5 sets should earn Perfect Set');
+    assert(byId['streak-3']    === true, '3-day streak should be earned');
+    assert(byId['streak-10']   === false, '10-day streak should not be earned');
+    return `${b.length} rules, ${b.filter(x => x.earned).length} earned`;
+  });
+
+  await test("Engine runs against Jaden's real history and returns sane values", async () => {
+    const res = await db('attempts?student=eq.Jaden&select=*&order=created_at.desc&limit=500');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    const p = P.computeProgress(rows);
+    assert(p.level >= 1, 'level must be at least 1');
+    assert(p.xp >= 0, 'xp must not be negative');
+    assert(p.accuracy >= 0 && p.accuracy <= 100, `accuracy out of range: ${p.accuracy}`);
+    assert(p.xpIntoLevel >= 0 && p.xpIntoLevel < p.xpForNextLevel,
+      `xpIntoLevel ${p.xpIntoLevel} outside level span ${p.xpForNextLevel}`);
+    assert(p.correct <= p.questions, 'correct exceeds questions answered');
+    assert(p.dailyStreak <= p.bestDailyStreak, 'current streak exceeds best');
+    return `L${p.level}, ${p.xp} XP, ${p.accuracy}% over ${p.questions} questions`;
+  });
+
   // ── 12. App Logic — data loading ─────────────────────────────────────────
   suite('🧠 App Logic — data loading (iframe)');
 
