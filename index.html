@@ -3591,6 +3591,153 @@ async function _fetchAll(path, headers) {
   return all;
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  PROGRESS ENGINE - XP, levels, daily streak, badges
+//
+//  Everything is DERIVED from the existing attempts history rather than
+//  stored in new columns. That is deliberate: it means Jaden's past work
+//  counts the moment this ships instead of resetting him to zero, and
+//  there is no second source of truth to drift out of sync.
+//
+//  Pure functions, no DOM and no network, so tests can call them directly.
+// ═══════════════════════════════════════════════════════════════════
+
+const XP_PER_CORRECT   = 15;
+const XP_PERFECT_BONUS = 25;   // a clean set is worth more than its parts
+const PERFECT_MIN_Qs   = 5;    // ...but only if it was a real set
+
+// XP to climb one level. Gentle at the start (100, 150, 200, ...) so a new
+// player levels often, then the slope halves past level 10 so progression
+// does not stall: on real history Jaden is already level 19, and an
+// un-softened curve would have charged him ~67 correct answers per level
+// from there. Ramp: +50/level to L10, +25/level after.
+const LEVEL_RAMP_KNEE = 10;
+function xpToClearLevel(level) {
+  return level <= LEVEL_RAMP_KNEE
+    ? 100 + (level - 1) * 50
+    : 100 + (LEVEL_RAMP_KNEE - 1) * 50 + (level - LEVEL_RAMP_KNEE) * 25;
+}
+
+// Total XP required to have REACHED a given level.
+function xpAtLevelStart(level) {
+  let total = 0;
+  for (let l = 1; l < level; l++) total += xpToClearLevel(l);
+  return total;
+}
+
+function levelFromXp(xp) {
+  let level = 1;
+  while (xp >= xpAtLevelStart(level + 1)) level++;
+  return level;
+}
+
+// Local calendar day, not UTC. A 7pm session must not land on tomorrow.
+function localDayKey(ts) {
+  const d = new Date(ts);
+  if (isNaN(d)) return null;
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+function _dayKeyOffset(key, deltaDays) {
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + deltaDays);
+  return localDayKey(dt);
+}
+
+function xpForAttempt(a) {
+  const score = Number(a.score) || 0;
+  const total = Number(a.total) || 0;
+  let xp = score * XP_PER_CORRECT;
+  if (total >= PERFECT_MIN_Qs && score === total) xp += XP_PERFECT_BONUS;
+  return xp;
+}
+
+/**
+ * @param {Array}  attempts - rows from the attempts table
+ * @param {string} [todayKey] - injectable "today" so tests are not clock-dependent
+ */
+function computeProgress(attempts, todayKey) {
+  const done = (Array.isArray(attempts) ? attempts : [])
+    .filter(a => a && a.completed === true && (Number(a.total) || 0) > 0);
+
+  const xp    = done.reduce((sum, a) => sum + xpForAttempt(a), 0);
+  const level = levelFromXp(xp);
+
+  const start       = xpAtLevelStart(level);
+  const span        = xpToClearLevel(level);
+  const xpIntoLevel = xp - start;
+
+  // Distinct local days that have at least one completed session.
+  const days = new Set();
+  for (const a of done) {
+    const k = localDayKey(a.created_at);
+    if (k) days.add(k);
+  }
+
+  const today = todayKey || localDayKey(new Date());
+  // A streak survives until a full day is missed, so it may end today OR
+  // yesterday. Counting only from today would break every morning.
+  let cursor = days.has(today) ? today
+             : days.has(_dayKeyOffset(today, -1)) ? _dayKeyOffset(today, -1)
+             : null;
+  let dailyStreak = 0;
+  while (cursor && days.has(cursor)) {
+    dailyStreak++;
+    cursor = _dayKeyOffset(cursor, -1);
+  }
+
+  // Longest run anywhere in the history.
+  const sorted = [...days].sort();
+  let bestDailyStreak = 0, run = 0, prev = null;
+  for (const k of sorted) {
+    run = (prev && _dayKeyOffset(prev, 1) === k) ? run + 1 : 1;
+    if (run > bestDailyStreak) bestDailyStreak = run;
+    prev = k;
+  }
+
+  const questions = done.reduce((n, a) => n + (Number(a.total)  || 0), 0);
+  const correct   = done.reduce((n, a) => n + (Number(a.score)  || 0), 0);
+
+  return {
+    xp, level,
+    xpIntoLevel,
+    xpForNextLevel: span,
+    xpToNextLevel:  Math.max(0, span - xpIntoLevel),
+    levelPct: span > 0 ? Math.min(100, Math.round((xpIntoLevel / span) * 100)) : 0,
+    dailyStreak, bestDailyStreak,
+    todayDone: days.has(today),
+    activeDays: days.size,
+    sessions: done.length,
+    questions, correct,
+    accuracy: questions > 0 ? Math.round((correct / questions) * 100) : 0,
+  };
+}
+
+// Badge rules. Each is a pure predicate over the derived progress plus the
+// raw attempts, so historical work retroactively unlocks what it earned.
+const BADGE_RULES = [
+  { id:'first-steps',  name:'First Steps',    ico:'ic-play',     test:p => p.sessions   >= 1   },
+  { id:'perfect-set',  name:'Perfect Set',    ico:'ic-practice', test:(p,a) => a.some(x => (Number(x.total)||0) >= PERFECT_MIN_Qs && Number(x.score) === Number(x.total)) },
+  { id:'century',      name:'Century',        ico:'ic-chart',    test:p => p.questions  >= 100 },
+  { id:'streak-3',     name:'3-Day Streak',   ico:'ic-flame',    test:p => p.bestDailyStreak >= 3  },
+  { id:'streak-10',    name:'10-Day Streak',  ico:'ic-flame',    test:p => p.bestDailyStreak >= 10 },
+  { id:'level-5',      name:'Level 5',        ico:'ic-star',     test:p => p.level      >= 5   },
+  { id:'level-10',     name:'Level 10',       ico:'ic-trophy',   test:p => p.level      >= 10  },
+  { id:'sharpshooter', name:'Sharpshooter',   ico:'ic-practice', test:p => p.questions  >= 50 && p.accuracy >= 90 },
+  { id:'thousand',     name:'1000 XP',        ico:'ic-star',     test:p => p.xp         >= 1000 },
+  { id:'all-domains',  name:'All Domains',    ico:'ic-all',      test:(p,a) => new Set(a.filter(x=>x.completed&&x.domain).map(x=>x.domain)).size >= 5 },
+];
+
+function computeBadges(progress, attempts) {
+  const list = Array.isArray(attempts) ? attempts : [];
+  return BADGE_RULES.map(r => ({
+    id: r.id, name: r.name, ico: r.ico,
+    earned: !!r.test(progress, list),
+  }));
+}
+
 async function loadAppData() {
   const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
 
@@ -3630,7 +3777,9 @@ async function loadAppData() {
   // Do NOT restore student_grade here — user must pick a grade each session
 
   // Expose for tests
-  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade };
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
+                        computeProgress, computeBadges, levelFromXp, xpAtLevelStart, xpToClearLevel,
+                        xpForAttempt, localDayKey, BADGE_RULES };
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
 }
