@@ -553,28 +553,56 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   // ── 12–16. App Logic tests (via iframe) ───────────────────────────────────
   // Load app in a hidden iframe and wait for initApp() to complete
 
-  const appIframe = await new Promise((resolve, reject) => {
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
-    iframe.src = './index.html';
-    let attempts = 0;
-    iframe.onload = () => {
-      const poll = () => {
-        const data = iframe.contentWindow._mcapData;
-        // New architecture: questions lazy-loaded; check DOMAIN_COUNTS instead
-        if (data && data.DOMAIN_COUNTS && data.DOMAIN_COUNTS.Math && data.DOMAIN_COUNTS.Math.All > 0) {
-          resolve(iframe.contentWindow);
-        } else if (++attempts < 60) {
-          setTimeout(poll, 300);
-        } else {
-          reject(new Error('App data never loaded in iframe (18s timeout)'));
-        }
+  suite('\u{1F9F0} App Logic \u2014 harness boot (iframe)');
+
+  let appIframe = null;
+  await test('index.html boots in an iframe and exposes question counts', async () => {
+    appIframe = await new Promise((resolve, reject) => {
+      const iframe = document.createElement('iframe');
+      iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+      // Cache-bust: the harness must exercise the file on disk, not a cached copy
+      iframe.src = './index.html?t=' + Date.now();
+      let gradeKicked = false;
+      const deadline = Date.now() + 25000;
+      iframe.onload = () => {
+        const poll = () => {
+          const win  = iframe.contentWindow;
+          const data = win._mcapData;
+          if (data) {
+            const counts = data.DOMAIN_COUNTS;
+            if (counts && counts.Math && counts.Math.All > 0) return resolve(win);
+            // The grade picker is a mandatory entry point, so counts stay empty
+            // until a grade is chosen. Re-select the grade the app already
+            // loaded: same value in, so stored config is unchanged.
+            //
+            // Fire without awaiting. selectGrade sets DOMAIN_COUNTS first, then
+            // tails into buildNav/switchSection/updateWeakButton, which touch
+            // DOM and network that can stall in a headless iframe. Awaiting it
+            // couples this poll to that tail and hangs the whole run.
+            if (!gradeKicked && typeof win.selectGrade === 'function') {
+              gradeKicked = true;
+              Promise.resolve(win.selectGrade(data.studentGrade || 3)).catch(() => {});
+            }
+          }
+          if (Date.now() < deadline) setTimeout(poll, 250);
+          else reject(new Error('App data never loaded in iframe (25s deadline)'));
+        };
+        poll();
       };
-      poll();
-    };
-    iframe.onerror = () => reject(new Error('Failed to load index.html in iframe'));
-    document.body.appendChild(iframe);
+      iframe.onerror = () => reject(new Error('Failed to load index.html in iframe'));
+      document.body.appendChild(iframe);
+    });
+    const n = appIframe._mcapData.DOMAIN_COUNTS.Math.All;
+    return `app booted, ${n} Math questions counted`;
   });
+
+  // A boot failure used to reject out of runAll() and abort the remaining
+  // suites silently, leaving a stale green summary. Fail loudly instead.
+  if (!appIframe) {
+    document.getElementById('run-btn').disabled = false;
+    updateSummary();
+    return;
+  }
 
   const appData = appIframe._mcapData;
 

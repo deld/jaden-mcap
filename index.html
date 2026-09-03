@@ -1561,7 +1561,12 @@ async function selectGrade(grade) {
   }
 
   _applyGradeLabels();
-  if (window._mcapData) window._mcapData.studentGrade = grade;
+  // DOMAIN_COUNTS was reassigned above, so the reference captured in _mcapData
+  // at startup is now orphaned — re-point it or consumers read stale counts.
+  if (window._mcapData) {
+    window._mcapData.studentGrade  = grade;
+    window._mcapData.DOMAIN_COUNTS = DOMAIN_COUNTS;
+  }
 
   // Re-render domain nav with freshly loaded counts, then drop into practice
   buildNav();
