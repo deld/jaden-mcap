@@ -228,7 +228,41 @@
       border-color: var(--acc);
       box-shadow: var(--sh-1);
     }
-    .nav-icon  { font-size: 1.25rem; line-height: 1; }
+    .nav-icon  { font-size: 1.25rem; line-height: 1; display:flex; }
+    /* Icons scale with font-size and take the current text colour, so a
+       button flipping to the accent recolours its icon with it. */
+    .ico {
+      width:1.32em; height:1.32em; display:block;
+      fill:none; stroke:currentColor; stroke-width:1.8;
+      stroke-linecap:round; stroke-linejoin:round;
+      vector-effect:non-scaling-stroke;
+    }
+    .section-btn .ico, .subject-btn .ico { width:1.18em; height:1.18em; }
+    /* Any control carrying an icon lays out as a row - .ico is display:block,
+       so an inline-block button would break the line under it. */
+    .section-btn, .subject-btn, .test-mode-btn,
+    .btn, .link-btn, .home-wrong-btn, .weak-areas-btn,
+    .story-btn, .reading-badge, .hud-score, .streak-badge, .test-timer,
+    .domain-banner, .video-play-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    }
+    .hud-score, .streak-badge { gap: 5px; }
+    .hud-score .ico, .streak-badge .ico, .test-timer .ico { width:1.05em; height:1.05em; }
+    .streak-badge .ico { stroke-width:2; }
+    .nav-icon .ico { width:22px; height:22px; }
+    /* Grade badge: a numeral, not a metaphor - scales to grade 5/6/7
+       without inventing new artwork each year. */
+    .grade-badge {
+      width:52px; height:52px; margin:0 auto 10px;
+      border:1.8px solid var(--line-strong); border-radius:15px;
+      display:flex; align-items:center; justify-content:center;
+      font-family:var(--f-disp); font-weight:600; font-size:1.5rem;
+      color:var(--tx-2); background:var(--surface);
+      transition:border-color .18s, color .18s, background .18s;
+      font-variant-numeric:lining-nums;
+    }
+    .grade-card:hover:not(.grade-card-soon) .grade-badge,
+    .grade-card-active .grade-badge { border-color:var(--acc); color:var(--acc); background:var(--acc-soft); }
     .nav-label { font-size: .68rem; line-height: 1; letter-spacing: .2px; }
     .nav-code  { font-size: .74rem; font-weight: 700; line-height: 1; }
     .nav-count {
@@ -256,16 +290,20 @@
     @keyframes float { from{transform:translateY(0)} to{transform:translateY(-10px)} }
     #start-screen h1 { font-size: 2rem; color: #0f3460; margin-bottom: 6px; }
     .domain-banner {
-      display: inline-flex; align-items: center; gap: 8px;
-      padding: 8px 20px; border-radius: 30px; margin: 10px 0 14px;
-      font-weight: 800; font-size: 1rem;
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 8px 18px; border-radius: 30px; margin: 10px 0 14px;
+      font-weight: 600; font-size: .97rem;
+      background: var(--acc-soft); color: var(--acc);
+      border: 1px solid var(--acc-line);
     }
+    .domain-banner .ico { width:19px; height:19px; }
     #start-screen p { font-size: .95rem; color: #555; margin-bottom: 18px; line-height: 1.6; }
     .start-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
 
     /* ── BUTTONS ── */
     .btn {
-      display:inline-block; padding:12px 28px; border:none; border-radius:50px;
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:12px 28px; border:none; border-radius:50px;
       font-size:.97rem; font-weight:700; cursor:pointer;
       font-family:var(--f-body);
       transition:transform .15s, box-shadow .15s, filter .15s;
@@ -296,7 +334,14 @@
     .q-counter { font-size:.8rem; color:var(--tx-3); font-weight:600; white-space:nowrap; font-family:var(--f-num); font-variant-numeric:tabular-nums; }
 
     /* ── CATEGORY CHIP ── */
-    .cat-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 11px; border-radius:20px; font-size:.73rem; font-weight:700; margin-bottom:8px; }
+    .cat-chip {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 11px; border-radius:20px;
+      font-size:.71rem; font-weight:700; margin-bottom:9px;
+      letter-spacing:.04em; text-transform:uppercase;
+      background:var(--surface-2); color:var(--tx-2);
+      border:1px solid var(--line);
+    }
 
     /* ── PASSAGE CONTEXT BOX ── */
     .passage-box {
@@ -494,19 +539,18 @@
       border-color: #0f3460; color: #0f3460;
     }
     .btn-test-start {
-      background: linear-gradient(135deg, #0f3460, #1a6bb5);
-      color: white; font-size: 1.05rem; padding: 13px 36px;
-      margin-top: 14px;
+      background: var(--acc); color: var(--acc-on);
+      font-size: 1.05rem; padding: 13px 36px; margin-top: 14px;
     }
     .btn-outlined {
       background: transparent; border: 2px solid #0f3460;
       color: #0f3460; padding: 10px 24px;
     }
     .home-wrong-btn {
-      background: #fef2f2; border: 2px solid #fca5a5;
-      color: #dc2626; padding: 10px 20px; font-weight: 700;
+      background: var(--bad-soft); border: 1.5px solid var(--bad);
+      color: var(--bad); padding: 10px 20px; font-weight: 700;
     }
-    .home-wrong-btn:hover { background: #fee2e2; }
+    .home-wrong-btn:hover { background: color-mix(in srgb, var(--bad) 18%, transparent); }
     /* ── TEST MODE TOGGLE (Custom vs MCAP Real) ── */
     .test-mode-toggle {
       display:inline-flex; gap:0; background:#f1f5f9;
@@ -515,9 +559,13 @@
     }
     .test-mode-btn {
       padding:8px 22px; border:none; font-size:.88rem; font-weight:700;
-      cursor:pointer; background:transparent; color:#777; transition:all .15s;
+      cursor:pointer; background:transparent; color:var(--tx-2);
+      font-family:var(--f-body);
+      transition:background .18s, color .18s;
     }
-    .test-mode-btn.active { background:#0f3460; color:white; }
+    .test-mode-btn:hover:not(.active) { color:var(--acc); background:var(--acc-soft); }
+    .test-mode-btn.active { background:var(--acc); color:var(--acc-on); }
+    .test-mode-btn:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
     /* ── MCAP PRESET INFO BOX ── */
     .mcap-preset-box {
       background:linear-gradient(135deg,#eff6ff,#dbeafe);
@@ -577,11 +625,12 @@
     }
     .test-links { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
     .link-btn {
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
       background: none; border: none; cursor: pointer;
-      color: #0f3460; font-size: .88rem; font-weight: 700;
+      color: var(--tx-2); font-size: .88rem; font-weight: 700;
       text-decoration: underline; padding: 4px;
     }
-    .link-btn:hover { color: #e94560; }
+    .link-btn:hover { color: var(--acc); }
 
     /* ── TEST RESULTS SCREEN ── */
     #test-results-screen { text-align: center; }
@@ -1003,19 +1052,145 @@
   </style>
 </head>
 <body>
+<!-- ══════════════════════════════════════════════════════════════════
+     ICON SET
+
+     Monoline, 24 grid, 1.8 stroke, round caps and joins. Every icon is
+     stroke-only and unfilled so it inherits currentColor - that is what
+     lets the domain nav's active state (white on emerald) recolour the
+     icon for free. Emoji could not: they are fixed-colour glyphs that
+     also render as different artwork on every platform.
+     ══════════════════════════════════════════════════════════════════ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <!-- section launchers -->
+  <symbol id="ic-grades" viewBox="0 0 24 24">
+    <path d="M12 4 2.75 8.5 12 13l9.25-4.5z"/>
+    <path d="M6.5 10.75v4.9c0 .4.2.78.55.98 1.3.75 3.1 1.37 4.95 1.37s3.65-.62 4.95-1.37c.35-.2.55-.58.55-.98v-4.9"/>
+    <path d="M21.25 8.5v5.25"/>
+  </symbol>
+  <symbol id="ic-tests" viewBox="0 0 24 24">
+    <rect x="4.25" y="3.75" width="15.5" height="16.5" rx="2.75"/>
+    <path d="M9 3.75V3a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 3v.75"/>
+    <path d="M8.25 10.5l1.6 1.6 3-3.2"/>
+    <path d="M8.25 16.1l1.6 1.6 3-3.2"/>
+    <path d="M15.5 10.4h.25M15.5 16h.25"/>
+  </symbol>
+
+  <!-- math domains -->
+  <symbol id="ic-all" viewBox="0 0 24 24">
+    <rect x="3.5" y="3.5" width="7" height="7" rx="2"/>
+    <rect x="13.5" y="3.5" width="7" height="7" rx="2"/>
+    <rect x="3.5" y="13.5" width="7" height="7" rx="2"/>
+    <rect x="13.5" y="13.5" width="7" height="7" rx="2"/>
+  </symbol>
+  <symbol id="ic-oa" viewBox="0 0 24 24">
+    <path d="M4 7.75h6M7 4.75v6"/>
+    <path d="M14 7.75h6"/>
+    <path d="M4 16.25h6"/>
+    <path d="M14.4 13.9l5.2 5.2M19.6 13.9l-5.2 5.2"/>
+  </symbol>
+  <symbol id="ic-nbt" viewBox="0 0 24 24">
+    <path d="M4 6.5h16"/>
+    <path d="M4 12h11"/>
+    <path d="M4 17.5h6"/>
+    <circle cx="20" cy="12" r="1.15"/>
+  </symbol>
+  <symbol id="ic-nf" viewBox="0 0 24 24">
+    <path d="M6 18.5 18 5.5"/>
+    <circle cx="7.75" cy="7.5" r="2.4"/>
+    <circle cx="16.25" cy="16.5" r="2.4"/>
+  </symbol>
+  <symbol id="ic-md" viewBox="0 0 24 24">
+    <rect x="2.5" y="8" width="19" height="8" rx="2.25"/>
+    <path d="M7 8v3M12 8v4M17 8v3"/>
+  </symbol>
+  <symbol id="ic-g" viewBox="0 0 24 24">
+    <path d="M12 3.75 20 17.5H4z"/>
+    <rect x="3.5" y="14.75" width="6.5" height="6" rx="1.5"/>
+  </symbol>
+
+  <!-- reading domains -->
+  <symbol id="ic-books" viewBox="0 0 24 24">
+    <rect x="3.5" y="4.5" width="4.5" height="15" rx="1.5"/>
+    <rect x="9.75" y="4.5" width="4.5" height="15" rx="1.5"/>
+    <path d="M17.2 5.4l3.3.9-3 12-3.3-.9z"/>
+  </symbol>
+  <symbol id="ic-rl" viewBox="0 0 24 24">
+    <path d="M12 6.9v13"/>
+    <path d="M12 6.9C10.4 5.4 8.3 4.7 5.6 4.7c-.9 0-1.6.7-1.6 1.6v10.4c0 .9.7 1.6 1.6 1.6 2.7 0 4.8.7 6.4 2.2"/>
+    <path d="M12 6.9c1.6-1.5 3.7-2.2 6.4-2.2.9 0 1.6.7 1.6 1.6v10.4c0 .9-.7 1.6-1.6 1.6-2.7 0-4.8.7-6.4 2.2"/>
+  </symbol>
+  <symbol id="ic-ri" viewBox="0 0 24 24">
+    <path d="M5.25 3.75h9.5l4 4v12.5a2 2 0 0 1-2 2h-11.5a2 2 0 0 1-2-2V5.75a2 2 0 0 1 2-2z"/>
+    <path d="M14.5 3.9V7.9h4"/>
+    <path d="M8 12.5h8M8 16.25h5.5"/>
+  </symbol>
+  <symbol id="ic-lang" viewBox="0 0 24 24">
+    <path d="M4.5 18.5 10 5.5l5.5 13"/>
+    <path d="M6.4 14.2h7.2"/>
+    <path d="M17.5 18.5h3"/>
+  </symbol>
+
+  <!-- subjects, modes, actions -->
+  <symbol id="ic-math" viewBox="0 0 24 24">
+    <path d="M4 6.75h6M7 3.75v6"/>
+    <path d="M14 6.75h6"/>
+    <path d="M4 17.25h6"/>
+    <path d="M17 14.25v6M14 17.25h6"/>
+  </symbol>
+  <symbol id="ic-practice" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="8.5"/>
+    <circle cx="12" cy="12" r="4.25"/>
+    <circle cx="12" cy="12" r=".9" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="ic-shuffle" viewBox="0 0 24 24">
+    <path d="M3.5 6.75h3.2c1.4 0 2.7.7 3.4 1.9l3.8 6.7c.7 1.2 2 1.9 3.4 1.9h3.2"/>
+    <path d="M3.5 17.25h3.2c1.4 0 2.7-.7 3.4-1.9l.9-1.6"/>
+    <path d="M13.6 8.65l.3-.5c.7-1.2 2-1.9 3.4-1.9h3.2"/>
+    <path d="M18.25 3.9l2.85 2.85-2.85 2.85"/>
+    <path d="M18.25 14.4l2.85 2.85-2.85 2.85"/>
+  </symbol>
+  <symbol id="ic-play" viewBox="0 0 24 24">
+    <path d="M8 5.4 18.5 12 8 18.6z"/>
+  </symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="8.5"/>
+    <path d="M9.2 9.2l5.6 5.6M14.8 9.2l-5.6 5.6"/>
+  </symbol>
+  <symbol id="ic-chart" viewBox="0 0 24 24">
+    <path d="M4 20V4"/><path d="M4 20h16"/>
+    <path d="M8 20v-5.5M12.4 20V9M16.8 20v-8"/>
+  </symbol>
+  <symbol id="ic-star" viewBox="0 0 24 24">
+    <path d="m12 3.6 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 17l-5.25 2.75 1-5.85L3.5 9.75l5.9-.85z"/>
+  </symbol>
+  <symbol id="ic-flame" viewBox="0 0 24 24">
+    <path d="M12 2.8c3.1 3.4 5.4 6 5.4 9.3a5.4 5.4 0 1 1-10.8 0c0-1.6.5-2.9 1.4-4.1.2 1 .8 1.8 1.6 2.2.3-2.8 1.1-5.1 2.4-7.4z"/>
+  </symbol>
+  <symbol id="ic-clock" viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.1 1.9"/>
+  </symbol>
+  <symbol id="ic-trophy" viewBox="0 0 24 24">
+    <path d="M7.5 4h9v5.2a4.5 4.5 0 0 1-9 0z"/>
+    <path d="M7.5 5.6H5.2a2.7 2.7 0 0 0 2.6 3.5M16.5 5.6h2.3a2.7 2.7 0 0 1-2.6 3.5"/>
+    <path d="M12 13.7v3.3M8.75 20h6.5"/>
+  </symbol>
+
+</svg>
+
 
 <div class="stars" id="stars"></div>
 
 <!-- ══ SECTION NAV ══ -->
 <nav id="section-nav">
-  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')">📚 Grades</button>
-  <button class="section-btn"        id="sec-btn-tests"  onclick="switchSection('tests')">📝 Standardized Tests</button>
+  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg>Grades</button>
+  <button class="section-btn"        id="sec-btn-tests"  onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg>Standardized Tests</button>
 </nav>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
 <div id="subject-toggle">
-  <button class="subject-btn active" id="btn-math" onclick="switchSubject('Math')">🔢 Math</button>
-  <button class="subject-btn" id="btn-reading" onclick="switchSubject('Reading')">📚 Reading</button>
+  <button class="subject-btn active" id="btn-math" onclick="switchSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
+  <button class="subject-btn" id="btn-reading" onclick="switchSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
 </div>
 
 <!-- ══ DOMAIN NAV ══ -->
@@ -1024,7 +1199,7 @@
 <div id="app">
   <!-- START SCREEN -->
   <div id="start-screen" class="card">
-    <span class="subject-icon" id="subject-icon">🚀</span>
+    <span class="subject-icon" id="subject-icon"></span>
     <h1 id="start-title">After School Knowledge</h1>
     <div class="domain-banner" id="domain-banner"></div>
     <p id="start-desc"></p>
@@ -1034,23 +1209,23 @@
       <div id="q-count-btns" style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap;"></div>
     </div>
     <div class="start-btns">
-      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Let's Play!</button>
+      <button class="btn btn-shuffle" onclick="startGame(true)"><svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Let's Play!</button>
     </div>
     <div style="margin-top:8px;">
-      <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)">▶ In Order</button>
+      <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>In Order</button>
     </div>
     <div style="margin-top:12px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
-      <button class="btn home-wrong-btn hidden" id="home-wrong-btn" onclick="showWeakPractice()">❌ Wrong Answers <span id="home-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
+      <button class="btn home-wrong-btn hidden" id="home-wrong-btn" onclick="showWeakPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-x"></use></svg>Wrong Answers <span id="home-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
     </div>
     <div style="margin-top:10px;">
-      <button class="link-btn" onclick="showHistory()" style="font-size:.85rem;color:#6b7280;">📋 Past Scores</button>
+      <button class="link-btn" onclick="showHistory()" style="font-size:.85rem;color:#6b7280;"><svg class="ico" aria-hidden="true"><use href="#ic-chart"></use></svg>Past Scores</button>
     </div>
   </div>
 
   <!-- READING SCREEN -->
   <div id="reading-screen" class="card hidden">
     <div class="reading-header">
-      <div class="reading-badge">📖 Read the Story First</div>
+      <div class="reading-badge"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>Read the Story First</div>
       <div class="reading-title-text" id="reading-title"></div>
       <div class="reading-byline-text" id="reading-byline"></div>
     </div>
@@ -1064,13 +1239,13 @@
   <div id="question-screen" class="card hidden">
     <div class="hud">
       <div class="hud-left">
-        <div class="hud-score">⭐ <span id="score-display">0</span> stars</div>
-        <div id="streak-display" class="streak-badge hidden">🔥 Streak: <span id="streak-count">0</span></div>
+        <div class="hud-score"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg><span id="score-display">0</span> stars</div>
+        <div id="streak-display" class="streak-badge hidden"><svg class="ico" aria-hidden="true"><use href="#ic-flame"></use></svg><span id="streak-count">0</span></div>
         <div class="hud-domain" id="hud-domain"></div>
       </div>
       <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
       <div class="q-counter" id="q-counter"></div>
-      <div id="test-timer" class="test-timer hidden">⏱ <span id="timer-display">20:00</span></div>
+      <div id="test-timer" class="test-timer hidden"><svg class="ico" aria-hidden="true"><use href="#ic-clock"></use></svg><span id="timer-display">20:00</span></div>
     </div>
     <!-- Two-column grid on desktop when a passage is present -->
     <div class="q-layout">
@@ -1079,9 +1254,9 @@
       <!-- Right/main panel: question content -->
       <div class="q-main-panel">
         <div class="cat-chip" id="cat-chip"></div>
-        <button class="story-btn hidden" id="story-btn" onclick="openStoryModal()">📖 View Story Again</button>
+        <button class="story-btn hidden" id="story-btn" onclick="openStoryModal()"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>View Story Again</button>
         <div class="passage-box hidden" id="passage-box">
-          <span class="passage-label">📖 Story Context</span>
+          <span class="passage-label">Story Context</span>
           <span id="passage-text"></span>
         </div>
         <div class="q-text" id="q-text"></div>
@@ -1114,11 +1289,11 @@
     </div>
     <div class="final-msg" id="final-msg"></div>
     <div class="start-btns mt-10">
-      <button class="btn btn-primary" onclick="startGame(false)">▶ Play Again</button>
-      <button class="btn btn-shuffle" onclick="startGame(true)">🔀 Shuffle</button>
+      <button class="btn btn-primary" onclick="startGame(false)"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Play Again</button>
+      <button class="btn btn-shuffle" onclick="startGame(true)"><svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Shuffle</button>
     </div>
     <div style="margin-top:12px;">
-      <button id="practice-review-btn" class="btn hidden" style="background:#fff;color:#0f3460;border:2px solid #0f3460;font-weight:700;" onclick="showPracticeReview()">📖 Review My Answers</button>
+      <button id="practice-review-btn" class="btn hidden" style="background:#fff;color:#0f3460;border:2px solid #0f3460;font-weight:700;" onclick="showPracticeReview()"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>Review My Answers</button>
     </div>
   </div>
   <!-- GRADES SCREEN -->
@@ -1127,12 +1302,12 @@
     <p style="color:var(--tx-2);font-size:.92rem;margin-bottom:4px;">Pick a year to practice. You can switch any time.</p>
     <div class="grade-cards">
       <div class="grade-card" onclick="selectGrade(3)" style="cursor:pointer;">
-        <span class="grade-card-icon">🚀</span>
+        <div class="grade-badge">3</div>
         <div class="grade-card-label">3rd Grade</div>
         <div class="grade-card-sub">Practice questions ready</div>
       </div>
       <div class="grade-card" onclick="selectGrade(4)" style="cursor:pointer;">
-        <span class="grade-card-icon">🔭</span>
+        <div class="grade-badge">4</div>
         <div class="grade-card-label">4th Grade</div>
         <div class="grade-card-sub">Week 1 packet loaded</div>
       </div>
@@ -1141,12 +1316,12 @@
 
   <!-- TEST CONFIG SCREEN -->
   <div id="test-config-screen" class="card hidden">
-    <h2>📝 Standardized Tests</h2>
+    <h2>Standardized Tests</h2>
 
     <!-- Practice vs Take a Test toggle -->
     <div class="test-mode-toggle" style="margin-bottom:20px;">
-      <button class="test-mode-btn active" id="tests-mode-practice" onclick="setTestsMode('practice')">🎯 Practice</button>
-      <button class="test-mode-btn"        id="tests-mode-test"     onclick="setTestsMode('test')">📝 Take a Test</button>
+      <button class="test-mode-btn active" id="tests-mode-practice" onclick="setTestsMode('practice')"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg>Practice</button>
+      <button class="test-mode-btn"        id="tests-mode-test"     onclick="setTestsMode('test')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg>Take a Test</button>
     </div>
 
     <!-- ── Practice panel ── -->
@@ -1154,19 +1329,19 @@
       <!-- subject toggle mirrors the main one -->
       <div style="margin-bottom:12px;">
         <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
-          <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math');switchSubject('Math')">🔢 Math</button>
-          <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading');switchSubject('Reading')">📚 Reading</button>
+          <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math');switchSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
+          <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading');switchSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
         </div>
       </div>
       <!-- domain nav placeholder — the real #domain-nav lives outside, we show it here -->
       <div id="tests-domain-nav-placeholder" style="margin-bottom:12px;"></div>
       <p class="test-subtitle" style="margin-bottom:16px;">Pick a topic and drill questions — no timer, hints available.</p>
-      <button class="btn btn-test-start" onclick="startGame(true)">🔀 Let's Practice!</button>
+      <button class="btn btn-test-start" onclick="startGame(true)"><svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Let's Practice!</button>
       <div style="margin-top:8px;">
-        <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)">▶ In Order</button>
+        <button class="link-btn" style="font-size:.8rem;color:#9ca3af;" onclick="startGame(false)"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>In Order</button>
       </div>
       <div style="margin-top:10px;">
-        <button class="btn home-wrong-btn hidden" id="tests-wrong-btn" onclick="showWeakPractice()">❌ Wrong Answers <span id="tests-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
+        <button class="btn home-wrong-btn hidden" id="tests-wrong-btn" onclick="showWeakPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-x"></use></svg>Wrong Answers <span id="tests-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
       </div>
     </div>
 
@@ -1177,15 +1352,15 @@
       <!-- Subject -->
       <div style="margin-bottom:16px;">
         <div style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
-          <button class="subject-btn active" id="test-btn-math2" onclick="setTestSubject('Math')">🔢 Math</button>
-          <button class="subject-btn" id="test-btn-reading2" onclick="setTestSubject('Reading')">📚 Reading</button>
+          <button class="subject-btn active" id="test-btn-math2" onclick="setTestSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
+          <button class="subject-btn" id="test-btn-reading2" onclick="setTestSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
         </div>
       </div>
 
       <!-- Mode toggle: Custom vs MCAP Real -->
       <div class="test-mode-toggle">
         <button class="test-mode-btn active" id="mode-btn-custom" onclick="setTestModeType('custom')">Custom</button>
-        <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')">📝 MCAP Simulation</button>
+        <button class="test-mode-btn" id="mode-btn-mcap" onclick="setTestModeType('mcap')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg>MCAP Simulation</button>
       </div>
 
     <!-- Custom pickers -->
@@ -1226,17 +1401,17 @@
     </div>
 
       <div style="margin-top:4px;">
-        <button class="btn btn-test-start btn" onclick="startTest()">▶ Start Test</button>
+        <button class="btn btn-test-start btn" onclick="startTest()"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Start Test</button>
       </div>
       <div style="text-align:center;" id="weak-areas-row">
         <button class="weak-areas-btn hidden" id="weak-areas-btn" onclick="showWeakPractice()">
-          🎯 Practice Weak Areas <span class="weak-badge" id="weak-count-badge">0</span>
+          <svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg>Practice Weak Areas <span class="weak-badge" id="weak-count-badge">0</span>
         </button>
       </div>
     </div><!-- /tests-test-panel -->
 
     <div class="test-links" style="margin-top:14px;">
-      <button class="link-btn" onclick="showHistory()">📋 Past Scores</button>
+      <button class="link-btn" onclick="showHistory()"><svg class="ico" aria-hidden="true"><use href="#ic-chart"></use></svg>Past Scores</button>
     </div>
   </div>
 
@@ -1280,7 +1455,7 @@
     <div class="review-list" id="review-list"></div>
     <div style="text-align:center;margin-top:18px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
       <button class="btn btn-shuffle" onclick="show(reviewReturnScreen)">← Back to Results</button>
-      <button class="weak-areas-btn hidden" id="weak-practice-from-review" onclick="showWeakPractice()">🎯 Practice Missed Questions</button>
+      <button class="weak-areas-btn hidden" id="weak-practice-from-review" onclick="showWeakPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg>Practice Missed Questions</button>
     </div>
   </div>
 
@@ -1308,7 +1483,7 @@
       <div class="video-frame-wrap">
         <a id="video-yt-link" href="#" target="_blank" rel="noopener" class="video-thumb-link">
           <img id="video-thumb" src="" alt="Video thumbnail" class="video-thumb">
-          <button class="video-play-btn">▶ Watch on YouTube Kids</button>
+          <button class="video-play-btn"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Watch on YouTube Kids</button>
         </a>
       </div>
       <div class="video-nav-row">
@@ -1437,26 +1612,32 @@
 </div>
 
 <script>
+// Renders one sprite icon. Stroke-only and unfilled, so it inherits the
+// current text colour and recolours with its button's state.
+function icoSvg(id, cls = 'ico') {
+  return `<svg class="${cls}" aria-hidden="true"><use href="#${id}"></use></svg>`;
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  MATH DOMAIN DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════
 const MATH_DOMAINS = [
-  { id:'All', label:'All Topics',     code:'ALL', icon:'🚀', bg:'#1a1a2e', fg:'white'  },
-  { id:'OA',  label:'Operations & Algebraic Thinking', code:'OA', icon:'✖️', bg:'#fde68a', fg:'#78350f' },
-  { id:'NBT', label:'Number & Operations in Base Ten', code:'NBT',icon:'🔢', bg:'#bfdbfe', fg:'#1e3a5f' },
-  { id:'NF',  label:'Number & Operations—Fractions',   code:'NF', icon:'🍕', bg:'#fce7f3', fg:'#9d174d' },
-  { id:'MD',  label:'Measurement & Data',              code:'MD', icon:'📐', bg:'#d1fae5', fg:'#065f46' },
-  { id:'G',   label:'Geometry',                        code:'G',  icon:'🔷', bg:'#ede9fe', fg:'#4c1d95' },
+  { id:'All', label:'All Topics',                      code:'ALL', ico:'ic-all' },
+  { id:'OA',  label:'Operations & Algebraic Thinking', code:'OA',  ico:'ic-oa'  },
+  { id:'NBT', label:'Number & Operations in Base Ten', code:'NBT', ico:'ic-nbt' },
+  { id:'NF',  label:'Number & Operations—Fractions',   code:'NF',  ico:'ic-nf'  },
+  { id:'MD',  label:'Measurement & Data',              code:'MD',  ico:'ic-md'  },
+  { id:'G',   label:'Geometry',                        code:'G',   ico:'ic-g'   },
 ];
 
 // ═══════════════════════════════════════════════════════════════════
 //  ELA DOMAIN DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════
 const ELA_DOMAINS = [
-  { id:'All', label:'All Reading',         code:'ALL', icon:'📚', bg:'#1a1a2e', fg:'white'  },
-  { id:'RL',  label:'Literary Text',       code:'RL',  icon:'📖', bg:'#fce7f3', fg:'#9d174d' },
-  { id:'RI',  label:'Informational Text',  code:'RI',  icon:'📰', bg:'#dbeafe', fg:'#1e3a5f' },
-  { id:'L',   label:'Language',            code:'L',   icon:'🔤', bg:'#d1fae5', fg:'#065f46' },
+  { id:'All', label:'All Reading',        code:'ALL', ico:'ic-books' },
+  { id:'RL',  label:'Literary Text',      code:'RL',  ico:'ic-rl'    },
+  { id:'RI',  label:'Informational Text', code:'RI',  ico:'ic-ri'    },
+  { id:'L',   label:'Language',           code:'L',   ico:'ic-lang'  },
 ];
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1573,7 +1754,7 @@ function buildNav() {
     const cnt = d.id==='All' ? (subCounts.All||0) : (subCounts[d.id]||0);
     const btn = document.createElement('button');
     btn.className = 'nav-btn' + (d.id===activeDomain ? ' active' : '');
-    btn.innerHTML = `<span class="nav-icon">${d.icon}</span><span class="nav-code">${d.code}</span><span class="nav-count">${cnt}q</span>`;
+    btn.innerHTML = `<span class="nav-icon">${icoSvg(d.ico)}</span><span class="nav-code">${d.code}</span><span class="nav-count">${cnt}q</span>`;
     btn.title = d.label;
     btn.onclick = () => switchDomain(d.id);
     nav.appendChild(btn);
@@ -1601,19 +1782,17 @@ function switchDomain(id) {
 function updateStartScreen() {
   const d = currentDomains().find(x => x.id === activeDomain);
   const banner = document.getElementById('domain-banner');
-  banner.style.background = d.bg;
-  banner.style.color = d.fg;
 
   const subCounts = DOMAIN_COUNTS[activeSubject] || {};
   const qTotal = activeDomain === 'All' ? (subCounts.All||0) : (subCounts[activeDomain]||0);
-  banner.textContent = `${d.icon}  ${d.label}`;
+  banner.innerHTML = `${icoSvg(d.ico)}<span>${d.label}</span>`;
 
   // Title & icon based on subject + domain
   if (activeSubject === 'Math') {
-    document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '🚀' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'🚀'}).icon;
+    document.getElementById('subject-icon').innerHTML = icoSvg((currentDomains().find(x=>x.id===activeDomain)||{ico:'ic-all'}).ico);
     document.getElementById('start-title').textContent = 'After School Knowledge';
   } else {
-    document.getElementById('subject-icon').textContent = activeDomain === 'All' ? '📚' : (currentDomains().find(x=>x.id===activeDomain)||{icon:'📚'}).icon;
+    document.getElementById('subject-icon').innerHTML = icoSvg((currentDomains().find(x=>x.id===activeDomain)||{ico:'ic-books'}).ico);
     document.getElementById('start-title').textContent = 'After School Knowledge';
   }
 
@@ -1885,8 +2064,6 @@ function renderQuestion() {
 
   // category chip
   const chip = document.getElementById('cat-chip');
-  const cs = CAT_STYLE[q.cat]||{bg:'#eee',fg:'#333'};
-  chip.style.background=cs.bg; chip.style.color=cs.fg;
   chip.textContent = q.cat;
 
   // passage handling
@@ -2128,7 +2305,7 @@ function showEndScreen() {
   document.getElementById('final-score').textContent=`${score} / ${total}`;
   document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
   document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
-  document.getElementById('stat-domain').textContent=d?d.icon+' '+d.code:'ALL';
+  document.getElementById('stat-domain').textContent = d ? d.code : 'ALL';
   document.getElementById('end-title').textContent = 'Session Complete!';
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
@@ -2337,7 +2514,7 @@ function showTestResults(data) {
   const rows = Object.entries(breakdown).sort((a,b)=>a[0].localeCompare(b[0]));
   rows.forEach(([domId, v])=>{
     const domDef = doms.find(d=>d.id===domId);
-    const label = domDef ? `${domDef.icon} ${domDef.label}` : domId;
+    const label = domDef ? domDef.label : domId;
     const barClass = v.pct >= 80 ? 'good' : v.pct >= 60 ? 'warn' : 'bad';
     const tr = document.createElement('tr');
     tr.className='breakdown-row';
@@ -2746,7 +2923,7 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
       <div class="review-item-header" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
         <span class="review-num">Q${idx + 1}</span>
         <span class="review-verdict ${verdictCls}">${verdictText}</span>
-        <span class="cat-chip" style="background:${cs.bg};color:${cs.fg};font-size:.7rem;padding:2px 9px;">${q.cat}</span>
+        <span class="cat-chip" style="font-size:.7rem;padding:2px 9px;">${q.cat}</span>
         ${timeHtml}
       </div>
       <div class="review-q-text">${q.text.replace(/\n/g,'<br>')}</div>
@@ -3229,7 +3406,7 @@ function _renderDomains(attempts) {
   const allDoms = [...MATH_DOMAINS,...ELA_DOMAINS];
   const html = rows.map(({dom,avg,n}) => {
     const def   = allDoms.find(d=>d.id===dom);
-    const label = def ? `${def.icon} ${def.label}` : dom;
+    const label = def ? def.label : dom;
     const color = avg>=80?'#10b981':avg>=60?'#f59e0b':'#ef4444';
     const domEsc = dom.replace(/'/g,"\\'");
     return `<div class="p-bar-row" style="flex-wrap:wrap;">
