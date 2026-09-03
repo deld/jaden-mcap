@@ -4,15 +4,137 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>After School Knowledge (ASK)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Syne:wght@700;800&display=swap">
   <style>
+    /* ══════════════════════════════════════════════════════════════════
+       DESIGN TOKENS
+
+       Two surfaces with opposite jobs:
+         Dew (default)    - light, calm, emerald. Working surfaces: problems,
+                            reading, review, parent dashboard. Job is FOCUS.
+         Night Mission    - dark navy + gold. Reward surfaces: home, level map,
+                            badge case, level-up. Job is MOTIVATION.
+
+       Walking from a bright working surface into a dark celebratory one is
+       itself the reward. Opt a section in with class="surface-reward".
+       ══════════════════════════════════════════════════════════════════ */
+    :root {
+      /* ── Dew: grounds & surfaces ── */
+      --bg:            #f2f6f1;
+      --bg-deep:       #e4ede2;
+      --surface:       #ffffff;
+      --surface-2:     #e9f0e7;
+      --surface-3:     #dbe7d8;
+      --line:          #d3e2ce;
+      --line-strong:   #b3cbac;
+
+      /* ── Dew: ink ── */
+      --tx:            #16281a;
+      --tx-2:          #56705a;
+      --tx-3:          #7d9280;
+
+      /* ── Dew: accent ── */
+      --acc:           #2f6b4f;
+      --acc-on:        #ffffff;
+      --acc-soft:      rgba(47,106,79,.10);
+      --acc-line:      rgba(47,106,79,.38);
+      --acc-2:         #7ba889;
+
+      /* Amber is spent on exactly one thing - streaks - so it never
+         loses its meaning. Do not reach for it for general emphasis. */
+      --streak:        #d98324;
+      --streak-soft:   rgba(217,131,36,.12);
+
+      /* ── Semantic: independent of accent ── */
+      --ok:            #2f6b4f;
+      --ok-soft:       rgba(47,106,79,.11);
+      --warn:          #b06d15;
+      --warn-soft:     rgba(176,109,21,.13);
+      --bad:           #b3453f;
+      --bad-soft:      rgba(179,69,63,.10);
+
+      /* ── Type ── */
+      --f-disp: 'Fraunces', Georgia, 'Times New Roman', serif;
+      --f-body: 'Source Sans 3', system-ui, -apple-system, 'Segoe UI', sans-serif;
+      --f-num:  'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+      --f-rwd:  'Syne', var(--f-body);
+
+      /* ── Shape ── */
+      --r1: 11px;
+      --r2: 17px;
+      --r3: 25px;
+
+      /* ── Elevation (tuned for a light ground) ── */
+      --sh-1: 0 1px 2px rgba(22,40,26,.05);
+      --sh-2: 0 2px 6px rgba(22,40,26,.07), 0 12px 28px -14px rgba(22,40,26,.22);
+      --sh-3: 0 4px 12px rgba(22,40,26,.09), 0 28px 60px -24px rgba(22,40,26,.34);
+    }
+
+    /* ── Night Mission: the reward surface ──────────────────────────────
+       Redefines the same token names, so every component built on tokens
+       reskins itself when nested inside. No component-level dark rules. */
+    .surface-reward {
+      --bg:            #0a0f1c;
+      --bg-deep:       #060a13;
+      --surface:       #121a2e;
+      --surface-2:     #1b2540;
+      --surface-3:     #243052;
+      --line:          rgba(190,210,255,.11);
+      --line-strong:   rgba(190,210,255,.22);
+
+      --tx:            #e8eefc;
+      --tx-2:          #8ea0c4;
+      --tx-3:          #64749b;
+
+      --acc:           #f0b429;
+      --acc-on:        #0a0f1c;
+      --acc-soft:      rgba(240,180,41,.13);
+      --acc-line:      rgba(240,180,41,.45);
+      --acc-2:         #38bdf8;
+
+      --streak:        #f0b429;
+      --streak-soft:   rgba(240,180,41,.14);
+
+      --ok:            #4ade80;
+      --ok-soft:       rgba(74,222,128,.13);
+      --warn:          #fbbf24;
+      --warn-soft:     rgba(251,191,36,.14);
+      --bad:           #fb7185;
+      --bad-soft:      rgba(251,113,133,.13);
+
+      --sh-1: 0 1px 2px rgba(0,0,0,.4);
+      --sh-2: 0 2px 6px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.7);
+      --sh-3: 0 4px 12px rgba(0,0,0,.5), 0 28px 60px -24px rgba(0,0,0,.8);
+
+      background: var(--bg);
+      color: var(--tx);
+    }
+
+    /* Numerals line up in columns wherever they are compared. */
+    .num, .stat-num, .nav-count { font-variant-numeric: tabular-nums; }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: var(--f-body);
+      background: var(--bg);
+      color: var(--tx);
       min-height: 100vh;
       display: flex; flex-direction: column; align-items: center;
       padding: 12px 12px 24px;
       gap: 10px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Display face carries questions and headings. Kept off body so it
+       never leaks into dense UI, where it would cost legibility. */
+    h1, h2, h3, .display {
+      font-family: var(--f-disp);
+      font-weight: 700;
+      letter-spacing: -.005em;
+      text-wrap: balance;
+      color: var(--tx);
     }
 
     /* ── APP CONTAINER ── */
@@ -23,95 +145,105 @@
     }
 
     /* ── STARS ── */
-    .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; }
-    .star  { position:absolute; border-radius:50%; background:white; animation:twinkle 3s infinite alternate; }
+    /* Stars belong to the dark ground. Hidden by default; the reward
+       surface turns them back on where they actually read. */
+    .stars { position:fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; display:none; }
+    body.has-reward .stars { display:block; }
+    .star  { position:absolute; border-radius:50%; background:#dbe6ff; animation:twinkle 3s infinite alternate; }
     @keyframes twinkle { from{opacity:.12} to{opacity:.8} }
     @keyframes spin { to{transform:rotate(360deg)} }
 
     /* ── SECTION NAV ── */
     #section-nav {
       position: relative; z-index: 13;
-      display: flex; gap: 4px;
-      background: rgba(255,255,255,.1);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,.2);
+      display: flex; gap: 3px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
       border-radius: 50px;
       padding: 4px;
     }
     .section-btn {
       padding: 7px 20px; border: none; border-radius: 40px;
-      font-size: .88rem; font-weight: 800; cursor: pointer;
-      transition: all .2s; color: rgba(255,255,255,.65);
-      background: transparent; letter-spacing: .2px;
+      font-size: .88rem; font-weight: 700; cursor: pointer;
+      transition: background .18s, color .18s;
+      color: var(--tx-2); font-family: var(--f-body);
+      background: transparent; letter-spacing: .1px;
     }
     .section-btn.active {
-      background: white; color: #0f3460;
-      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+      background: var(--acc); color: var(--acc-on);
+      box-shadow: var(--sh-1);
     }
-    .section-btn:hover:not(.active) { background: rgba(255,255,255,.2); color: white; }
+    .section-btn:hover:not(.active) { background: var(--acc-soft); color: var(--acc); }
+    .section-btn:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
     /* ── SUBJECT TOGGLE ── */
     #subject-toggle {
       position: relative; z-index: 12;
-      display: flex; gap: 6px;
-      background: rgba(255,255,255,.15);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,.25);
+      display: flex; gap: 4px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
       border-radius: 50px;
       padding: 5px;
     }
     .subject-btn {
       padding: 8px 24px; border: none; border-radius: 40px;
-      font-size: .95rem; font-weight: 800; cursor: pointer;
-      transition: all .2s; color: rgba(255,255,255,.75);
-      background: transparent; letter-spacing: .3px;
+      font-size: .95rem; font-weight: 700; cursor: pointer;
+      transition: background .18s, color .18s;
+      color: var(--tx-2); font-family: var(--f-body);
+      background: transparent; letter-spacing: .1px;
     }
     .subject-btn.active {
-      background: white; color: #0f3460;
-      box-shadow: 0 3px 12px rgba(0,0,0,.2);
+      background: var(--acc); color: var(--acc-on);
+      box-shadow: var(--sh-1);
     }
-    .subject-btn:hover:not(.active) { background: rgba(255,255,255,.2); color: white; }
+    .subject-btn:hover:not(.active) { background: var(--acc-soft); color: var(--acc); }
+    .subject-btn:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
 
     /* ── DOMAIN NAV ── */
     #domain-nav {
       position: relative; z-index: 10;
       width: 100%; max-width: 760px;
-      background: rgba(255,255,255,.12);
-      backdrop-filter: blur(10px);
-      border: 1px solid rgba(255,255,255,.2);
-      border-radius: 20px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--r2);
       padding: 8px;
-      display: flex; gap: 6px; flex-wrap: wrap; justify-content: center;
+      display: flex; gap: 4px; flex-wrap: wrap; justify-content: center;
+      box-shadow: var(--sh-1);
     }
     .nav-btn {
-      display: flex; flex-direction: column; align-items: center; gap: 1px;
-      padding: 8px 14px; border: none; border-radius: 14px;
-      cursor: pointer; font-weight: 700; transition: all .2s;
-      background: transparent; color: rgba(255,255,255,.7);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      padding: 8px 14px; border: 1px solid transparent; border-radius: var(--r1);
+      cursor: pointer; font-weight: 600; font-family: var(--f-body);
+      transition: background .18s, color .18s, border-color .18s;
+      background: transparent; color: var(--tx-2);
       min-width: 68px;
     }
-    .nav-btn:hover { background: rgba(255,255,255,.15); color: white; }
+    .nav-btn:hover { background: var(--acc-soft); color: var(--acc); }
+    .nav-btn:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
     .nav-btn.active {
-      background: white; color: #0f3460;
-      box-shadow: 0 4px 14px rgba(0,0,0,.25);
-      transform: translateY(-1px);
+      background: var(--acc); color: var(--acc-on);
+      border-color: var(--acc);
+      box-shadow: var(--sh-1);
     }
-    .nav-icon  { font-size: 1.3rem; line-height: 1; }
-    .nav-label { font-size: .68rem; line-height: 1; letter-spacing: .3px; }
-    .nav-code  { font-size: .72rem; font-weight: 800; line-height: 1; }
+    .nav-icon  { font-size: 1.25rem; line-height: 1; }
+    .nav-label { font-size: .68rem; line-height: 1; letter-spacing: .2px; }
+    .nav-code  { font-size: .74rem; font-weight: 700; line-height: 1; }
     .nav-count {
-      font-size: .6rem; font-weight: 700; line-height: 1;
-      background: rgba(0,0,0,.12); border-radius: 6px;
-      padding: 1px 5px; margin-top: 1px;
+      font-size: .62rem; font-weight: 600; line-height: 1;
+      font-family: var(--f-num); font-variant-numeric: tabular-nums;
+      background: var(--surface-2); color: var(--tx-3);
+      border-radius: 5px; padding: 2px 5px; margin-top: 1px;
     }
-    .nav-btn.active .nav-count { background: rgba(15,52,96,.15); }
+    .nav-btn.active .nav-count { background: rgba(255,255,255,.20); color: var(--acc-on); }
 
     /* ── CARD ── */
     .card {
       position: relative; z-index: 1;
-      background: rgba(255,255,255,.97);
-      border-radius: 24px; padding: 26px 22px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.4);
+      background: var(--surface);
+      color: var(--tx);
+      border: 1px solid var(--line);
+      border-radius: var(--r3); padding: 26px 22px;
+      box-shadow: var(--sh-2);
       width: 100%; max-width: 760px;
     }
 
@@ -363,22 +495,36 @@
       margin-top: 16px;
     }
     .grade-card {
-      width: 160px; padding: 24px 16px; border: 2px solid #e2e8f0;
-      border-radius: 20px; text-align: center; cursor: pointer;
-      background: white; transition: all .2s; position: relative;
+      width: 168px; padding: 24px 16px; border: 2px solid var(--line);
+      border-radius: var(--r2); text-align: center; cursor: pointer;
+      background: var(--surface);
+      transition: border-color .18s, box-shadow .18s, transform .14s, background .18s;
+      position: relative;
     }
     .grade-card:hover:not(.grade-card-soon) {
-      border-color: #0f3460; box-shadow: 0 6px 20px rgba(15,52,96,.15);
+      border-color: var(--acc); background: var(--acc-soft);
+      box-shadow: var(--sh-2);
       transform: translateY(-2px);
     }
-    .grade-card-active { border-color: #0f3460; background: #f0f4ff; }
+    .grade-card:focus-visible { outline: 2px solid var(--acc); outline-offset: 3px; }
+    .grade-card-active {
+      border-color: var(--acc); background: var(--acc-soft);
+      box-shadow: var(--sh-1);
+    }
+    .grade-card-active::after {
+      content: ''; position: absolute; inset: auto 0 -2px 0; height: 3px;
+      background: var(--acc); border-radius: 0 0 var(--r2) var(--r2);
+    }
     .grade-card-soon { opacity: .45; cursor: not-allowed; }
     .grade-card-icon { font-size: 2.4rem; display: block; margin-bottom: 8px; }
-    .grade-card-label { font-size: 1rem; font-weight: 800; color: #0f3460; }
-    .grade-card-sub { font-size: .75rem; color: #64748b; margin-top: 4px; }
+    .grade-card-label {
+      font-size: 1.05rem; font-weight: 700; color: var(--tx);
+      font-family: var(--f-disp); letter-spacing: -.01em;
+    }
+    .grade-card-sub { font-size: .76rem; color: var(--tx-2); margin-top: 5px; }
     .grade-card .soon-tag {
       display: inline-block; font-size: .6rem; font-weight: 700;
-      background: #e2e8f0; color: #64748b; border-radius: 8px;
+      background: var(--surface-2); color: var(--tx-3); border-radius: 6px;
       padding: 2px 7px; margin-top: 6px;
       text-transform: uppercase; letter-spacing: .3px;
     }
@@ -930,8 +1076,8 @@
   </div>
   <!-- GRADES SCREEN -->
   <div id="grades-screen" class="card hidden" style="text-align:center;">
-    <h2 style="color:#0f3460;margin-bottom:6px;">📚 Grades</h2>
-    <p style="color:#64748b;font-size:.9rem;margin-bottom:4px;">Select a grade to practice that year's content.</p>
+    <h2 style="margin-bottom:6px;">Choose your grade</h2>
+    <p style="color:var(--tx-2);font-size:.92rem;margin-bottom:4px;">Pick a year to practice. You can switch any time.</p>
     <div class="grade-cards">
       <div class="grade-card" onclick="selectGrade(3)" style="cursor:pointer;">
         <span class="grade-card-icon">🚀</span>
