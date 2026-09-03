@@ -550,6 +550,40 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `${qRows.length} passage-linked questions all have valid FKs`;
   });
 
+  await test('No active question has letter prefixes baked into its options', async () => {
+    // Options were uploaded as ["A 35","B 100",...]. The app shuffles options and
+    // draws its own A/B/C/D badge, so a baked-in letter contradicts the badge as
+    // soon as the order changes - the child reads "A) D 200". See issue #29.
+    //
+    // Strict detection: the leading letters must run A,B,C,D *in sequence across
+    // positions*. Legitimate text like ["A rhyme","A simile"] matches only at
+    // position 0, never at position 1, so it is never flagged.
+    const LETTERS = 'ABCDEFGH', SEPS = [' ', '.', ')', '-', ':'];
+    const prefixed = (o, ch) => {
+      if (typeof o !== 'string') return false;
+      const t = o.replace(/^\s+/, '');
+      return t[0] === ch && SEPS.includes(t[1]);
+    };
+    let rows = [], off = 0;
+    while (true) {
+      const res = await db(`questions?select=id,options&active=eq.true&order=id&offset=${off}&limit=1000`);
+      assert(res.ok, `HTTP ${res.status}`);
+      const batch = await res.json();
+      rows = rows.concat(batch);
+      if (batch.length < 1000) break;
+      off += 1000;
+    }
+    const bad = rows.filter(q => {
+      const o = q.options;
+      if (!Array.isArray(o) || o.length < 2) return false;
+      const hits = o.filter((v, i) => i < LETTERS.length && prefixed(v, LETTERS[i])).length;
+      return hits >= Math.max(3, o.length - 1);
+    });
+    assert(bad.length === 0,
+      `${bad.length} of ${rows.length} active questions still carry option letter prefixes (e.g. ${JSON.stringify((bad[0]||{}).options)})`);
+    return `${rows.length} active questions clean`;
+  });
+
   // ── 12–16. App Logic tests (via iframe) ───────────────────────────────────
   // Load app in a hidden iframe and wait for initApp() to complete
 
