@@ -2,10 +2,39 @@
 # Run this script from an environment with network access to Supabase, then close the issue.
 import json, urllib.request, time
 
+# ── Guard: never upload options with letter prefixes baked in ────────────
+# The app shuffles options and draws its own A/B/C/D badge, so a baked-in
+# letter contradicts the badge once the order changes. See issue #29.
+_LETTERS = "ABCDEFGH"
+_SEPS = (" ", ".", ")", "-", ":")
+
+def strip_option_prefixes(options):
+    """Drop leading '<letter><sep>' only when letters run in sequence."""
+    if not isinstance(options, list) or len(options) < 2:
+        return options
+    def cut(o, ch):
+        if not isinstance(o, str):
+            return None
+        t = o.lstrip()
+        return t[2:].lstrip(" .)-:") if len(t) >= 2 and t[0] == ch and t[1] in _SEPS else None
+    hits = sum(1 for i, o in enumerate(options) if i < len(_LETTERS) and cut(o, _LETTERS[i]) is not None)
+    if hits < max(3, len(options) - 1):
+        return options
+    out = []
+    for i, o in enumerate(options):
+        c = cut(o, _LETTERS[i]) if i < len(_LETTERS) else None
+        out.append(c if c else o)
+    return out
+
+
+
 URL = "https://zvffmucghcrqackghhlf.supabase.co/rest/v1/questions"
 KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic"
 
 def upload_batch(batch):
+    for q in batch:
+        if q.get("options"):
+            q["options"] = strip_option_prefixes(q["options"])
     data = json.dumps(batch).encode()
     req = urllib.request.Request(URL, data=data, method='POST')
     req.add_header('Content-Type', 'application/json')
