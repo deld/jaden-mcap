@@ -53,6 +53,29 @@ function db(path, opts = {}) {
   return fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: HEADERS, ...opts });
 }
 
+async function dbCount(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: { ...HEADERS, 'Prefer': 'count=exact', 'Range': '0-0' } });
+  assert(res.ok, `HTTP ${res.status}`);
+  return parseInt((res.headers.get('Content-Range') || '').split('/')[1] || '0', 10);
+}
+
+// PostgREST returns at most 1000 rows per page whatever limit is requested,
+// so anything counting the full bank must page rather than ask for 5000.
+async function dbAll(path) {
+  let rows = [], off = 0;
+  while (true) {
+    const sep = path.includes('?') ? '&' : '?';
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}${sep}order=id&offset=${off}&limit=1000`,
+      { headers: HEADERS });
+    assert(res.ok, `HTTP ${res.status}`);
+    const b = await res.json();
+    rows = rows.concat(b);
+    if (b.length < 1000) return rows;
+    off += 1000;
+  }
+}
+
 function makeAttemptId() {
   return crypto.randomUUID();  // must be valid uuid — track by student='__test__' instead
 }
@@ -643,6 +666,63 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
   // Pre-load question data for suites 13 & 14 (lazy-loaded in new architecture)
   await appIframe.ensureQuestionsLoaded('Math', 'All');
   await appIframe.ensureQuestionsLoaded('Reading', 'All');
+
+  // ── Classwork vs test prep separation ────────────────────────────────────
+  suite('\u{1F4DA} Track separation \u2014 classwork vs test prep');
+
+  await test('questions has track + assignment columns', async () => {
+    const res = await db('questions?select=track,assignment&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length && 'track' in rows[0] && 'assignment' in rows[0],
+      `missing columns: ${JSON.stringify(rows[0])}`);
+    return 'track + assignment present';
+  });
+
+  await test('attempts has a track column', async () => {
+    const res = await db('attempts?select=track&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length && 'track' in rows[0], 'attempts.track missing');
+    return 'attempts.track present';
+  });
+
+  await test('track only ever holds test_prep or classwork', async () => {
+    const rows = await dbAll('questions?select=track&active=eq.true');
+    const bad = [...new Set(rows.map(r => r.track))].filter(t => !['test_prep','classwork'].includes(t));
+    assert(bad.length === 0, `unexpected track values: ${JSON.stringify(bad)}`);
+    return `${rows.length} active questions, tracks: ${[...new Set(rows.map(r=>r.track))].join(', ')}`;
+  });
+
+  await test('the two tracks are disjoint - no question is in both', async () => {
+    const tp = await dbAll('questions?select=id&active=eq.true&track=eq.test_prep');
+    const cw = await dbAll('questions?select=id&active=eq.true&track=eq.classwork');
+    const tpIds = new Set(tp.map(r => r.id));
+    const overlap = cw.filter(r => tpIds.has(r.id));
+    assert(overlap.length === 0, `${overlap.length} questions appear in both tracks`);
+    const total = await dbCount('questions?select=id&active=eq.true');
+    assert(tp.length + cw.length === total,
+      `tracks sum to ${tp.length + cw.length} but there are ${total} active questions`);
+    return `${tp.length} test prep + ${cw.length} classwork = ${total}, disjoint`;
+  });
+
+  await test('classwork questions carry an assignment so they can be grouped', async () => {
+    const cw = await (await db('questions?select=id,assignment&active=eq.true&track=eq.classwork&limit=1000')).json();
+    if (!cw.length) return 'no classwork loaded yet';
+    const unfiled = cw.filter(r => !r.assignment);
+    // Unfiled classwork is allowed - it falls into "Everything else" - but it
+    // should be the exception, not the rule.
+    assert(unfiled.length < cw.length,
+      `all ${cw.length} classwork questions are missing an assignment`);
+    return `${cw.length} classwork questions, ${cw.length - unfiled.length} filed to a worksheet`;
+  });
+
+  await test('test-prep practice is unaffected by the split', async () => {
+    // The whole pre-existing bank must still be reachable as test prep.
+    const n = await dbCount('questions?select=id&active=eq.true&track=eq.test_prep&grade=eq.3&subject=eq.Math');
+    assert(n >= 1800, `expected the grade 3 Math bank intact, got ${n}`);
+    return `${n} grade 3 Math test-prep questions still present`;
+  });
 
   // ── Progress engine (pure functions, via iframe) ─────────────────────────
   suite('\u{1F3AE} Progress engine \u2014 XP, levels, streaks (iframe)');

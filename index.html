@@ -182,12 +182,32 @@
     /* Long labels wrap to two lines on a phone and make the bar ungainly.
        Swap in a short form rather than letting it reflow. */
     .nav-short { display: none; }
-    @media (max-width: 560px) {
+    @media (max-width: 620px) {
       .nav-full  { display: none; }
       .nav-short { display: inline; }
-      .section-btn { padding: 7px 14px; font-size: .84rem; }
+      .section-btn { padding: 7px 11px; font-size: .8rem; gap: 5px; }
+      .section-btn .ico { width: 1em; height: 1em; }
       #section-nav { gap: 2px; }
     }
+    /* Four sections cannot fit a phone at full width. Below 470px only the
+       active tab keeps its label; the rest go icon-only, which guarantees the
+       bar fits rather than pushing the last tab off the edge where nobody
+       finds it. Horizontal scroll stays as a safety net. */
+    @media (max-width: 470px) {
+      .section-btn .sec-label { display: none; }
+      .section-btn.active .sec-label { display: inline; }
+      .section-btn { padding: 8px 12px; }
+      .section-btn.active { padding: 8px 14px; }
+    }
+    #section-nav {
+      max-width: 100%;
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      scroll-snap-type: x proximity;
+    }
+    #section-nav::-webkit-scrollbar { display: none; }
+    .section-btn { flex: none; scroll-snap-align: center; }
 
     /* ── SUBJECT TOGGLE ── */
     #subject-toggle {
@@ -526,6 +546,37 @@
         scroll-behavior: auto !important;
       }
     }
+
+    /* ── CLASSWORK ── */
+    .cw-empty {
+      text-align:center; padding:30px 20px; color:var(--tx-2);
+      background:var(--surface-2); border:1px dashed var(--line-strong);
+      border-radius:var(--r2); line-height:1.65; font-size:.9rem;
+    }
+    .cw-empty strong { color:var(--tx); display:block; margin-bottom:6px; font-size:.98rem; }
+    .cw-list { display:flex; flex-direction:column; gap:10px; }
+    .cw-item {
+      display:flex; align-items:center; gap:14px; width:100%; text-align:left;
+      background:var(--surface); border:1.5px solid var(--line);
+      border-radius:var(--r2); padding:14px 16px; cursor:pointer;
+      font-family:var(--f-body); color:var(--tx);
+      transition:border-color .16s, background .16s, transform .12s;
+    }
+    .cw-item:hover { border-color:var(--acc); background:var(--acc-soft); transform:translateY(-1px); }
+    .cw-item:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+    .cw-item-ico {
+      width:38px; height:38px; flex:none; border-radius:var(--r1);
+      display:flex; align-items:center; justify-content:center;
+      background:var(--acc-soft); color:var(--acc);
+    }
+    .cw-item-ico .ico { width:19px; height:19px; }
+    .cw-item-body { flex:1; min-width:0; display:block; }
+    /* These are spans inside a flex row - they must be block or the name and
+       the count render on one line, running together. */
+    .cw-item-name { display:block; font-weight:600; font-size:.98rem; margin-bottom:3px; }
+    .cw-item-meta { display:block; font-size:.76rem; color:var(--tx-3); font-family:var(--f-num); font-variant-numeric:tabular-nums; }
+    .cw-item-go { color:var(--tx-3); flex:none; }
+    .cw-item:hover .cw-item-go { color:var(--acc); }
 
     /* ── START SCREEN ── */
     #start-screen { text-align: center; }
@@ -1416,6 +1467,13 @@
   <symbol id="ic-clock" viewBox="0 0 24 24">
     <circle cx="12" cy="12" r="8.5"/><path d="M12 7.2V12l3.1 1.9"/>
   </symbol>
+  <symbol id="ic-classwork" viewBox="0 0 24 24">
+    <path d="M5.5 3.75h8.25l4.75 4.75V17"/>
+    <path d="M13.5 3.9V8.4h4.4"/>
+    <path d="M8.25 12.25h4M8.25 15.75h2.5"/>
+    <path d="M3.5 20.25h17"/>
+    <path d="M16.4 18.6l4.1-4.1a1.35 1.35 0 0 0-1.9-1.9l-4.1 4.1-.5 2.4z"/>
+  </symbol>
   <symbol id="ic-check" viewBox="0 0 24 24">
     <path d="M5 12.5l4.6 4.6L19 7.6"/>
   </symbol>
@@ -1432,9 +1490,10 @@
 
 <!-- ══ SECTION NAV ══ -->
 <nav id="section-nav">
-  <button class="section-btn" id="sec-btn-home" onclick="switchSection('home')"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg>Home</button>
-  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg>Grades</button>
-  <button class="section-btn"        id="sec-btn-tests"  onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg><span class="nav-full">Standardized Tests</span><span class="nav-short">Tests</span></button>
+  <button class="section-btn" id="sec-btn-home" onclick="switchSection('home')"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg><span class="sec-label">Home</span></button>
+  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg><span class="sec-label">Grades</span></button>
+  <button class="section-btn" id="sec-btn-classwork" onclick="switchSection('classwork')"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg><span class="sec-label">Classwork</span></button>
+  <button class="section-btn" id="sec-btn-tests" onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg><span class="sec-label"><span class="nav-full">Standardized Tests</span><span class="nav-short">Test Prep</span></span></button>
 </nav>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
@@ -1613,6 +1672,23 @@
         <div class="home-stats" id="home-stats"></div>
       </div>
     </div>
+  </div>
+
+  <!-- CLASSWORK SCREEN -->
+  <div id="classwork-screen" class="card hidden">
+    <h2 style="text-align:center;margin-bottom:6px;">Classwork</h2>
+    <p style="text-align:center;color:var(--tx-2);font-size:.92rem;margin-bottom:16px;">
+      Worksheets from school. Pick one to work through.
+    </p>
+
+    <div style="display:flex;justify-content:center;margin-bottom:16px;">
+      <div id="classwork-subject-toggle" style="display:inline-flex;gap:4px;background:var(--surface-2);border:1px solid var(--line);border-radius:50px;padding:5px;">
+        <button class="subject-btn active" id="cw-btn-math" onclick="setClassworkSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
+        <button class="subject-btn" id="cw-btn-reading" onclick="setClassworkSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
+      </div>
+    </div>
+
+    <div id="classwork-list"></div>
   </div>
 
   <!-- TEST CONFIG SCREEN -->
@@ -1982,11 +2058,15 @@ const CAT_STYLE = {
 let PASSAGES   = {};  // populated by loadAppData()
 
 // Domain counts for UI (loaded at startup — lightweight, no question content)
-let DOMAIN_COUNTS = {}; // { Math: { All: 1840, OA: 624, ... }, Reading: { All: 50 } }
+let DOMAIN_COUNTS = {}; // active track's counts: { Math: { All, OA, ... }, Reading: {...} }
+let TRACK_COUNTS  = { test_prep: {}, classwork: {} };  // per-track counts
+let ASSIGNMENT_INDEX = { test_prep: {}, classwork: {} }; // { subject: { name: count } }
 
 // Question cache — populated lazily when a session starts, keyed by "Subject_Domain"
 let Q_CACHE = {};
-function _qKey(subj, dom) { return `${subj}_${dom||'All'}`; }
+// Track is part of the key: classwork and test prep must never share a cache
+// entry, or switching sections would serve the wrong question set.
+function _qKey(subj, dom) { return `${activeTrack}_${subj}_${dom||'All'}`; }
 
 // Convert a DB question row to the app's internal format
 function dbToQ(q) {
@@ -1996,6 +2076,7 @@ function dbToQ(q) {
     correct: q.correct,
     hint: q.hint || undefined,
     solution: q.solution || undefined,
+    assignment: q.assignment || null,
   };
   if (q.passage_id) out.passageId = q.passage_id;
   if (q.passage)    out.passage   = q.passage;
@@ -2021,9 +2102,10 @@ async function ensureQuestionsLoaded(subject, domain) {
   // Fetch from Supabase (paginated) — filtered by grade once migration is applied
   const domFilter   = (!domain || domain === 'All') ? '' : `&domain=eq.${encodeURIComponent(domain)}`;
   const gradeFilter = `&grade=eq.${studentGrade}`;
+  const trackFilter = `&track=eq.${activeTrack}`;
   const rows = await _fetchAll(
-    `questions?select=subject,domain,category,type,text,options,correct,hint,solution,passage_id,passage` +
-    `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${gradeFilter}${domFilter}`,
+    `questions?select=subject,domain,category,type,text,options,correct,hint,solution,passage_id,passage,assignment` +
+    `&subject=eq.${encodeURIComponent(subject)}&active=eq.true${gradeFilter}${trackFilter}${domFilter}`,
     h
   );
   Q_CACHE[domKey] = rows.map(dbToQ);
@@ -2132,6 +2214,11 @@ function updateStartScreen() {
 }
 
 function filteredQuestions() {
+  // Classwork is scoped to one worksheet at a time.
+  if (activeTrack === 'classwork' && activeAssignment && activeAssignment !== 'All') {
+    const pool = Q_CACHE[_qKey(activeSubject, 'All')] || [];
+    return pool.filter(q => q.assignment === activeAssignment);
+  }
   // Use the domain-specific cache if available, otherwise filter from 'All'
   const domKey = _qKey(activeSubject, activeDomain);
   if (Q_CACHE[domKey]) return [...Q_CACHE[domKey]];
@@ -2182,7 +2269,14 @@ const MCAP_PRESETS = {
   }
 };
 
-let activeSection = 'grades'; // 'grades' | 'tests'
+let activeSection = 'grades'; // 'grades' | 'home' | 'tests' | 'classwork'
+
+// Which body of work is in play. 'test_prep' is MCAP drill material;
+// 'classwork' is the worksheets that come home from school. They are
+// different activities and are kept fully separate.
+let activeTrack = 'test_prep';   // 'test_prep' | 'classwork'
+let activeAssignment = 'All';    // classwork only: which worksheet
+let ASSIGNMENTS = [];            // [{ name, count }] for the active grade/subject
 let testsMode     = 'practice'; // 'practice' | 'test'
 
 function setTestsMode(mode) {
@@ -2338,21 +2432,114 @@ async function renderHome(force) {
   renderHomeStats(p);
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  CLASSWORK
+//
+//  Worksheets group by the sheet they came home on, not by CCSS domain.
+//  "Week 3 Fractions" is how the work actually arrives, and it is what
+//  Jaden recognises; a domain code is not.
+// ═══════════════════════════════════════════════════════════════════
+
+let classworkSubject = 'Math';
+
+function setClassworkSubject(subj) {
+  classworkSubject = subj;
+  document.getElementById('cw-btn-math')?.classList.toggle('active', subj === 'Math');
+  document.getElementById('cw-btn-reading')?.classList.toggle('active', subj === 'Reading');
+  renderClasswork();
+}
+
+function renderClasswork() {
+  const host = document.getElementById('classwork-list');
+  if (!host) return;
+
+  const bySubject = (ASSIGNMENT_INDEX.classwork || {})[classworkSubject] || {};
+  const names = Object.keys(bySubject).sort();
+  const loose = ((TRACK_COUNTS.classwork || {})[classworkSubject] || {}).All || 0;
+  const filed = names.reduce((n, k) => n + bySubject[k], 0);
+  const unfiled = Math.max(0, loose - filed);
+
+  if (!names.length && !unfiled) {
+    host.innerHTML = `
+      <div class="cw-empty">
+        <strong>No ${classworkSubject.toLowerCase()} worksheets yet</strong>
+        Worksheets you upload will show up here, grouped by sheet.
+        Test practice stays in Standardized Tests and is not affected.
+      </div>`;
+    return;
+  }
+
+  const rows = names.map(name => `
+    <button class="cw-item" onclick="startAssignment(${JSON.stringify(name).replace(/"/g, '&quot;')})">
+      <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg></span>
+      <span class="cw-item-body">
+        <span class="cw-item-name">${name}</span>
+        <span class="cw-item-meta">${bySubject[name]} question${bySubject[name] === 1 ? '' : 's'}</span>
+      </span>
+      <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
+    </button>`);
+
+  if (unfiled) {
+    rows.push(`
+      <button class="cw-item" onclick="startAssignment('All')">
+        <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-all"></use></svg></span>
+        <span class="cw-item-body">
+          <span class="cw-item-name">Everything else</span>
+          <span class="cw-item-meta">${unfiled} question${unfiled === 1 ? '' : 's'} with no worksheet</span>
+        </span>
+        <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
+      </button>`);
+  }
+
+  host.innerHTML = `<div class="cw-list">${rows.join('')}</div>`;
+}
+
+async function startAssignment(name) {
+  activeAssignment = name;
+  activeSubject = classworkSubject;
+  activeDomain  = 'All';
+  practiceQCount = 0;          // a worksheet is worked in full, not sampled
+  await startGame(false);      // and in the order it was printed
+}
+
 function switchSection(sec) {
   activeSection = sec;
-  ['home','grades','tests'].forEach(s =>
+  ['home','grades','classwork','tests'].forEach(s =>
     document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
   // Subject toggle only shown for tests-practice (domain nav handles subject there)
   document.getElementById('subject-toggle').style.display = 'none';
+
+  // Classwork and test prep are separate bodies of work. Switching sections
+  // switches the track, which changes which questions exist at all.
+  const wantTrack = sec === 'classwork' ? 'classwork' : 'test_prep';
+  if (wantTrack !== activeTrack) setTrack(wantTrack);
+
   if (sec === 'grades') {
     show('grades-screen');
   } else if (sec === 'home') {
     show('home-screen');
     renderHome();
+  } else if (sec === 'classwork') {
+    show('classwork-screen');
+    renderClasswork();
   } else {
     show('test-config-screen');
     setTestsMode(testsMode); // restore last sub-mode
   }
+}
+
+// Swapping track invalidates every cached question set and re-points the
+// counts the nav reads from.
+function setTrack(track) {
+  activeTrack = track;
+  activeAssignment = 'All';
+  Object.keys(Q_CACHE).forEach(k => delete Q_CACHE[k]);
+  DOMAIN_COUNTS = TRACK_COUNTS[activeTrack] || {};
+  if (window._mcapData) {
+    window._mcapData.activeTrack   = activeTrack;
+    window._mcapData.DOMAIN_COUNTS = DOMAIN_COUNTS;
+  }
+  buildNav();
 }
 
 async function selectGrade(grade) {
@@ -2380,14 +2567,27 @@ async function selectGrade(grade) {
 
   // Re-fetch domain counts for the selected grade
   const countRows = await _fetchAll(
-    `questions?select=subject,domain&active=eq.true&grade=eq.${grade}`, h);
-  DOMAIN_COUNTS = {};
+    `questions?select=subject,domain,track,assignment&active=eq.true&grade=eq.${grade}`, h);
+  // Counts are kept per track. TRACK_COUNTS[track][subject][domain] so the
+  // nav can show the right totals without a second round trip when the
+  // section changes.
+  TRACK_COUNTS = { test_prep: {}, classwork: {} };
+  ASSIGNMENT_INDEX = { test_prep: {}, classwork: {} };
   for (const r of countRows) {
+    const t = r.track === 'classwork' ? 'classwork' : 'test_prep';
     const s = r.subject || 'Math';
-    if (!DOMAIN_COUNTS[s]) DOMAIN_COUNTS[s] = { All: 0 };
-    DOMAIN_COUNTS[s].All++;
-    DOMAIN_COUNTS[s][r.domain] = (DOMAIN_COUNTS[s][r.domain] || 0) + 1;
+    const bucket = TRACK_COUNTS[t];
+    if (!bucket[s]) bucket[s] = { All: 0 };
+    bucket[s].All++;
+    bucket[s][r.domain] = (bucket[s][r.domain] || 0) + 1;
+
+    if (r.assignment) {
+      const ai = ASSIGNMENT_INDEX[t];
+      if (!ai[s]) ai[s] = {};
+      ai[s][r.assignment] = (ai[s][r.assignment] || 0) + 1;
+    }
   }
+  DOMAIN_COUNTS = TRACK_COUNTS[activeTrack] || {};
 
   _applyGradeLabels();
   // DOMAIN_COUNTS was reassigned above, so the reference captured in _mcapData
@@ -2406,7 +2606,7 @@ async function selectGrade(grade) {
 }
 
 function show(id) {
-  ['start-screen','grades-screen','home-screen','reading-screen','question-screen','end-screen',
+  ['start-screen','grades-screen','home-screen','classwork-screen','reading-screen','question-screen','end-screen',
    'test-config-screen','test-results-screen','history-screen',
    'test-review-screen'].forEach(s=>
     document.getElementById(s).classList.toggle('hidden', s!==id));
@@ -3105,7 +3305,8 @@ async function createAttempt(subject, mode, domain) {
     await fetch(`${SUPABASE_URL}/rest/v1/attempts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({ id, student: 'Jaden', subject, mode, domain, score: 0, total: 0, pct: 0, time_sec: 0, breakdown: {}, completed: false }),
+      body: JSON.stringify({ id, student: 'Jaden', subject, mode, domain, track: activeTrack,
+                             score: 0, total: 0, pct: 0, time_sec: 0, breakdown: {}, completed: false }),
     });
   } catch(e) {}
   return id;
