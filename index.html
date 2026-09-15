@@ -1859,6 +1859,7 @@ function buildNav() {
 }
 
 function switchSubject(subj) {
+  if (!guardLeave()) return;
   activeSubject = subj;
   activeDomain  = 'All';
   buildNav();
@@ -1869,6 +1870,7 @@ function switchSubject(subj) {
 }
 
 function switchDomain(id) {
+  if (!guardLeave()) return;
   activeDomain = id;
   buildNav();
   updateStartScreen();
@@ -2062,7 +2064,7 @@ async function startTimedPractice() {
   timedSession = true;
 
   const d = currentDomains().find(x => x.id === activeDomain);
-  await createAttempt(activeSubject, 'timed', d ? d.label : activeDomain);
+  await createAttempt(activeSubject, 'timed', d ? d.label : activeDomain, practiceMinutes);
 
   testTotalTime = practiceMinutes * 60;
   testTimeLeft  = testTotalTime;
@@ -2097,7 +2099,139 @@ function restartLastSession() {
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════
+//  CLASSWORK
+//
+//  Worksheets group by the sheet they came home on, not by CCSS domain.
+//  "Week 3 Fractions" is how the work actually arrives, and it is what
+//  Jaden recognises; a domain code is not.
+// ═══════════════════════════════════════════════════════════════════
+
+let classworkSubject = 'Math';
+
+function setClassworkSubject(subj) {
+  classworkSubject = subj;
+  document.getElementById('cw-btn-math')?.classList.toggle('active', subj === 'Math');
+  document.getElementById('cw-btn-reading')?.classList.toggle('active', subj === 'Reading');
+  renderClasswork();
+}
+
+function renderClasswork() {
+  const host = document.getElementById('classwork-list');
+  if (!host) return;
+
+  const bySubject = (ASSIGNMENT_INDEX.classwork || {})[classworkSubject] || {};
+  const names = Object.keys(bySubject).sort();
+  const loose = ((TRACK_COUNTS.classwork || {})[classworkSubject] || {}).All || 0;
+  const filed = names.reduce((n, k) => n + bySubject[k], 0);
+  const unfiled = Math.max(0, loose - filed);
+
+  if (!names.length && !unfiled) {
+    host.innerHTML = `
+      <div class="cw-empty">
+        <strong>No ${classworkSubject.toLowerCase()} worksheets yet</strong>
+        Worksheets you upload will show up here, grouped by sheet.
+        Test practice stays in Standardized Tests and is not affected.
+      </div>`;
+    return;
+  }
+
+  const rows = names.map(name => `
+    <button class="cw-item" onclick="startAssignment(${JSON.stringify(name).replace(/"/g, '&quot;')})">
+      <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg></span>
+      <span class="cw-item-body">
+        <span class="cw-item-name">${name}</span>
+        <span class="cw-item-meta">${bySubject[name]} question${bySubject[name] === 1 ? '' : 's'}</span>
+      </span>
+      <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
+    </button>`);
+
+  if (unfiled) {
+    rows.push(`
+      <button class="cw-item" onclick="startAssignment('All')">
+        <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-all"></use></svg></span>
+        <span class="cw-item-body">
+          <span class="cw-item-name">Everything else</span>
+          <span class="cw-item-meta">${unfiled} question${unfiled === 1 ? '' : 's'} with no worksheet</span>
+        </span>
+        <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
+      </button>`);
+  }
+
+  host.innerHTML = `<div class="cw-list">${rows.join('')}</div>`;
+}
+
+async function startAssignment(name) {
+  activeAssignment = name;
+  activeSubject = classworkSubject;
+  activeDomain  = 'All';
+  practiceQCount = 0;          // a worksheet is worked in full, not sampled
+  await startGame(false);      // and in the order it was printed
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  UNFINISHED SESSIONS
+//
+//  A live session is either completed by the clock or abandoned. There is
+//  no resume. Leaving by any route - a nav tab, a topic chip, the grade
+//  link, reload, closing the tab - records an abandoned attempt with
+//  whatever was answered so far, so it counts rather than vanishes.
+// ═══════════════════════════════════════════════════════════════════
+
+function sessionLive() { return timedSession || testMode; }
+
+function _answeredSoFar() {
+  const list = testMode ? testAnswers : practiceAnswers;
+  return { total: list.length, correct: list.filter(a => a.correct).length };
+}
+
+// Called once the user has confirmed (or on unload, where no confirm is possible).
+function abandonSession(viaUnload = false) {
+  if (!sessionLive() || !currentAttemptId) return;
+  if (testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
+  document.getElementById('test-timer')?.classList.add('hidden');
+
+  const { total, correct } = _answeredSoFar();
+  const body = JSON.stringify({
+    score: correct, total,
+    pct: total ? Math.round(correct / total * 100) : 0,
+    time_sec: Math.max(0, (testTotalTime || 0) - Math.max(0, testTimeLeft || 0)),
+    completed: false, abandoned: true,
+  });
+  const url = `${SUPABASE_URL}/rest/v1/attempts?id=eq.${currentAttemptId}`;
+  const headers = { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON,
+                    'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' };
+  // keepalive lets the request outlive a page unload.
+  try { fetch(url, { method: 'PATCH', headers, body, keepalive: true }).catch(() => {}); } catch (e) {}
+
+  timedSession = false;
+  testMode = false;
+  currentAttemptId = null;
+  practiceAnswers = [];
+  testAnswers = [];
+}
+
+// Every route out of a live session goes through here. Returns true if it
+// is safe to proceed.
+function guardLeave() {
+  if (!sessionLive()) return true;
+  const ok = window.confirm(
+    "Leave now?\n\nThis session will count as unfinished. You can't come back to it - you'd start a new one.");
+  if (!ok) return false;
+  abandonSession();
+  return true;
+}
+
+// Reload / close the tab: warn, and if they go anyway, record it.
+window.addEventListener('beforeunload', e => {
+  if (!sessionLive()) return;
+  e.preventDefault();
+  e.returnValue = '';
+});
+window.addEventListener('pagehide', () => { if (sessionLive()) abandonSession(true); });
+
 function switchSection(sec) {
+  if (!guardLeave()) return;
   activeSection = sec;
   ['grades','classwork','tests','mcap','progress'].forEach(s =>
     document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
@@ -2141,6 +2275,7 @@ function setTrack(track) {
 }
 
 async function selectGrade(grade) {
+  if (!guardLeave()) return;
   studentGrade = grade;
 
   // Highlight selected card
@@ -2661,7 +2796,7 @@ async function startTest() {
   bestStreak  = 0;
 
   const _testDomain = testModeType === 'mcap' ? 'MCAP Simulation' : 'All';
-  await createAttempt(testSubject, testModeType === 'mcap' ? 'test-mcap' : 'test', _testDomain);
+  await createAttempt(testSubject, testModeType === 'mcap' ? 'test-mcap' : 'test', _testDomain, mins);
 
   // Setup timer
   testTotalTime = mins * 60;
@@ -2840,7 +2975,7 @@ async function saveQuestionAttempts(attemptId, answers, subject) {
 
 // ── REAL-TIME SESSION HELPERS ─────────────────────────────────────────
 // Creates the attempt row at session start so per-question rows can FK to it.
-async function createAttempt(subject, mode, domain) {
+async function createAttempt(subject, mode, domain, plannedMinutes = null) {
   const id = crypto.randomUUID();
   currentAttemptId = id;
   try {
@@ -2848,6 +2983,7 @@ async function createAttempt(subject, mode, domain) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}`, 'Prefer': 'return=minimal' },
       body: JSON.stringify({ id, student: 'Jaden', subject, mode, domain, track: activeTrack,
+                             planned_minutes: plannedMinutes,
                              score: 0, total: 0, pct: 0, time_sec: 0, breakdown: {}, completed: false }),
     });
   } catch(e) {}

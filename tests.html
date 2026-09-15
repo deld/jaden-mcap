@@ -1024,6 +1024,38 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `${filled.length} dots filled (cap enforced)`;
   });
 
+  // ── Sections render (guards against a removed function taking a screen down) ──
+  suite('\u{1F9ED} Sections \u2014 every tab renders (iframe)');
+
+  for (const [sec, screenId, probe] of [
+    ['tests',     'practice-screen',    () => appIframe.document.querySelectorAll('#pick-topic .pick').length > 0],
+    ['mcap',      'test-config-screen', () => !!appIframe.document.getElementById('tests-test-panel')],
+    ['classwork', 'classwork-screen',   () => !!appIframe.document.getElementById('classwork-list')],
+  ]) {
+    await test(`switchSection('${sec}') shows #${screenId} without throwing`, async () => {
+      appIframe.window.confirm = () => true;
+      appIframe.switchSection(sec);
+      await new Promise(r => setTimeout(r, 250));
+      const el = appIframe.document.getElementById(screenId);
+      assert(el && !el.classList.contains('hidden'), `#${screenId} is not visible`);
+      assert(probe(), `#${screenId} rendered empty`);
+      return `#${screenId} visible`;
+    });
+  }
+  // Switching sections swaps the track and clears the question cache;
+  // put the app back so nothing downstream reads the classwork pool.
+  appIframe.switchSection('tests');
+  await appIframe.ensureQuestionsLoaded('Math', 'All');
+  await appIframe.ensureQuestionsLoaded('Reading', 'All');
+
+  await test('attempts has abandoned + planned_minutes columns', async () => {
+    const res = await db('attempts?select=abandoned,planned_minutes&limit=1');
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length && 'abandoned' in rows[0] && 'planned_minutes' in rows[0], 'columns missing');
+    return 'abandoned + planned_minutes present';
+  });
+
   // ── 17. Lesson map — YouTube & Khan Academy link verification ────────────
   suite('🎬 Lesson map — YouTube & Khan Academy links');
 
