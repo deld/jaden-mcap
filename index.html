@@ -18,7 +18,6 @@
                             badge case, level-up. Job is MOTIVATION.
 
        Walking from a bright working surface into a dark celebratory one is
-       itself the reward. Opt a section in with class="surface-reward".
        ══════════════════════════════════════════════════════════════════ */
     :root {
       /* ── Dew: grounds & surfaces ── */
@@ -73,46 +72,6 @@
       --sh-1: 0 1px 2px rgba(22,40,26,.05);
       --sh-2: 0 2px 6px rgba(22,40,26,.07), 0 12px 28px -14px rgba(22,40,26,.22);
       --sh-3: 0 4px 12px rgba(22,40,26,.09), 0 28px 60px -24px rgba(22,40,26,.34);
-    }
-
-    /* ── Night Mission: the reward surface ──────────────────────────────
-       Redefines the same token names, so every component built on tokens
-       reskins itself when nested inside. No component-level dark rules. */
-    .surface-reward {
-      --bg:            #0a0f1c;
-      --bg-deep:       #060a13;
-      --surface:       #121a2e;
-      --surface-2:     #1b2540;
-      --surface-3:     #243052;
-      --line:          rgba(190,210,255,.11);
-      --line-strong:   rgba(190,210,255,.22);
-
-      --tx:            #e8eefc;
-      --tx-2:          #8ea0c4;
-      --tx-3:          #64749b;
-
-      --acc:           #f0b429;
-      --acc-on:        #0a0f1c;
-      --acc-soft:      rgba(240,180,41,.13);
-      --acc-line:      rgba(240,180,41,.45);
-      --acc-2:         #38bdf8;
-
-      --streak:        #f0b429;
-      --streak-soft:   rgba(240,180,41,.14);
-
-      --ok:            #4ade80;
-      --ok-soft:       rgba(74,222,128,.13);
-      --warn:          #fbbf24;
-      --warn-soft:     rgba(251,191,36,.14);
-      --bad:           #fb7185;
-      --bad-soft:      rgba(251,113,133,.13);
-
-      --sh-1: 0 1px 2px rgba(0,0,0,.4);
-      --sh-2: 0 2px 6px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.7);
-      --sh-3: 0 4px 12px rgba(0,0,0,.5), 0 28px 60px -24px rgba(0,0,0,.8);
-
-      background: var(--bg);
-      color: var(--tx);
     }
 
     /* Numerals line up in columns wherever they are compared. */
@@ -315,237 +274,54 @@
     }
 
 
-    /* ══════════════════════════════════════════════════════════════════
-       HOME - the reward surface
-
-       Deliberately the only dark screen in the app. Problem screens serve
-       focus; this one serves motivation. Walking from a bright working
-       surface into a dark celebratory one is itself the reward, and it
-       costs one token swap rather than a second design system.
-       ══════════════════════════════════════════════════════════════════ */
-    #home-screen.card {
-      background: var(--bg);
-      border-color: var(--line);
-      box-shadow: var(--sh-3);
-      padding: 0; overflow: hidden;
-    }
-    .home-hero {
-      padding: 24px 24px 22px;
-      background:
-        radial-gradient(ellipse 70% 120% at 88% -10%, rgba(56,189,248,.13), transparent 62%),
-        radial-gradient(ellipse 60% 130% at 8% 110%, rgba(240,180,41,.10), transparent 60%);
-      border-bottom: 1px solid var(--line);
-    }
-    .home-top { display:flex; align-items:flex-start; gap:14px; flex-wrap:wrap; }
-    .home-greet { flex:1; min-width:190px; }
-    .home-greet h2 {
-      font-family: var(--f-rwd); font-weight:800; letter-spacing:-.02em;
-      font-size:1.5rem; color:var(--tx); margin-bottom:4px;
-    }
-    .home-greet p { font-size:.9rem; color:var(--tx-2); line-height:1.5; }
-    .home-streak {
-      display:flex; align-items:center; gap:9px; flex:none;
-      padding:9px 15px; border-radius:var(--r2);
-      background:var(--streak-soft);
-      border:1px solid color-mix(in srgb, var(--streak) 42%, transparent);
-      color:var(--streak);
-    }
-    .home-streak .ico { width:22px; height:22px; }
-    .home-streak-n {
-      font-family:var(--f-rwd); font-weight:800; font-size:1.35rem; line-height:1;
-      font-variant-numeric:tabular-nums;
-    }
-    .home-streak-l {
-      font-size:.6rem; text-transform:uppercase; letter-spacing:.09em;
-      font-weight:700; color:var(--tx-2); margin-top:3px;
-    }
-    .home-xp { margin-top:18px; }
-    .home-xp-top { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:6px; }
-    .home-lvl {
-      font-family:var(--f-rwd); font-weight:800; font-size:.86rem;
-      background:var(--acc); color:var(--acc-on);
-      padding:4px 11px; border-radius:99px; letter-spacing:-.01em;
-    }
-    .home-xp-num {
-      font-family:var(--f-num); font-size:.78rem; color:var(--tx-2);
-      font-variant-numeric:tabular-nums;
-    }
-    .home-xp-track { height:9px; border-radius:99px; background:var(--surface-2); overflow:hidden; }
-    .home-xp-fill {
-      height:100%; border-radius:99px;
-      background:linear-gradient(90deg, var(--acc), color-mix(in srgb, var(--acc) 55%, #fff));
-      width:0; transition:width .9s cubic-bezier(.22,1,.36,1);
-    }
-
-    .home-body { padding:20px 24px 24px; display:flex; flex-direction:column; gap:22px; }
-    .home-sec-title {
-      font-family:var(--f-rwd); font-weight:800; font-size:.78rem;
-      text-transform:uppercase; letter-spacing:.11em; color:var(--tx-3);
-      margin-bottom:13px; display:flex; align-items:center; gap:9px;
-    }
-    .home-sec-title span:last-child {
-      margin-left:auto; font-family:var(--f-body); font-weight:600;
-      text-transform:none; letter-spacing:0; color:var(--tx-3); font-size:.72rem;
-    }
-
-    /* ── Level map: a rolling window, not a fixed board ── */
-    .lvl-map { display:flex; align-items:center; gap:5px; overflow-x:auto; padding-bottom:4px; }
-    .lvl-node {
-      width:46px; height:46px; flex:none; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      font-family:var(--f-rwd); font-weight:800; font-size:.86rem;
-      font-variant-numeric:tabular-nums; position:relative;
-      background:var(--surface-2); color:var(--tx-3);
-      border:2px solid var(--line);
-    }
-    .lvl-node .ico { width:19px; height:19px; }
-    .lvl-node.done {
-      background:var(--acc); color:var(--acc-on); border-color:var(--acc);
-      box-shadow:0 0 0 3px var(--acc-soft);
-    }
-    .lvl-node.now {
-      background:var(--acc); color:var(--acc-on); border-color:var(--acc);
-      box-shadow:0 0 0 3px var(--acc), 0 0 22px -3px var(--acc);
-    }
-    .lvl-node.now::after {
-      content:''; position:absolute; left:50%; top:-11px; transform:translateX(-50%);
-      border:5px solid transparent; border-top-color:var(--acc);
-    }
-    .lvl-link { flex:1; min-width:10px; height:3px; border-radius:99px; background:var(--line); }
-    .lvl-link.done { background:var(--acc); }
-
-    /* ── Badge case ── */
-    .badge-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(74px,1fr)); gap:14px; }
-    .badge-item { display:flex; flex-direction:column; align-items:center; gap:6px; text-align:center; }
-    .badge-ring {
-      width:46px; height:46px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-      background:var(--acc-soft); color:var(--acc);
-      border:2px solid color-mix(in srgb, var(--acc) 58%, transparent);
-    }
-    .badge-ring .ico { width:21px; height:21px; }
-    .badge-item.locked .badge-ring {
-      background:var(--surface-2); color:var(--tx-3);
-      border-color:var(--line); opacity:.5;
-    }
-    .badge-name { font-size:.63rem; font-weight:600; color:var(--tx-2); line-height:1.35; }
-    .badge-item.locked .badge-name { color:var(--tx-3); opacity:.75; }
-
-    /* ── Stats ── */
-    .home-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:11px; }
-    @media (min-width:620px) { .home-stats { grid-template-columns:repeat(4,1fr); } }
-    .home-stat {
-      background:var(--surface); border:1px solid var(--line);
-      border-radius:var(--r1); padding:12px 13px;
-    }
-    .home-stat-l {
-      font-size:.6rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-      color:var(--tx-3); margin-bottom:6px;
-    }
-    .home-stat-v {
-      font-family:var(--f-rwd); font-weight:800; font-size:1.3rem; line-height:1;
-      color:var(--tx); font-variant-numeric:tabular-nums;
-    }
-    .home-cta { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:2px; }
-    .home-cta .btn-primary { background:var(--acc); color:var(--acc-on); }
-
-
-    /* ══════════════════════════════════════════════════════════════════
-       MOTION
-
-       Dew's palette will not do the gamification work on its own the way a
-       dark screen with a glowing objective does for free. Without motion
-       this drifts into "nice worksheet" - the stated failure mode. So the
-       moments that matter get real weight, and everything else stays still.
-
-       Every animation degrades to an instant state change under
-       prefers-reduced-motion; none of them carry information on their own.
-       ══════════════════════════════════════════════════════════════════ */
-
-    /* A correct answer gets a short settle - felt, not watched. */
-    @keyframes optSettle {
-      0%   { transform: translateY(0)     scale(1);     }
-      35%  { transform: translateY(-3px)  scale(1.015); }
-      100% { transform: translateY(0)     scale(1);     }
-    }
+    /* ── MOTION ── */
+    @keyframes optSettle { 0%{transform:translateY(0) scale(1)} 35%{transform:translateY(-3px) scale(1.015)} 100%{transform:translateY(0) scale(1)} }
     .option.correct { animation: optSettle .34s cubic-bezier(.34,1.4,.5,1) both; }
-
-    /* A wrong answer is firm, not punitive: one short nudge, no shaking. */
-    @keyframes optNudge {
-      0%,100% { transform: translateX(0);    }
-      30%     { transform: translateX(-3px); }
-      65%     { transform: translateX(2px);  }
-    }
+    @keyframes optNudge { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-3px)} 65%{transform:translateX(2px)} }
     .option.wrong { animation: optNudge .26s ease-out both; }
-
-    /* Level nodes fill and settle when a level clears. */
-    @keyframes nodeClear {
-      0%   { transform: scale(1);    }
-      45%  { transform: scale(1.14); }
-      100% { transform: scale(1);    }
-    }
-    .lvl-node.just-cleared { animation: nodeClear .5s cubic-bezier(.34,1.5,.5,1) both; }
-
-    /* ── Level-up: a moment, not a toast ── */
-    .levelup {
-      position: fixed; inset: 0; z-index: 900;
-      display: none; align-items: center; justify-content: center;
-      background: rgba(10,15,28,.62);
-      backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);
-      padding: 20px;
-    }
-    .levelup.show { display: flex; animation: luFade .3s ease both; }
-    @keyframes luFade { from { opacity: 0; } }
-    .levelup-card {
-      background: #0a0f1c; color: #e8eefc;
-      border: 1px solid rgba(240,180,41,.45);
-      border-radius: 26px; padding: 34px 40px; text-align: center;
-      box-shadow: 0 30px 80px -20px rgba(0,0,0,.85), 0 0 70px -18px rgba(240,180,41,.4);
-      animation: luRise .5s cubic-bezier(.22,1.2,.4,1) both;
-      max-width: 340px;
-    }
-    @keyframes luRise { from { opacity:0; transform: translateY(16px) scale(.94); } }
-    .levelup-eyebrow {
-      font-family:'Source Sans 3',sans-serif; font-size:.68rem; font-weight:700;
-      letter-spacing:.16em; text-transform:uppercase; color:#8ea0c4; margin-bottom:10px;
-    }
-    .levelup-n {
-      font-family:'Syne',sans-serif; font-weight:800; font-size:3.6rem; line-height:1;
-      color:#f0b429; letter-spacing:-.03em; font-variant-numeric:tabular-nums;
-      animation: luPop .55s cubic-bezier(.3,1.6,.5,1) .12s both;
-    }
-    @keyframes luPop { from { opacity:0; transform: scale(.5); } }
-    .levelup-l { font-family:'Syne',sans-serif; font-weight:800; font-size:1.05rem; margin-top:6px; }
-    .levelup-sub { font-size:.86rem; color:#8ea0c4; margin-top:10px; line-height:1.5; }
-    .levelup-btn {
-      margin-top:20px; background:#f0b429; color:#0a0f1c; border:none;
-      font-family:'Syne',sans-serif; font-weight:800; font-size:.95rem;
-      padding:11px 26px; border-radius:50px; cursor:pointer;
-    }
-    .levelup-btn:hover { filter:brightness(1.07); }
-    .levelup-btn:focus-visible { outline:2px solid #fff; outline-offset:3px; }
-
-    /* XP earned readout on the results screen */
-    .xp-earned {
-      display:inline-flex; align-items:center; gap:7px;
-      font-family:var(--f-num); font-weight:600; font-size:.92rem;
-      color:var(--acc); background:var(--acc-soft);
-      border:1px solid var(--acc-line); border-radius:50px;
-      padding:6px 15px; margin-top:10px;
-      animation: xpIn .45s cubic-bezier(.22,1.3,.4,1) .15s both;
-    }
-    @keyframes xpIn { from { opacity:0; transform:translateY(7px) scale(.92); } }
-    .xp-earned .ico { width:16px; height:16px; }
-
-    /* ══ Reduced motion: every animation becomes an instant state change ══ */
+    /* Every animation becomes an instant state change under reduced motion. */
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after {
-        animation-duration: .001ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: .001ms !important;
-        scroll-behavior: auto !important;
+        animation-duration: .001ms !important; animation-iteration-count: 1 !important;
+        transition-duration: .001ms !important; scroll-behavior: auto !important;
       }
     }
+
+    /* ── PRACTICE FLOW: subject -> topic -> duration ── */
+    .pstep { margin-bottom: 22px; }
+    .pstep-label {
+      font-size:.7rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+      color:var(--tx-3); margin-bottom:10px; display:flex; align-items:center; gap:8px;
+    }
+    .pstep-label .n {
+      width:20px; height:20px; border-radius:50%; background:var(--acc); color:var(--acc-on);
+      display:inline-flex; align-items:center; justify-content:center;
+      font-family:var(--f-num); font-size:.7rem; letter-spacing:0;
+    }
+    .pick-row { display:flex; flex-wrap:wrap; gap:8px; }
+    .pick {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:11px 16px; border-radius:var(--r1);
+      border:1.5px solid var(--line-strong); background:var(--surface); color:var(--tx);
+      font-family:var(--f-body); font-size:.95rem; font-weight:600; cursor:pointer;
+      transition:border-color .15s, background .15s, color .15s;
+    }
+    .pick:hover { border-color:var(--acc); background:var(--acc-soft); }
+    .pick:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
+    .pick.active { border-color:var(--acc); background:var(--acc); color:var(--acc-on); }
+    .pick .ico { width:1.1em; height:1.1em; }
+    .pick .cnt {
+      font-family:var(--f-num); font-size:.7rem; font-weight:600; opacity:.75;
+      font-variant-numeric:tabular-nums;
+    }
+    .pick.big { padding:16px 22px; font-size:1.05rem; }
+    .pick.big .ico { width:1.3em; height:1.3em; }
+    .btn-lg { font-size:1.1rem; padding:15px 40px; }
+    .practice-summary {
+      text-align:center; color:var(--tx-2); font-size:.9rem; margin:4px 0 14px;
+      font-variant-numeric:tabular-nums;
+    }
+    .practice-summary b { color:var(--tx); }
 
     /* ── CLASSWORK ── */
     .cw-empty {
@@ -615,13 +391,6 @@
     .hud-left  { display:flex; flex-direction:column; gap:3px; }
     .hud-score { font-size:.95rem; font-weight:600; color:var(--tx-2); }
     .hud-score span { color:var(--acc); font-size:1.2rem; font-family:var(--f-num); font-variant-numeric:tabular-nums; }
-    /* Amber is the streak's colour and nothing else's. */
-    .streak-badge {
-      font-size:.72rem; font-weight:700; color:var(--streak); background:var(--streak-soft);
-      border:1px solid color-mix(in srgb, var(--streak) 32%, transparent);
-      padding:2px 9px; border-radius:10px; display:inline-block;
-      font-variant-numeric:tabular-nums;
-    }
     .hud-domain { font-size:.68rem; font-weight:700; color:var(--tx-3); letter-spacing:.6px; text-transform:uppercase; }
     .progress-wrap { flex:1; min-width:100px; background:var(--surface-2); border-radius:10px; height:9px; overflow:hidden; }
     .progress-bar  { height:100%; border-radius:10px; background:var(--acc); transition:width .55s cubic-bezier(.22,1,.36,1); }
@@ -710,18 +479,6 @@
     .feedback.wrong-fb   { background:var(--bad-soft); border:1.5px solid var(--bad); color:var(--bad); }
     .fb-icon   { font-size:1.15rem; margin-right:6px; }
     .hint-text { color:var(--tx-2); font-weight:400; margin-top:6px; font-size:.86rem; line-height:1.6; }
-
-    /* ── STREAK POPUP ── */
-    .streak-popup {
-      position:fixed; top:20px; left:50%; transform:translateX(-50%);
-      background:var(--streak); color:#fff;
-      padding:10px 24px; border-radius:30px;
-      font-family:var(--f-disp); font-size:1.05rem; font-weight:700;
-      box-shadow:var(--sh-3);
-      z-index:999; pointer-events:none;
-      animation:streakIn .4s ease forwards; display:none;
-    }
-    @keyframes streakIn { 0%{opacity:0;top:-20px} 30%{opacity:1;top:70px} 80%{opacity:1;top:66px} 100%{opacity:0;top:40px} }
 
     /* ── BAR CHART ── */
     .bar-chart-wrap { margin:10px 0; }
@@ -1490,10 +1247,10 @@
 
 <!-- ══ SECTION NAV ══ -->
 <nav id="section-nav">
-  <button class="section-btn" id="sec-btn-home" onclick="switchSection('home')"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg><span class="sec-label">Home</span></button>
-  <button class="section-btn active" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg><span class="sec-label">Grades</span></button>
+  <button class="section-btn" id="sec-btn-tests" onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg><span class="sec-label">Practice</span></button>
+  <button class="section-btn" id="sec-btn-mcap" onclick="switchSection('mcap')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg><span class="sec-label">Tests</span></button>
   <button class="section-btn" id="sec-btn-classwork" onclick="switchSection('classwork')"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg><span class="sec-label">Classwork</span></button>
-  <button class="section-btn" id="sec-btn-tests" onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg><span class="sec-label"><span class="nav-full">Standardized Tests</span><span class="nav-short">Test Prep</span></span></button>
+  <button class="section-btn hidden" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg><span class="sec-label">Grades</span></button>
 </nav>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
@@ -1549,7 +1306,6 @@
     <div class="hud">
       <div class="hud-left">
         <div class="hud-score"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg><span id="score-display">0</span> stars</div>
-        <div id="streak-display" class="streak-badge hidden"><svg class="ico" aria-hidden="true"><use href="#ic-flame"></use></svg><span id="streak-count">0</span></div>
         <div class="hud-domain" id="hud-domain"></div>
       </div>
       <div class="progress-wrap"><div class="progress-bar" id="progress-bar" style="width:0%"></div></div>
@@ -1591,7 +1347,6 @@
     <h2 id="end-title">Session Complete!</h2>
     <div class="stars-row" id="stars-row"></div>
     <div class="final-score" id="final-score"></div>
-    <div id="xp-earned-slot"></div>
     <div class="stats-row">
       <div class="stat-box"><div class="stat-num" id="stat-pct"></div><div class="stat-label">Accuracy</div></div>
       <div class="stat-box"><div class="stat-num" id="stat-streak"></div><div class="stat-label">Best Streak</div></div>
@@ -1599,8 +1354,8 @@
     </div>
     <div class="final-msg" id="final-msg"></div>
     <div class="start-btns mt-10">
-      <button class="btn btn-primary" onclick="startGame(false)"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Play Again</button>
-      <button class="btn btn-shuffle" onclick="startGame(true)"><svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Shuffle</button>
+      <button class="btn btn-primary" onclick="restartLastSession()"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Again</button>
+      <button class="btn btn-shuffle" onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg>Pick another</button>
     </div>
     <div style="margin-top:12px;">
       <button id="practice-review-btn" class="btn hidden" style="background:var(--surface);color:var(--tx);border:2px solid var(--tx);font-weight:700;" onclick="showPracticeReview()"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>Review My Answers</button>
@@ -1624,56 +1379,6 @@
     </div>
   </div>
 
-  <!-- HOME SCREEN — the reward surface -->
-  <div id="home-screen" class="card surface-reward hidden">
-    <div class="home-hero">
-      <div class="home-top">
-        <div class="home-greet">
-          <h2 id="home-greeting">Welcome back</h2>
-          <p id="home-sub">Loading your progress…</p>
-        </div>
-        <div class="home-streak" id="home-streak-box">
-          <svg class="ico" aria-hidden="true"><use href="#ic-flame"></use></svg>
-          <div>
-            <div class="home-streak-n" id="home-streak-n">0</div>
-            <div class="home-streak-l">day streak</div>
-          </div>
-        </div>
-      </div>
-      <div class="home-xp">
-        <div class="home-xp-top">
-          <span class="home-lvl" id="home-level">Level 1</span>
-          <span class="home-xp-num" id="home-xp-num">0 / 100 XP</span>
-        </div>
-        <div class="home-xp-track"><div class="home-xp-fill" id="home-xp-fill"></div></div>
-      </div>
-    </div>
-
-    <div class="home-body">
-      <div class="home-cta">
-        <button class="btn btn-primary" onclick="switchSection('tests')">
-          <svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Keep practising
-        </button>
-        <button class="link-btn" onclick="switchSection('grades')">Change grade</button>
-      </div>
-
-      <div>
-        <div class="home-sec-title"><span>Levels</span><span id="home-map-note"></span></div>
-        <div class="lvl-map" id="home-lvl-map"></div>
-      </div>
-
-      <div>
-        <div class="home-sec-title"><span>Badges</span><span id="home-badge-note"></span></div>
-        <div class="badge-grid" id="home-badges"></div>
-      </div>
-
-      <div>
-        <div class="home-sec-title"><span>All time</span></div>
-        <div class="home-stats" id="home-stats"></div>
-      </div>
-    </div>
-  </div>
-
   <!-- CLASSWORK SCREEN -->
   <div id="classwork-screen" class="card hidden">
     <h2 style="text-align:center;margin-bottom:6px;">Classwork</h2>
@@ -1691,39 +1396,49 @@
     <div id="classwork-list"></div>
   </div>
 
-  <!-- TEST CONFIG SCREEN -->
+  <!-- PRACTICE SCREEN: subject -> topic -> duration -->
+  <div id="practice-screen" class="card hidden">
+    <h2 style="text-align:center;margin-bottom:4px;">Practice</h2>
+    <p style="text-align:center;color:var(--tx-2);font-size:.92rem;margin-bottom:22px;">Pick a subject, a topic, and how long.</p>
+
+    <div class="pstep">
+      <div class="pstep-label"><span class="n">1</span>Subject</div>
+      <div class="pick-row" id="pick-subject">
+        <button class="pick big active" data-v="Math" onclick="setPracticeSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
+        <button class="pick big" data-v="Reading" onclick="setPracticeSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
+      </div>
+    </div>
+
+    <div class="pstep">
+      <div class="pstep-label"><span class="n">2</span>Topic</div>
+      <div class="pick-row" id="pick-topic"></div>
+    </div>
+
+    <div class="pstep">
+      <div class="pstep-label"><span class="n">3</span>How long</div>
+      <div class="pick-row" id="pick-minutes">
+        <button class="pick active" data-v="10" onclick="setPracticeMinutes(10)"><svg class="ico" aria-hidden="true"><use href="#ic-clock"></use></svg>10 min</button>
+        <button class="pick" data-v="20" onclick="setPracticeMinutes(20)"><svg class="ico" aria-hidden="true"><use href="#ic-clock"></use></svg>20 min</button>
+        <button class="pick" data-v="30" onclick="setPracticeMinutes(30)"><svg class="ico" aria-hidden="true"><use href="#ic-clock"></use></svg>30 min</button>
+      </div>
+    </div>
+
+    <div class="practice-summary" id="practice-summary"></div>
+    <div style="text-align:center;">
+      <button class="btn btn-primary btn-lg" onclick="startTimedPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Start</button>
+    </div>
+
+    <div class="test-links" style="margin-top:18px;">
+      <button class="link-btn hidden" id="practice-wrong-btn" onclick="showWeakPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-x"></use></svg>Wrong answers <span id="practice-wrong-count"></span></button>
+      <button class="link-btn" onclick="switchSection('grades')">Change grade</button>
+    </div>
+  </div>
+
+  <!-- MCAP TEST CONFIG SCREEN (secondary) -->
   <div id="test-config-screen" class="card hidden">
-    <h2>Standardized Tests</h2>
+    <h2 style="text-align:center;">Standardized Tests</h2>
 
-    <!-- Practice vs Take a Test toggle -->
-    <div class="test-mode-toggle" style="margin-bottom:20px;">
-      <button class="test-mode-btn active" id="tests-mode-practice" onclick="setTestsMode('practice')"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg>Practice</button>
-      <button class="test-mode-btn"        id="tests-mode-test"     onclick="setTestsMode('test')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg>Take a Test</button>
-    </div>
-
-    <!-- ── Practice panel ── -->
-    <div id="tests-practice-panel">
-      <!-- subject toggle mirrors the main one -->
-      <div style="margin-bottom:12px;">
-        <div id="test-subject-toggle" style="display:inline-flex;gap:6px;background:rgba(15,52,96,.08);border-radius:50px;padding:5px;">
-          <button class="subject-btn active" id="test-btn-math" onclick="setTestSubject('Math');switchSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
-          <button class="subject-btn" id="test-btn-reading" onclick="setTestSubject('Reading');switchSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
-        </div>
-      </div>
-      <!-- domain nav placeholder — the real #domain-nav lives outside, we show it here -->
-      <div id="tests-domain-nav-placeholder" style="margin-bottom:12px;"></div>
-      <p class="test-subtitle" style="margin-bottom:16px;">Pick a topic and drill questions — no timer, hints available.</p>
-      <button class="btn btn-test-start" onclick="startGame(true)"><svg class="ico" aria-hidden="true"><use href="#ic-shuffle"></use></svg>Let's Practice!</button>
-      <div style="margin-top:8px;">
-        <button class="link-btn" style="font-size:.8rem;color:var(--tx-3);" onclick="startGame(false)"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>In Order</button>
-      </div>
-      <div style="margin-top:10px;">
-        <button class="btn home-wrong-btn hidden" id="tests-wrong-btn" onclick="showWeakPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-x"></use></svg>Wrong Answers <span id="tests-wrong-count" style="background:rgba(0,0,0,.15);border-radius:10px;padding:1px 7px;font-size:.78rem;margin-left:4px;"></span></button>
-      </div>
-    </div>
-
-    <!-- ── Take a Test panel ── -->
-    <div id="tests-test-panel" class="hidden">
+    <div id="tests-test-panel">
       <p class="test-subtitle" style="margin-bottom:16px;">Timed, no hints, scored by domain.</p>
 
       <!-- Subject -->
@@ -1980,18 +1695,6 @@
   </div>
 </div>
 
-<div class="streak-popup" id="streak-popup"></div>
-
-<!-- Level-up: shown once, after a session that crossed a level boundary -->
-<div class="levelup" id="levelup" role="dialog" aria-modal="true" aria-labelledby="levelup-l">
-  <div class="levelup-card">
-    <div class="levelup-eyebrow">Level up</div>
-    <div class="levelup-n" id="levelup-n">2</div>
-    <div class="levelup-l" id="levelup-l">Nice work, Jaden</div>
-    <div class="levelup-sub" id="levelup-sub"></div>
-    <button class="levelup-btn" onclick="closeLevelUp()">Keep going</button>
-  </div>
-</div>
 
 <div id="loading-overlay" style="position:fixed;inset:0;z-index:10000;background:#0a0e2a;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;">
   <div style="font-size:2.5rem;">📚</div>
@@ -2279,232 +1982,124 @@ let activeAssignment = 'All';    // classwork only: which worksheet
 let ASSIGNMENTS = [];            // [{ name, count }] for the active grade/subject
 let testsMode     = 'practice'; // 'practice' | 'test'
 
+// The MCAP screen is test-only now; practice has its own screen.
 function setTestsMode(mode) {
-  testsMode = mode;
-  document.getElementById('tests-mode-practice').classList.toggle('active', mode === 'practice');
-  document.getElementById('tests-mode-test').classList.toggle('active', mode === 'test');
-  document.getElementById('tests-practice-panel').classList.toggle('hidden', mode !== 'practice');
-  document.getElementById('tests-test-panel').classList.toggle('hidden', mode !== 'test');
-  // Show domain nav only in practice mode within tests
-  document.getElementById('domain-nav').style.display = mode === 'practice' ? '' : 'none';
-  if (mode === 'practice') updateWeakButton();
+  testsMode = 'test';
+  document.getElementById('domain-nav').style.display = 'none';
+}
+
+function showMcapTest() {
+  setTrack('test_prep');
+  show('test-config-screen');
+  setTestsMode('test');
 }
 
 // ═══════════════════════════════════════════════════════════════════
-//  HOME SCREEN RENDER
-// ═══════════════════════════════════════════════════════════════════
-
-let _homeAttempts = null;         // cached per session; the history rarely moves
-let _homeAttemptsInFlight = null; // shared promise so concurrent renders cannot race
-
-async function _fetchProgressAttempts(force) {
-  if (_homeAttempts && !force) return _homeAttempts;
-  // Two renders can fire together (selectGrade -> switchSection -> renderHome).
-  // Share the in-flight request rather than letting the slower one clobber.
-  if (_homeAttemptsInFlight && !force) return _homeAttemptsInFlight;
-
-  _homeAttemptsInFlight = (async () => {
-    try {
-      const res = await fetch(
-        `${SUPABASE_URL}/rest/v1/attempts?student=eq.Jaden&select=*&order=created_at.desc&limit=500`,
-        { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
-      if (!res.ok) return _homeAttempts || [];
-      // Only a successful fetch is allowed to populate the cache. Caching []
-      // would poison it permanently: an empty array is truthy, so every later
-      // call would short-circuit and the home screen would show zeros forever.
-      _homeAttempts = await res.json();
-      return _homeAttempts;
-    } catch (e) {
-      return _homeAttempts || [];
-    } finally {
-      _homeAttemptsInFlight = null;
-    }
-  })();
-  return _homeAttemptsInFlight;
-}
-
-function _greetingFor(d = new Date()) {
-  const h = d.getHours();
-  if (h < 12) return 'Good morning';
-  if (h < 17) return 'Good afternoon';
-  return 'Good evening';
-}
-
-// The map is a WINDOW around the current level, not a fixed board. A fixed
-// 1-20 board would already be complete (real history puts Jaden at ~20) and
-// would not survive years of content. Two cleared levels behind for a sense
-// of travel, the current one, three ahead to aim at.
-function _levelWindow(level, back = 2, ahead = 3) {
-  const from = Math.max(1, level - back);
-  const out = [];
-  for (let l = from; l <= level + ahead; l++) out.push(l);
-  return out;
-}
-
-function renderLevelMap(progress) {
-  const el = document.getElementById('home-lvl-map');
-  if (!el) return;
-  const levels = _levelWindow(progress.level);
-  const parts = [];
-  levels.forEach((l, i) => {
-    const state = l < progress.level ? 'done' : l === progress.level ? 'now' : '';
-    const inner = l < progress.level
-      ? '<svg class="ico" aria-hidden="true"><use href="#ic-check"></use></svg>'
-      : String(l);
-    parts.push(`<div class="lvl-node ${state}" title="Level ${l}">${inner}</div>`);
-    if (i < levels.length - 1) {
-      parts.push(`<i class="lvl-link ${l < progress.level ? 'done' : ''}"></i>`);
-    }
-  });
-  el.innerHTML = parts.join('');
-  const note = document.getElementById('home-map-note');
-  if (note) note.textContent = `${progress.xpToNextLevel} XP to level ${progress.level + 1}`;
-}
-
-function renderBadges(progress, attempts) {
-  const el = document.getElementById('home-badges');
-  if (!el) return;
-  const badges = computeBadges(progress, attempts);
-  el.innerHTML = badges.map(b => `
-    <div class="badge-item ${b.earned ? '' : 'locked'}" title="${b.name}">
-      <div class="badge-ring"><svg class="ico" aria-hidden="true"><use href="#${b.ico}"></use></svg></div>
-      <span class="badge-name">${b.name}</span>
-    </div>`).join('');
-  const note = document.getElementById('home-badge-note');
-  if (note) note.textContent = `${badges.filter(b => b.earned).length} of ${badges.length} earned`;
-}
-
-function renderHomeStats(p) {
-  const el = document.getElementById('home-stats');
-  if (!el) return;
-  const stats = [
-    ['Questions',  p.questions],
-    ['Accuracy',   p.accuracy + '%'],
-    ['Sessions',   p.sessions],
-    ['Best streak', p.bestDailyStreak + (p.bestDailyStreak === 1 ? ' day' : ' days')],
-  ];
-  el.innerHTML = stats.map(([l, v]) =>
-    `<div class="home-stat"><div class="home-stat-l">${l}</div><div class="home-stat-v">${v}</div></div>`).join('');
-}
-
-async function renderHome(force) {
-  const attempts = await _fetchProgressAttempts(force);
-  const p = computeProgress(attempts);
-
-  document.getElementById('home-greeting').textContent = `${_greetingFor()}, Jaden`;
-
-  const sub = document.getElementById('home-sub');
-  sub.textContent = p.sessions === 0
-    ? 'Pick a topic and answer your first question to start earning XP.'
-    : p.todayDone
-      ? `You have already practised today. ${p.xpToNextLevel} XP to level ${p.level + 1}.`
-      : p.dailyStreak > 0
-        ? `Practise today to keep your ${p.dailyStreak}-day streak alive.`
-        : 'Answer a few questions today to start a new streak.';
-
-  document.getElementById('home-streak-n').textContent = p.dailyStreak;
-  const box = document.getElementById('home-streak-box');
-  // A cold streak should not wear the live streak colour.
-  box.style.opacity = p.dailyStreak > 0 ? '' : '.55';
-
-  document.getElementById('home-level').textContent  = `Level ${p.level}`;
-  document.getElementById('home-xp-num').textContent = `${p.xpIntoLevel} / ${p.xpForNextLevel} XP`;
-
-  // Ease the bar to its value rather than snapping - the motion is what makes
-  // progress feel earned. Only the first paint runs from zero; later renders
-  // just set the value and let the CSS transition tween from wherever it is.
-  //
-  // Uses a timer, not requestAnimationFrame: rAF is suspended in a background
-  // tab, which would strand the bar at 0% and misreport real progress. The
-  // animation is decoration, the final width is not.
-  const fill = document.getElementById('home-xp-fill');
-  const target = p.levelPct + '%';
-  if (!fill.dataset.painted) {
-    fill.dataset.painted = '1';
-    fill.style.width = '0%';
-    setTimeout(() => { fill.style.width = target; }, 40);
-  } else {
-    fill.style.width = target;
-  }
-
-  renderLevelMap(p);
-  renderBadges(p, attempts);
-  renderHomeStats(p);
-}
-
-// ═══════════════════════════════════════════════════════════════════
-//  CLASSWORK
+//  PRACTICE FLOW: subject -> topic -> duration -> timed session
 //
-//  Worksheets group by the sheet they came home on, not by CCSS domain.
-//  "Week 3 Fractions" is how the work actually arrives, and it is what
-//  Jaden recognises; a domain code is not.
+//  A session is defined by TIME, not by a question count. The chosen
+//  topic's whole pool is shuffled and served until the clock runs out.
 // ═══════════════════════════════════════════════════════════════════
+let practiceSubject = 'Math';
+let practiceDomain  = 'All';
+let practiceMinutes = 10;
+let timedSession    = false;   // true while a timed practice session is live
+let lastSession     = null;    // { subject, domain, minutes } for Play Again
 
-let classworkSubject = 'Math';
-
-function setClassworkSubject(subj) {
-  classworkSubject = subj;
-  document.getElementById('cw-btn-math')?.classList.toggle('active', subj === 'Math');
-  document.getElementById('cw-btn-reading')?.classList.toggle('active', subj === 'Reading');
-  renderClasswork();
+function setPracticeSubject(subj) {
+  practiceSubject = subj;
+  practiceDomain  = 'All';
+  renderPracticeScreen();
+}
+function setPracticeDomain(dom) {
+  practiceDomain = dom;
+  renderPracticeScreen();
+}
+function setPracticeMinutes(m) {
+  practiceMinutes = m;
+  renderPracticeScreen();
 }
 
-function renderClasswork() {
-  const host = document.getElementById('classwork-list');
-  if (!host) return;
+function renderPracticeScreen() {
+  document.querySelectorAll('#pick-subject .pick').forEach(b =>
+    b.classList.toggle('active', b.dataset.v === practiceSubject));
+  document.querySelectorAll('#pick-minutes .pick').forEach(b =>
+    b.classList.toggle('active', Number(b.dataset.v) === practiceMinutes));
 
-  const bySubject = (ASSIGNMENT_INDEX.classwork || {})[classworkSubject] || {};
-  const names = Object.keys(bySubject).sort();
-  const loose = ((TRACK_COUNTS.classwork || {})[classworkSubject] || {}).All || 0;
-  const filed = names.reduce((n, k) => n + bySubject[k], 0);
-  const unfiled = Math.max(0, loose - filed);
+  const doms   = practiceSubject === 'Math' ? MATH_DOMAINS : ELA_DOMAINS;
+  const counts = (TRACK_COUNTS.test_prep || {})[practiceSubject] || {};
+  document.getElementById('pick-topic').innerHTML = doms.map(d => {
+    const n = d.id === 'All' ? (counts.All || 0) : (counts[d.id] || 0);
+    const label = d.id === 'All' ? 'Everything' : d.label;
+    return `<button class="pick ${d.id === practiceDomain ? 'active' : ''}" data-v="${d.id}"
+              onclick="setPracticeDomain('${d.id}')" ${n === 0 ? 'disabled style="opacity:.4"' : ''}>
+              ${icoSvg(d.ico)}${label}<span class="cnt">${n}</span></button>`;
+  }).join('');
 
-  if (!names.length && !unfiled) {
-    host.innerHTML = `
-      <div class="cw-empty">
-        <strong>No ${classworkSubject.toLowerCase()} worksheets yet</strong>
-        Worksheets you upload will show up here, grouped by sheet.
-        Test practice stays in Standardized Tests and is not affected.
-      </div>`;
-    return;
-  }
-
-  const rows = names.map(name => `
-    <button class="cw-item" onclick="startAssignment(${JSON.stringify(name).replace(/"/g, '&quot;')})">
-      <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg></span>
-      <span class="cw-item-body">
-        <span class="cw-item-name">${name}</span>
-        <span class="cw-item-meta">${bySubject[name]} question${bySubject[name] === 1 ? '' : 's'}</span>
-      </span>
-      <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
-    </button>`);
-
-  if (unfiled) {
-    rows.push(`
-      <button class="cw-item" onclick="startAssignment('All')">
-        <span class="cw-item-ico"><svg class="ico" aria-hidden="true"><use href="#ic-all"></use></svg></span>
-        <span class="cw-item-body">
-          <span class="cw-item-name">Everything else</span>
-          <span class="cw-item-meta">${unfiled} question${unfiled === 1 ? '' : 's'} with no worksheet</span>
-        </span>
-        <svg class="ico cw-item-go" aria-hidden="true"><use href="#ic-arrow"></use></svg>
-      </button>`);
-  }
-
-  host.innerHTML = `<div class="cw-list">${rows.join('')}</div>`;
+  const d = doms.find(x => x.id === practiceDomain);
+  document.getElementById('practice-summary').innerHTML =
+    `<b>${practiceSubject}</b> &middot; <b>${d && d.id !== 'All' ? d.label : 'Everything'}</b> &middot; <b>${practiceMinutes} minutes</b>`;
 }
 
-async function startAssignment(name) {
-  activeAssignment = name;
-  activeSubject = classworkSubject;
-  activeDomain  = 'All';
-  practiceQCount = 0;          // a worksheet is worked in full, not sampled
-  await startGame(false);      // and in the order it was printed
+async function startTimedPractice() {
+  setTrack('test_prep');
+  activeSubject = practiceSubject;
+  activeDomain  = practiceDomain;
+  activeAssignment = 'All';
+  practiceQCount = 0;
+  lastSession = { subject: practiceSubject, domain: practiceDomain, minutes: practiceMinutes };
+
+  await ensureQuestionsLoaded(activeSubject, activeDomain);
+  buildNav();
+  const pool = filteredQuestions().slice();
+  if (!pool.length) return;
+  for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+  questions = pool;
+
+  currentQ = 0; score = 0; streak = 0; bestStreak = 0; practiceAnswers = [];
+  shownPassages = new Set();
+  testMode = false;           // practice rules: hints and feedback stay on
+  timedSession = true;
+
+  const d = currentDomains().find(x => x.id === activeDomain);
+  await createAttempt(activeSubject, 'timed', d ? d.label : activeDomain);
+
+  testTotalTime = practiceMinutes * 60;
+  testTimeLeft  = testTotalTime;
+  if (testTimerInterval) clearInterval(testTimerInterval);
+  updateTimerDisplay();
+  document.getElementById('test-timer').classList.remove('hidden');
+  testTimerInterval = setInterval(updateTimer, 1000);
+
+  show('question-screen');
+  renderQuestion();
+}
+
+// The clock ran out. End immediately - no finishing the current question.
+let timedSessionJustEnded = false;
+function endTimedPractice() {
+  if (testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
+  document.getElementById('test-timer').classList.add('hidden');
+  timedSession = false;
+  timedSessionJustEnded = true;
+  showEndScreen();
+  timedSessionJustEnded = false;
+}
+
+function restartLastSession() {
+  if (lastSession) {
+    practiceSubject = lastSession.subject;
+    practiceDomain  = lastSession.domain;
+    practiceMinutes = lastSession.minutes;
+    startTimedPractice();
+  } else {
+    startGame(true);
+  }
 }
 
 function switchSection(sec) {
   activeSection = sec;
-  ['home','grades','classwork','tests'].forEach(s =>
+  ['grades','classwork','tests','mcap','progress'].forEach(s =>
     document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
   // Subject toggle only shown for tests-practice (domain nav handles subject there)
   document.getElementById('subject-toggle').style.display = 'none';
@@ -2516,15 +2111,18 @@ function switchSection(sec) {
 
   if (sec === 'grades') {
     show('grades-screen');
-  } else if (sec === 'home') {
-    show('home-screen');
-    renderHome();
   } else if (sec === 'classwork') {
     show('classwork-screen');
     renderClasswork();
-  } else {
+  } else if (sec === 'mcap') {
     show('test-config-screen');
-    setTestsMode(testsMode); // restore last sub-mode
+    setTestsMode('test');
+  } else if (sec === 'progress') {
+    show('progress-screen');
+    if (typeof renderProgress === 'function') renderProgress();
+  } else {
+    show('practice-screen');
+    renderPracticeScreen();
   }
 }
 
@@ -2600,33 +2198,27 @@ async function selectGrade(grade) {
   // Re-render domain nav with freshly loaded counts, then drop into practice
   buildNav();
   updateWeakButton();
-  // Land on Home rather than straight into config: the reward surface is
-  // the point of arrival, and the CTA there leads into practice.
-  switchSection('home');
+  switchSection('tests');
 }
 
 function show(id) {
-  ['start-screen','grades-screen','home-screen','classwork-screen','reading-screen','question-screen','end-screen',
+  ['start-screen','grades-screen','classwork-screen','practice-screen','progress-screen',
+   'reading-screen','question-screen','end-screen',
    'test-config-screen','test-results-screen','history-screen',
    'test-review-screen'].forEach(s=>
-    document.getElementById(s).classList.toggle('hidden', s!==id));
-  // Domain nav: only show during practice-mode within tests, or during question flow
+    document.getElementById(s)?.classList.toggle('hidden', s!==id));
+  // Domain nav only during the question flow; the practice screen has its own topic chips
   const questionFlow = ['reading-screen','question-screen','end-screen'].includes(id);
-  const practicePanelActive = (id === 'test-config-screen' && testsMode === 'practice');
-  document.getElementById('domain-nav').style.display =
-    (questionFlow || practicePanelActive) ? '' : 'none';
+  document.getElementById('domain-nav').style.display = questionFlow ? '' : 'none';
   // Subject toggle always hidden (managed per-section)
   document.getElementById('subject-toggle').style.display = 'none';
   // Sync section nav
-  if (['test-config-screen','test-results-screen','start-screen',
-       'reading-screen','question-screen','end-screen'].includes(id)) {
-    ['grades','tests'].forEach(s =>
-      document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === 'tests'));
-  } else if (id === 'grades-screen') {
-    ['grades','tests'].forEach(s =>
-      document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === 'grades'));
-  }
-  if (id === 'test-config-screen') updateWeakButton();
+  const secFor = { 'grades-screen':'grades', 'classwork-screen':'classwork', 'progress-screen':'progress',
+                   'test-config-screen':'mcap', 'test-results-screen':'mcap', 'test-review-screen':'mcap' };
+  const sec = secFor[id] || (activeTrack === 'classwork' ? 'classwork' : (testMode ? 'mcap' : 'tests'));
+  ['grades','classwork','tests','mcap','progress'].forEach(s =>
+    document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
+  if (id === 'practice-screen' || id === 'test-config-screen') updateWeakButton();
 }
 
 async function startGame(shuffle = true) {
@@ -2706,17 +2298,21 @@ function renderQuestion() {
 
   // Timer visibility
   const timerEl = document.getElementById('test-timer');
-  if (testMode) timerEl.classList.remove('hidden');
+  if (testMode || timedSession) timerEl.classList.remove('hidden');
   else timerEl.classList.add('hidden');
 
   // HUD score (hide star score in test mode, show question counter)
   document.getElementById('score-display').textContent = score;
-  document.getElementById('q-counter').textContent = `${currentQ+1} / ${questions.length}`;
+  if (timedSession) {
+    // Position in the pool means nothing when the clock decides the end.
+    document.getElementById('q-counter').textContent = `${practiceAnswers.length} answered`;
+    document.querySelector('.progress-wrap').style.visibility = 'hidden';
+  } else {
+    document.querySelector('.progress-wrap').style.visibility = '';
+    document.getElementById('q-counter').textContent = `${currentQ+1} / ${questions.length}`;
+  }
   document.getElementById('progress-bar').style.width = `${(currentQ/questions.length)*100}%`;
 
-  const sd = document.getElementById('streak-display');
-  if (!testMode && streak>=2) { sd.classList.remove('hidden'); document.getElementById('streak-count').textContent=streak; }
-  else sd.classList.add('hidden');
 
   const d = currentDomains().find(x=>x.id===q.domain);
   document.getElementById('hud-domain').textContent = d ? d.label : '';
@@ -2907,13 +2503,8 @@ function updateScore(ok) {
     score++; streak++;
     if(streak>bestStreak) bestStreak=streak;
     document.getElementById('score-display').textContent=score;
-    const sd=document.getElementById('streak-display');
-    document.getElementById('streak-count').textContent=streak;
-    if(streak>=2) sd.classList.remove('hidden');
-    if([3,5,7,10].includes(streak)) showStreakPopup(streak);
   } else {
     streak=0;
-    document.getElementById('streak-display').classList.add('hidden');
   }
 }
 
@@ -2929,72 +2520,26 @@ function showFeedback(ok,q) {
   if(ok) launchConfetti();
 }
 
-function showStreakPopup(n) {
-  const p=document.getElementById('streak-popup');
-  const msgs={3:'🔥 3 in a row!',5:'🔥🔥 5 streak! On fire!',7:'💥 7 streak! Unstoppable!',10:'🏆 10 streak! LEGEND!'};
-  p.textContent=msgs[n]||`🔥 ${n} streak!`;
-  p.style.display='block';
-  p.style.animation='none'; void p.offsetWidth;
-  p.style.animation='streakIn 1.6s ease forwards';
-  setTimeout(()=>p.style.display='none',1600);
-}
 
 function nextQuestion() {
   currentQ++;
   if(currentQ>=questions.length) {
-    if (testMode) endTest();
+    if (timedSession) {
+      // Fill the time: reshuffle and go round again.
+      for (let i=questions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[questions[i],questions[j]]=[questions[j],questions[i]];}
+      currentQ = 0;
+      renderQuestion();
+    }
+    else if (testMode) endTest();
     else showEndScreen();
   } else renderQuestion();
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  LEVEL-UP MOMENT
-//
-//  Dew is calm by design, so the reward has to come from motion rather
-//  than from the palette. Crossing a level boundary is the one point in
-//  a session that earns a full-screen beat.
-// ═══════════════════════════════════════════════════════════════════
-
-function closeLevelUp() {
-  document.getElementById('levelup')?.classList.remove('show');
-}
-document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeLevelUp();
-});
-
-function showLevelUp(newLevel, xpGained) {
-  const el = document.getElementById('levelup');
-  if (!el) return;
-  document.getElementById('levelup-n').textContent = newLevel;
-  document.getElementById('levelup-l').textContent = `Level ${newLevel}`;
-  document.getElementById('levelup-sub').textContent =
-    `You earned ${xpGained} XP this session.`;
-  el.classList.add('show');
-}
-
-// Compares progress before and after the session's attempt lands, and
-// paints the XP readout. Awaited nowhere - a celebration must never
-// block the results screen from appearing.
-async function _afterSessionProgress(xpGainedGuess) {
-  try {
-    const before = computeProgress(await _fetchProgressAttempts());
-    const after  = computeProgress(await _fetchProgressAttempts(true));
-
-    const gained = Math.max(0, after.xp - before.xp) || xpGainedGuess || 0;
-    const host = document.getElementById('xp-earned-slot');
-    if (host && gained > 0) {
-      host.innerHTML =
-        `<span class="xp-earned"><svg class="ico" aria-hidden="true"><use href="#ic-star"></use></svg>+${gained} XP</span>`;
-    }
-    if (after.level > before.level) {
-      setTimeout(() => showLevelUp(after.level, gained), 700);
-    }
-  } catch (e) { /* never let a celebration break the results screen */ }
-}
-
 function showEndScreen() {
   document.getElementById('progress-bar').style.width='100%';
-  const total=questions.length, pct=score/total;
+  // A timed session is measured by what was answered, not by pool size.
+  const total = timedSessionJustEnded ? practiceAnswers.length : questions.length;
+  const pct = total ? score/total : 0;
   let trophy,starsHtml,msg;
   const isReading = activeSubject === 'Reading';
   if(pct===1)       { trophy='🏆'; starsHtml='⭐⭐⭐⭐⭐'; msg=isReading ? 'PERFECT SCORE! You are an absolute reading champion, Jaden! 🎉' : 'PERFECT SCORE! You are an absolute math champion, Jaden! 🎉'; }
@@ -3010,7 +2555,7 @@ function showEndScreen() {
   document.getElementById('stat-pct').textContent=Math.round(pct*100)+'%';
   document.getElementById('stat-streak').textContent='🔥 '+bestStreak;
   document.getElementById('stat-domain').textContent = d ? d.code : 'ALL';
-  document.getElementById('end-title').textContent = 'Session Complete!';
+  document.getElementById('end-title').textContent = timedSessionJustEnded ? "Time's up!" : 'Session Complete!';
   document.getElementById('final-msg').textContent=msg;
   show('end-screen');
   if(pct>=.7) for(let i=0;i<80;i++) setTimeout(launchConfettiPiece,i*45);
@@ -3025,9 +2570,9 @@ function showEndScreen() {
     domain:  d2 ? d2.label : activeDomain,
     score, total,
     pct:      Math.round(pct*100),
-    time_sec: 0,
-    breakdown: {},
-    mode: 'practice',
+    time_sec: timedSessionJustEnded ? (testTotalTime - Math.max(0, testTimeLeft)) : 0,
+    breakdown: timedSessionJustEnded ? { minutes: lastSession?.minutes || 0 } : {},
+    mode: timedSessionJustEnded ? 'timed' : 'practice',
     answers_json: practiceAnswers.map(a => ({ q: a.q, correct: a.correct })),
   });
 
@@ -3035,9 +2580,6 @@ function showEndScreen() {
   const reviewBtn = document.getElementById('practice-review-btn');
   if (reviewBtn) reviewBtn.classList.toggle('hidden', practiceAnswers.length === 0);
 
-  // Fire-and-forget: the results screen must render regardless.
-  document.getElementById('xp-earned-slot').innerHTML = '';
-  _afterSessionProgress(score * 15 + (score === total && total >= 5 ? 25 : 0));
 }
 
 function launchConfetti() { for(let i=0;i<16;i++) setTimeout(launchConfettiPiece,i*35); }
@@ -3135,7 +2677,7 @@ async function startTest() {
 function updateTimer() {
   testTimeLeft--;
   updateTimerDisplay();
-  if (testTimeLeft <= 0) endTest();
+  if (testTimeLeft <= 0) (timedSession ? endTimedPractice : endTest)();
 }
 
 function updateTimerDisplay() {
@@ -3499,6 +3041,10 @@ async function updateWeakButton() {
       btn.classList.toggle('hidden', count === 0);
       if (badge) badge.textContent = count;
     }
+    // Practice screen link
+    const pb = document.getElementById('practice-wrong-btn');
+    const pc = document.getElementById('practice-wrong-count');
+    if (pb) { pb.classList.toggle('hidden', count === 0); if (pc) pc.textContent = count ? `(${count})` : ''; }
     // Home screen button
     const homeBtn = document.getElementById('home-wrong-btn');
     const homeCount = document.getElementById('home-wrong-count');
@@ -4302,153 +3848,6 @@ async function _fetchAll(path, headers) {
   return all;
 }
 
-// ═══════════════════════════════════════════════════════════════════
-//  PROGRESS ENGINE - XP, levels, daily streak, badges
-//
-//  Everything is DERIVED from the existing attempts history rather than
-//  stored in new columns. That is deliberate: it means Jaden's past work
-//  counts the moment this ships instead of resetting him to zero, and
-//  there is no second source of truth to drift out of sync.
-//
-//  Pure functions, no DOM and no network, so tests can call them directly.
-// ═══════════════════════════════════════════════════════════════════
-
-const XP_PER_CORRECT   = 15;
-const XP_PERFECT_BONUS = 25;   // a clean set is worth more than its parts
-const PERFECT_MIN_Qs   = 5;    // ...but only if it was a real set
-
-// XP to climb one level. Gentle at the start (100, 150, 200, ...) so a new
-// player levels often, then the slope halves past level 10 so progression
-// does not stall: on real history Jaden is already level 19, and an
-// un-softened curve would have charged him ~67 correct answers per level
-// from there. Ramp: +50/level to L10, +25/level after.
-const LEVEL_RAMP_KNEE = 10;
-function xpToClearLevel(level) {
-  return level <= LEVEL_RAMP_KNEE
-    ? 100 + (level - 1) * 50
-    : 100 + (LEVEL_RAMP_KNEE - 1) * 50 + (level - LEVEL_RAMP_KNEE) * 25;
-}
-
-// Total XP required to have REACHED a given level.
-function xpAtLevelStart(level) {
-  let total = 0;
-  for (let l = 1; l < level; l++) total += xpToClearLevel(l);
-  return total;
-}
-
-function levelFromXp(xp) {
-  let level = 1;
-  while (xp >= xpAtLevelStart(level + 1)) level++;
-  return level;
-}
-
-// Local calendar day, not UTC. A 7pm session must not land on tomorrow.
-function localDayKey(ts) {
-  const d = new Date(ts);
-  if (isNaN(d)) return null;
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-function _dayKeyOffset(key, deltaDays) {
-  const [y, m, d] = key.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + deltaDays);
-  return localDayKey(dt);
-}
-
-function xpForAttempt(a) {
-  const score = Number(a.score) || 0;
-  const total = Number(a.total) || 0;
-  let xp = score * XP_PER_CORRECT;
-  if (total >= PERFECT_MIN_Qs && score === total) xp += XP_PERFECT_BONUS;
-  return xp;
-}
-
-/**
- * @param {Array}  attempts - rows from the attempts table
- * @param {string} [todayKey] - injectable "today" so tests are not clock-dependent
- */
-function computeProgress(attempts, todayKey) {
-  const done = (Array.isArray(attempts) ? attempts : [])
-    .filter(a => a && a.completed === true && (Number(a.total) || 0) > 0);
-
-  const xp    = done.reduce((sum, a) => sum + xpForAttempt(a), 0);
-  const level = levelFromXp(xp);
-
-  const start       = xpAtLevelStart(level);
-  const span        = xpToClearLevel(level);
-  const xpIntoLevel = xp - start;
-
-  // Distinct local days that have at least one completed session.
-  const days = new Set();
-  for (const a of done) {
-    const k = localDayKey(a.created_at);
-    if (k) days.add(k);
-  }
-
-  const today = todayKey || localDayKey(new Date());
-  // A streak survives until a full day is missed, so it may end today OR
-  // yesterday. Counting only from today would break every morning.
-  let cursor = days.has(today) ? today
-             : days.has(_dayKeyOffset(today, -1)) ? _dayKeyOffset(today, -1)
-             : null;
-  let dailyStreak = 0;
-  while (cursor && days.has(cursor)) {
-    dailyStreak++;
-    cursor = _dayKeyOffset(cursor, -1);
-  }
-
-  // Longest run anywhere in the history.
-  const sorted = [...days].sort();
-  let bestDailyStreak = 0, run = 0, prev = null;
-  for (const k of sorted) {
-    run = (prev && _dayKeyOffset(prev, 1) === k) ? run + 1 : 1;
-    if (run > bestDailyStreak) bestDailyStreak = run;
-    prev = k;
-  }
-
-  const questions = done.reduce((n, a) => n + (Number(a.total)  || 0), 0);
-  const correct   = done.reduce((n, a) => n + (Number(a.score)  || 0), 0);
-
-  return {
-    xp, level,
-    xpIntoLevel,
-    xpForNextLevel: span,
-    xpToNextLevel:  Math.max(0, span - xpIntoLevel),
-    levelPct: span > 0 ? Math.min(100, Math.round((xpIntoLevel / span) * 100)) : 0,
-    dailyStreak, bestDailyStreak,
-    todayDone: days.has(today),
-    activeDays: days.size,
-    sessions: done.length,
-    questions, correct,
-    accuracy: questions > 0 ? Math.round((correct / questions) * 100) : 0,
-  };
-}
-
-// Badge rules. Each is a pure predicate over the derived progress plus the
-// raw attempts, so historical work retroactively unlocks what it earned.
-const BADGE_RULES = [
-  { id:'first-steps',  name:'First Steps',    ico:'ic-play',     test:p => p.sessions   >= 1   },
-  { id:'perfect-set',  name:'Perfect Set',    ico:'ic-practice', test:(p,a) => a.some(x => (Number(x.total)||0) >= PERFECT_MIN_Qs && Number(x.score) === Number(x.total)) },
-  { id:'century',      name:'Century',        ico:'ic-chart',    test:p => p.questions  >= 100 },
-  { id:'streak-3',     name:'3-Day Streak',   ico:'ic-flame',    test:p => p.bestDailyStreak >= 3  },
-  { id:'streak-10',    name:'10-Day Streak',  ico:'ic-flame',    test:p => p.bestDailyStreak >= 10 },
-  { id:'level-5',      name:'Level 5',        ico:'ic-star',     test:p => p.level      >= 5   },
-  { id:'level-10',     name:'Level 10',       ico:'ic-trophy',   test:p => p.level      >= 10  },
-  { id:'sharpshooter', name:'Sharpshooter',   ico:'ic-practice', test:p => p.questions  >= 50 && p.accuracy >= 90 },
-  { id:'thousand',     name:'1000 XP',        ico:'ic-star',     test:p => p.xp         >= 1000 },
-  { id:'all-domains',  name:'All Domains',    ico:'ic-all',      test:(p,a) => new Set(a.filter(x=>x.completed&&x.domain).map(x=>x.domain)).size >= 5 },
-];
-
-function computeBadges(progress, attempts) {
-  const list = Array.isArray(attempts) ? attempts : [];
-  return BADGE_RULES.map(r => ({
-    id: r.id, name: r.name, ico: r.ico,
-    earned: !!r.test(progress, list),
-  }));
-}
-
 async function loadAppData() {
   const h = { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` };
 
@@ -4488,9 +3887,7 @@ async function loadAppData() {
   // Do NOT restore student_grade here — user must pick a grade each session
 
   // Expose for tests
-  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
-                        computeProgress, computeBadges, levelFromXp, xpAtLevelStart, xpToClearLevel,
-                        xpForAttempt, localDayKey, BADGE_RULES };
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade };
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
 }
