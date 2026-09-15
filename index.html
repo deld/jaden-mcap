@@ -323,6 +323,42 @@
     }
     .practice-summary b { color:var(--tx); }
 
+    /* ── PROGRESS ── */
+    .pg-week { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:22px; }
+    @media (min-width:600px) { .pg-week { grid-template-columns:repeat(4,1fr); } }
+    .pg-tile { background:var(--surface-2); border:1px solid var(--line); border-radius:var(--r1); padding:13px 14px; }
+    .pg-tile-l { font-size:.62rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--tx-3); margin-bottom:5px; }
+    .pg-tile-v { font-family:var(--f-disp); font-weight:700; font-size:1.45rem; line-height:1; color:var(--tx); font-variant-numeric:tabular-nums; }
+    .pg-h { font-family:var(--f-disp); font-weight:700; font-size:1rem; margin:0 0 12px; display:flex; align-items:baseline; gap:10px; }
+    .pg-h .sub { font-family:var(--f-body); font-weight:500; font-size:.76rem; color:var(--tx-3); margin-left:auto; }
+    .pg-sec { margin-bottom:24px; }
+    .pg-bars { display:flex; flex-direction:column; gap:10px; }
+    .pg-bar-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 12px; align-items:center; }
+    .pg-bar-name { font-size:.88rem; font-weight:600; color:var(--tx); grid-column:1; }
+    .pg-bar-pct { font-family:var(--f-num); font-size:.8rem; color:var(--tx-2); font-variant-numeric:tabular-nums; grid-column:2; text-align:right; }
+    .pg-bar-track { grid-column:1 / -1; height:8px; border-radius:99px; background:var(--surface-2); overflow:hidden; }
+    .pg-bar-fill { height:100%; border-radius:99px; }
+    .pg-bar-n { font-family:var(--f-num); font-size:.7rem; color:var(--tx-3); font-variant-numeric:tabular-nums; }
+    .pg-list { display:flex; flex-direction:column; gap:8px; }
+    .pg-row {
+      display:grid; grid-template-columns:auto 1fr auto auto; gap:12px; align-items:center;
+      padding:11px 13px; background:var(--surface); border:1px solid var(--line); border-radius:var(--r1);
+      font-size:.86rem;
+    }
+    .pg-row-date { font-family:var(--f-num); color:var(--tx-3); font-size:.78rem; font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .pg-row-what { font-weight:600; color:var(--tx); min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .pg-row-what small { display:block; font-weight:500; color:var(--tx-3); font-size:.74rem; }
+    .pg-row-score { font-family:var(--f-num); color:var(--tx); font-variant-numeric:tabular-nums; white-space:nowrap; }
+    .pg-tag { font-size:.62rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding:3px 8px; border-radius:99px; white-space:nowrap; }
+    .pg-tag.done { background:var(--ok-soft); color:var(--ok); }
+    .pg-tag.unfinished { background:var(--bad-soft); color:var(--bad); }
+    .pg-tag.test { background:var(--acc-soft); color:var(--acc); }
+    .pg-empty { text-align:center; color:var(--tx-3); font-size:.88rem; padding:18px; }
+    @media (max-width:480px) {
+      .pg-row { grid-template-columns:1fr auto; }
+      .pg-row-date { grid-column:1 / -1; }
+    }
+
     /* ── CLASSWORK ── */
     .cw-empty {
       text-align:center; padding:30px 20px; color:var(--tx-2);
@@ -1250,6 +1286,7 @@
   <button class="section-btn" id="sec-btn-tests" onclick="switchSection('tests')"><svg class="ico" aria-hidden="true"><use href="#ic-practice"></use></svg><span class="sec-label">Practice</span></button>
   <button class="section-btn" id="sec-btn-mcap" onclick="switchSection('mcap')"><svg class="ico" aria-hidden="true"><use href="#ic-tests"></use></svg><span class="sec-label">Tests</span></button>
   <button class="section-btn" id="sec-btn-classwork" onclick="switchSection('classwork')"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg><span class="sec-label">Classwork</span></button>
+  <button class="section-btn" id="sec-btn-progress" onclick="switchSection('progress')"><svg class="ico" aria-hidden="true"><use href="#ic-chart"></use></svg><span class="sec-label">Progress</span></button>
   <button class="section-btn hidden" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg><span class="sec-label">Grades</span></button>
 </nav>
 
@@ -1376,6 +1413,27 @@
         <div class="grade-card-label">4th Grade</div>
         <div class="grade-card-sub">Week 1 packet loaded</div>
       </div>
+    </div>
+  </div>
+
+  <!-- PROGRESS SCREEN -->
+  <div id="progress-screen" class="card hidden">
+    <h2 style="text-align:center;margin-bottom:18px;">Progress</h2>
+    <div class="pg-sec">
+      <div class="pg-h">This week</div>
+      <div class="pg-week" id="pg-week"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-h">Math by topic<span class="sub">last 30 days</span></div>
+      <div class="pg-bars" id="pg-math"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-h">Reading by topic<span class="sub">last 30 days</span></div>
+      <div class="pg-bars" id="pg-reading"></div>
+    </div>
+    <div class="pg-sec">
+      <div class="pg-h">Recent sessions</div>
+      <div class="pg-list" id="pg-recent"></div>
     </div>
   </div>
 
@@ -2229,6 +2287,87 @@ window.addEventListener('beforeunload', e => {
   e.returnValue = '';
 });
 window.addEventListener('pagehide', () => { if (sessionLive()) abandonSession(true); });
+
+// ═══════════════════════════════════════════════════════════════════
+//  PROGRESS - plain numbers and bars. No XP, levels or badges.
+// ═══════════════════════════════════════════════════════════════════
+function _dayKey(ts) {
+  const d = new Date(ts); const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+function _startOfWeek() {
+  const d = new Date(); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday
+  return d;
+}
+const _domainLabel = (subject, code) => {
+  const list = subject === 'Reading' ? ELA_DOMAINS : MATH_DOMAINS;
+  return (list.find(x => x.id === code) || {}).label || code || 'Other';
+};
+
+async function renderProgress() {
+  const H = { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` };
+  const since30 = new Date(Date.now() - 30*864e5).toISOString();
+  const [attempts, qa] = await Promise.all([
+    fetch(`${SUPABASE_URL}/rest/v1/attempts?student=eq.Jaden&select=*&order=created_at.desc&limit=200`, { headers: H }).then(r => r.ok ? r.json() : []),
+    fetch(`${SUPABASE_URL}/rest/v1/question_attempts?student=eq.Jaden&created_at=gte.${since30}&select=subject,domain,correct&limit=5000`, { headers: H }).then(r => r.ok ? r.json() : []),
+  ]).catch(() => [[], []]);
+
+  // A session counts if it ended - by the clock, or by walking away.
+  const sessions = attempts.filter(a => (a.completed || a.abandoned) && (a.total || 0) > 0);
+
+  // This week
+  const wk = _startOfWeek();
+  const week = sessions.filter(a => new Date(a.created_at) >= wk);
+  const wQ = week.reduce((n, a) => n + (a.total || 0), 0);
+  const wC = week.reduce((n, a) => n + (a.score || 0), 0);
+  const days = new Set(week.map(a => _dayKey(a.created_at))).size;
+  document.getElementById('pg-week').innerHTML = [
+    ['Sessions', week.length],
+    ['Questions', wQ],
+    ['Accuracy', wQ ? Math.round(wC / wQ * 100) + '%' : '—'],
+    ['Days practised', days],
+  ].map(([l, v]) => `<div class="pg-tile"><div class="pg-tile-l">${l}</div><div class="pg-tile-v">${v}</div></div>`).join('');
+
+  // By topic, per subject, from per-question rows so the number is honest.
+  for (const subj of ['Math', 'Reading']) {
+    const by = {};
+    qa.filter(r => r.subject === subj && r.domain).forEach(r => {
+      const b = by[r.domain] || (by[r.domain] = { n: 0, c: 0 });
+      b.n++; if (r.correct) b.c++;
+    });
+    const host = document.getElementById(subj === 'Math' ? 'pg-math' : 'pg-reading');
+    const rows = Object.entries(by).sort((a, b) => b[1].n - a[1].n);
+    host.innerHTML = rows.length ? rows.map(([dom, b]) => {
+      const pct = Math.round(b.c / b.n * 100);
+      const col = pct >= 80 ? 'var(--ok)' : pct >= 60 ? 'var(--warn)' : 'var(--bad)';
+      return `<div class="pg-bar-row">
+        <div class="pg-bar-name">${_domainLabel(subj, dom)}</div>
+        <div class="pg-bar-pct">${pct}% <span class="pg-bar-n">· ${b.n} q</span></div>
+        <div class="pg-bar-track"><div class="pg-bar-fill" style="width:${pct}%;background:${col}"></div></div>
+      </div>`;
+    }).join('') : `<div class="pg-empty">No ${subj.toLowerCase()} questions in the last 30 days.</div>`;
+  }
+
+  // Recent sessions
+  const recent = sessions.slice(0, 12);
+  document.getElementById('pg-recent').innerHTML = recent.length ? recent.map(a => {
+    const d = new Date(a.created_at);
+    const date = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ' ' +
+                 d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    const what = `${a.subject || ''}${a.domain && a.domain !== 'All' ? ' · ' + a.domain : ''}`;
+    const how  = a.planned_minutes ? `${a.planned_minutes} min` : (a.mode === 'test-mcap' ? 'MCAP' : a.mode || '');
+    const tag  = a.abandoned ? '<span class="pg-tag unfinished">Unfinished</span>'
+               : (a.mode || '').startsWith('test') ? '<span class="pg-tag test">Test</span>'
+               : '<span class="pg-tag done">Done</span>';
+    return `<div class="pg-row">
+      <div class="pg-row-date">${date}</div>
+      <div class="pg-row-what">${what}<small>${how}</small></div>
+      <div class="pg-row-score">${a.score} / ${a.total}</div>
+      ${tag}
+    </div>`;
+  }).join('') : '<div class="pg-empty">No sessions yet.</div>';
+}
 
 function switchSection(sec) {
   if (!guardLeave()) return;
