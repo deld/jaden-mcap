@@ -1031,11 +1031,12 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     ['tests',     'practice-screen',    () => appIframe.document.querySelectorAll('#pick-topic .pick').length > 0],
     ['mcap',      'test-config-screen', () => !!appIframe.document.getElementById('tests-test-panel')],
     ['classwork', 'classwork-screen',   () => !!appIframe.document.getElementById('classwork-list')],
+    ['progress',  'progress-screen',    () => appIframe.document.querySelectorAll('.pg-tile').length === 4],
   ]) {
     await test(`switchSection('${sec}') shows #${screenId} without throwing`, async () => {
       appIframe.window.confirm = () => true;
       appIframe.switchSection(sec);
-      await new Promise(r => setTimeout(r, 250));
+      await new Promise(r => setTimeout(r, sec === 'progress' ? 2500 : 250));
       const el = appIframe.document.getElementById(screenId);
       assert(el && !el.classList.contains('hidden'), `#${screenId} is not visible`);
       assert(probe(), `#${screenId} rendered empty`);
