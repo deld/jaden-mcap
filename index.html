@@ -504,6 +504,11 @@
     .spelling-input.correct{ border-color:var(--ok);  background:var(--ok-soft);  }
     .spelling-input.wrong  { border-color:var(--bad); background:var(--bad-soft); }
     .speak-btn { flex:none; }
+    .voice-pick { flex-basis:100%; display:flex; align-items:center; gap:8px; font-size:.74rem; color:var(--tx-3); margin-top:2px; }
+    .voice-pick select {
+      font-family:var(--f-body); font-size:.78rem; color:var(--tx-2);
+      background:var(--surface); border:1px solid var(--line); border-radius:var(--r1); padding:4px 8px; max-width:260px;
+    }
     .speak-btn .ico { width:1.15em; height:1.15em; }
 
     /* ── NUMERIC ── */
@@ -1395,6 +1400,10 @@
           <input class="spelling-input" id="spelling-input" type="text" placeholder="type the word"
                  autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           <button class="btn btn-check" onclick="checkSpelling()">Check!</button>
+          <label class="voice-pick hidden" title="Choose a voice for this device">
+            <span>Voice</span>
+            <select id="voice-picker" onchange="setSpellingVoice(this.value)"></select>
+          </label>
         </div>
         <div class="feedback" id="feedback"></div>
         <div class="text-center">
@@ -2804,13 +2813,88 @@ function checkMulti() {
 // The word is read aloud (browser speech, no network) and the sentence
 // on screen has it blanked out, so a fuzzy voice on a similar word
 // ("microbe" / "microbus") cannot mislead. The child types it.
+// ── Voice selection ──────────────────────────────────────────────────
+// Every platform's DEFAULT voice is its most robotic one. The good ones
+// (Siri enhanced voices on Apple, Google's on Chrome, Microsoft's neural
+// voices on Edge) are all present but have to be chosen. Rank by quality,
+// let a parent override, and remember the choice on this device.
+const VOICE_PREFS = [
+  // Apple enhanced / premium
+  /samantha.*(enhanced|premium)/i, /\b(ava|allison|zoe|nicky|evan|tom)\b.*(enhanced|premium)/i,
+  /\b(ava|allison|zoe|nicky)\b/i, /samantha/i,
+  // Google (Chrome)
+  /google us english/i,
+  // Microsoft neural (Edge)
+  /microsoft.*(aria|jenny|guy|ana).*online.*natural/i, /microsoft.*natural/i,
+];
+let _voices = [];
+let _voice  = null;
+
+// Apple ships joke voices as local en-US. They must never be chosen or listed.
+const VOICE_NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|deranged|good news|jester|organ|superstar|trinoids|whisper|wobble|zarvox|junior|ralph|fred|kathy|princess|hysterical|pipe organ|grandma|grandpa|rocko|shelley|sandy|reed|flo|eddy)\b/i;
+
+function _rankVoice(v) {
+  if (!/^en/i.test(v.lang)) return 999;
+  if (VOICE_NOVELTY.test(v.name)) return 999;
+  const i = VOICE_PREFS.findIndex(re => re.test(v.name));
+  if (i >= 0) return i;
+  if (v.localService && /en[-_]US/i.test(v.lang)) return 50;
+  if (/en[-_]US/i.test(v.lang)) return 60;
+  return 90;
+}
+
+function _loadVoices() {
+  if (!window.speechSynthesis) return;
+  _voices = speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+  if (!_voices.length) return;
+  const saved = (() => { try { return localStorage.getItem('spellingVoice'); } catch (e) { return null; } })();
+  _voice = _voices.find(v => v.name === saved)
+        || [..._voices].sort((a, b) => _rankVoice(a) - _rankVoice(b))[0]
+        || null;
+  _renderVoicePicker();
+}
+if (window.speechSynthesis) {
+  // Voices arrive asynchronously on most browsers - the list is empty at load.
+  speechSynthesis.addEventListener?.('voiceschanged', _loadVoices);
+  _loadVoices();
+  setTimeout(_loadVoices, 800);
+}
+
+function setSpellingVoice(name) {
+  _voice = _voices.find(v => v.name === name) || _voice;
+  try { localStorage.setItem('spellingVoice', name); } catch (e) {}
+  speakCurrentWord();
+}
+
+function _renderVoicePicker() {
+  const sel = document.getElementById('voice-picker');
+  if (!sel) return;
+  const ranked = [..._voices].filter(v => _rankVoice(v) < 999)
+    .sort((a, b) => _rankVoice(a) - _rankVoice(b)).slice(0, 12);
+  sel.innerHTML = ranked.map(v =>
+    `<option value="${v.name.replace(/"/g, '&quot;')}" ${_voice && v.name === _voice.name ? 'selected' : ''}>${v.name}</option>`).join('');
+  sel.parentElement.classList.toggle('hidden', ranked.length < 2);
+}
+
+function _utter(text, { rate = 0.9, pitch = 1.0 } = {}) {
+  const u = new SpeechSynthesisUtterance(text);
+  if (_voice) u.voice = _voice;
+  u.lang = (_voice && _voice.lang) || 'en-US';
+  u.rate = rate; u.pitch = pitch;
+  return u;
+}
+
+// Read like a spelling test: the word, the sentence with the word in it,
+// then the word again. Slower on the word itself.
 function speakCurrentWord() {
   const q = questions[currentQ];
   if (!q || q.type !== 'spelling' || !window.speechSynthesis) return;
+  const word = String(q.correct);
+  const sentence = String(q.text || '').replace(/_{2,}/g, word);
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(String(q.correct));
-  u.lang = 'en-US'; u.rate = 0.85;
-  speechSynthesis.speak(u);
+  speechSynthesis.speak(_utter(word, { rate: 0.8 }));
+  if (sentence && sentence !== word) speechSynthesis.speak(_utter(sentence, { rate: 0.95 }));
+  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
 }
 
 const _normSpelling = v => String(v ?? '').trim().toLowerCase().replace(/[^a-z'\-]/g, '');
