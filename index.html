@@ -491,6 +491,21 @@
     .option.correct  .opt-letter { background:var(--ok);  color:#fff; }
     .option.wrong    .opt-letter { background:var(--bad); color:#fff; }
 
+    /* ── SPELLING ── */
+    .spelling-area { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-top:6px; }
+    .spelling-input {
+      padding:12px 14px; font-size:1.25rem; border:2px solid var(--line-strong);
+      border-radius:var(--r1); min-width:220px; flex:1; font-weight:600;
+      color:var(--tx); background:var(--surface); outline:none; letter-spacing:.04em;
+      font-family:var(--f-num);
+      transition:border-color .15s, background .15s, box-shadow .15s;
+    }
+    .spelling-input:focus  { border-color:var(--acc); box-shadow:0 0 0 3px var(--acc-soft); }
+    .spelling-input.correct{ border-color:var(--ok);  background:var(--ok-soft);  }
+    .spelling-input.wrong  { border-color:var(--bad); background:var(--bad-soft); }
+    .speak-btn { flex:none; }
+    .speak-btn .ico { width:1.15em; height:1.15em; }
+
     /* ── NUMERIC ── */
     .numeric-wrap { display:flex; gap:10px; align-items:center; margin-top:6px; }
     .numeric-input {
@@ -1039,8 +1054,8 @@
     /* ── WEAK AREAS BUTTON ── */
     .weak-areas-btn {
       display: inline-flex; align-items: center; gap: 7px;
-      background: linear-gradient(135deg, #7c3aed, #5b21b6);
-      color: white; border: none; border-radius: 50px;
+      background: var(--acc);
+      color: var(--acc-on); border: none; border-radius: 50px;
       padding: 10px 22px; font-size: .92rem; font-weight: 700;
       cursor: pointer; transition: transform .15s, box-shadow .15s;
       margin-top: 10px;
@@ -1267,6 +1282,10 @@
     <path d="M3.5 20.25h17"/>
     <path d="M16.4 18.6l4.1-4.1a1.35 1.35 0 0 0-1.9-1.9l-4.1 4.1-.5 2.4z"/>
   </symbol>
+  <symbol id="ic-sound" viewBox="0 0 24 24">
+    <path d="M4 9.5v5h3.5L12 18.5v-13L7.5 9.5z"/>
+    <path d="M15.5 9.2a4 4 0 0 1 0 5.6M18.2 6.5a7.8 7.8 0 0 1 0 11"/>
+  </symbol>
   <symbol id="ic-check" viewBox="0 0 24 24">
     <path d="M5 12.5l4.6 4.6L19 7.6"/>
   </symbol>
@@ -1369,6 +1388,14 @@
           <input class="numeric-input" id="numeric-input" type="number" placeholder="?" autocomplete="off">
           <button class="btn btn-check" onclick="checkNumeric()">Check!</button>
         </div>
+        <div class="spelling-area hidden" id="spelling-area">
+          <button type="button" class="btn btn-ghost speak-btn" id="speak-btn" onclick="speakCurrentWord()">
+            <svg class="ico" aria-hidden="true"><use href="#ic-sound"></use></svg>Hear the word
+          </button>
+          <input class="spelling-input" id="spelling-input" type="text" placeholder="type the word"
+                 autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <button class="btn btn-check" onclick="checkSpelling()">Check!</button>
+        </div>
         <div class="feedback" id="feedback"></div>
         <div class="text-center">
           <button class="btn btn-check hidden" id="check-btn" onclick="checkMulti()">Check My Answers!</button>
@@ -1432,6 +1459,10 @@
       <div class="pg-bars" id="pg-reading"></div>
     </div>
     <div class="pg-sec">
+      <div class="pg-h">Spelling<span class="sub">last 30 days</span></div>
+      <div class="pg-bars" id="pg-spelling"></div>
+    </div>
+    <div class="pg-sec">
       <div class="pg-h">Recent sessions</div>
       <div class="pg-list" id="pg-recent"></div>
     </div>
@@ -1464,6 +1495,7 @@
       <div class="pick-row" id="pick-subject">
         <button class="pick big active" data-v="Math" onclick="setPracticeSubject('Math')"><svg class="ico" aria-hidden="true"><use href="#ic-math"></use></svg>Math</button>
         <button class="pick big" data-v="Reading" onclick="setPracticeSubject('Reading')"><svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Reading</button>
+        <button class="pick big" data-v="Spelling" onclick="setPracticeSubject('Spelling')"><svg class="ico" aria-hidden="true"><use href="#ic-lang"></use></svg>Spelling</button>
       </div>
     </div>
 
@@ -1782,6 +1814,11 @@ const MATH_DOMAINS = [
 // ═══════════════════════════════════════════════════════════════════
 //  ELA DOMAIN DEFINITIONS
 // ═══════════════════════════════════════════════════════════════════
+const SPELLING_DOMAINS = [
+  { id:'All',             label:'All Words',       code:'ALL', ico:'ic-lang' },
+  { id:'Words Their Way', label:'Words Their Way', code:'WTW', ico:'ic-lang' },
+];
+
 const ELA_DOMAINS = [
   { id:'All', label:'All Reading',        code:'ALL', ico:'ic-books' },
   { id:'RL',  label:'Literary Text',      code:'RL',  ico:'ic-rl'    },
@@ -1886,7 +1923,10 @@ let activeSubject  = 'Math';
 let activeDomain   = 'All';
 let practiceQCount = 0; // 0 = all available
 
-function currentDomains() { return activeSubject === 'Math' ? MATH_DOMAINS : ELA_DOMAINS; }
+function domainsFor(subject) {
+  return subject === 'Math' ? MATH_DOMAINS : subject === 'Spelling' ? SPELLING_DOMAINS : ELA_DOMAINS;
+}
+function currentDomains() { return domainsFor(activeSubject); }
 // Returns cached questions for the active subject (all domains)
 function currentQuestions() {
   return Q_CACHE[_qKey(activeSubject, 'All')] || Q_CACHE[_qKey(activeSubject, activeDomain)] || [];
@@ -2086,7 +2126,7 @@ function renderPracticeScreen() {
   document.querySelectorAll('#pick-minutes .pick').forEach(b =>
     b.classList.toggle('active', Number(b.dataset.v) === practiceMinutes));
 
-  const doms   = practiceSubject === 'Math' ? MATH_DOMAINS : ELA_DOMAINS;
+  const doms   = domainsFor(practiceSubject);
   const counts = (TRACK_COUNTS.test_prep || {})[practiceSubject] || {};
   document.getElementById('pick-topic').innerHTML = doms.map(d => {
     const n = d.id === 'All' ? (counts.All || 0) : (counts[d.id] || 0);
@@ -2137,7 +2177,9 @@ async function startTimedPractice() {
 
 // The clock ran out. End immediately - no finishing the current question.
 let timedSessionJustEnded = false;
+let lastSessionKind = 'practice';   // 'practice' | 'test' - drives nav highlight on shared result screens
 function endTimedPractice() {
+  lastSessionKind = 'practice';
   if (testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
   document.getElementById('test-timer').classList.add('hidden');
   timedSession = false;
@@ -2301,7 +2343,7 @@ function _startOfWeek() {
   return d;
 }
 const _domainLabel = (subject, code) => {
-  const list = subject === 'Reading' ? ELA_DOMAINS : MATH_DOMAINS;
+  const list = domainsFor(subject);
   return (list.find(x => x.id === code) || {}).label || code || 'Other';
 };
 
@@ -2330,13 +2372,13 @@ async function renderProgress() {
   ].map(([l, v]) => `<div class="pg-tile"><div class="pg-tile-l">${l}</div><div class="pg-tile-v">${v}</div></div>`).join('');
 
   // By topic, per subject, from per-question rows so the number is honest.
-  for (const subj of ['Math', 'Reading']) {
+  for (const subj of ['Math', 'Reading', 'Spelling']) {
     const by = {};
     qa.filter(r => r.subject === subj && r.domain).forEach(r => {
       const b = by[r.domain] || (by[r.domain] = { n: 0, c: 0 });
       b.n++; if (r.correct) b.c++;
     });
-    const host = document.getElementById(subj === 'Math' ? 'pg-math' : 'pg-reading');
+    const host = document.getElementById({ Math:'pg-math', Reading:'pg-reading', Spelling:'pg-spelling' }[subj]);
     const rows = Object.entries(by).sort((a, b) => b[1].n - a[1].n);
     host.innerHTML = rows.length ? rows.map(([dom, b]) => {
       const pct = Math.round(b.c / b.n * 100);
@@ -2488,8 +2530,11 @@ function show(id) {
   document.getElementById('subject-toggle').style.display = 'none';
   // Sync section nav
   const secFor = { 'grades-screen':'grades', 'classwork-screen':'classwork', 'progress-screen':'progress',
-                   'test-config-screen':'mcap', 'test-results-screen':'mcap', 'test-review-screen':'mcap' };
-  const sec = secFor[id] || (activeTrack === 'classwork' ? 'classwork' : (testMode ? 'mcap' : 'tests'));
+                   'test-config-screen':'mcap' };
+  const shared = (id === 'test-results-screen' || id === 'test-review-screen' || id === 'end-screen');
+  const sec = secFor[id]
+    || (shared ? (lastSessionKind === 'test' ? 'mcap' : (activeTrack === 'classwork' ? 'classwork' : 'tests'))
+               : (activeTrack === 'classwork' ? 'classwork' : (testMode ? 'mcap' : 'tests')));
   ['grades','classwork','tests','mcap','progress'].forEach(s =>
     document.getElementById(`sec-btn-${s}`)?.classList.toggle('active', s === sec));
   if (id === 'practice-screen' || id === 'test-config-screen') updateWeakButton();
@@ -2660,11 +2705,19 @@ function renderQuestion() {
   const oa=document.getElementById('options-area');
   const na=document.getElementById('numeric-area');
   const ni=document.getElementById('numeric-input');
-  oa.innerHTML=''; na.classList.add('hidden');
+  const sa=document.getElementById('spelling-area');
+  const si=document.getElementById('spelling-input');
+  oa.innerHTML=''; na.classList.add('hidden'); sa.classList.add('hidden');
   ni.value=''; ni.className='numeric-input'; ni.disabled=false;
+  si.value=''; si.className='spelling-input'; si.disabled=false;
+  window.speechSynthesis?.cancel();
 
   const L='ABCDEFGHIJ';
-  if (q.type==='numeric') {
+  if (q.type==='spelling') {
+    sa.classList.remove('hidden');
+    si.onkeydown = e=>{ if(e.key==='Enter') checkSpelling(); };
+    setTimeout(()=>{ si.focus(); speakCurrentWord(); }, 120);
+  } else if (q.type==='numeric') {
     na.classList.remove('hidden');
     ni.onkeydown = e=>{ if(e.key==='Enter') checkNumeric(); };
     setTimeout(()=>ni.focus(),50);
@@ -2747,6 +2800,58 @@ function checkMulti() {
   document.getElementById('next-btn').classList.remove('hidden');
 }
 
+// ── Spelling ────────────────────────────────────────────────────────
+// The word is read aloud (browser speech, no network) and the sentence
+// on screen has it blanked out, so a fuzzy voice on a similar word
+// ("microbe" / "microbus") cannot mislead. The child types it.
+function speakCurrentWord() {
+  const q = questions[currentQ];
+  if (!q || q.type !== 'spelling' || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(String(q.correct));
+  u.lang = 'en-US'; u.rate = 0.85;
+  speechSynthesis.speak(u);
+}
+
+const _normSpelling = v => String(v ?? '').trim().toLowerCase().replace(/[^a-z'\-]/g, '');
+
+// Levenshtein distance capped at 2 - enough to say "one letter off".
+function _editDistance(a, b) {
+  if (Math.abs(a.length - b.length) > 2) return 3;
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j;
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  return dp[a.length][b.length];
+}
+
+function checkSpelling() {
+  const q=questions[currentQ];
+  const si=document.getElementById('spelling-input');
+  const typed=_normSpelling(si.value);
+  if(!typed) return;
+  answered=true;
+  const target=_normSpelling(q.correct);
+  const ok = typed === target;
+  q._closeMiss = !ok && _editDistance(typed, target) === 1;
+  const _tms = questionStartTime ? Date.now() - questionStartTime : null;
+  q._yourAnswer = si.value.trim();
+  if (testMode) {
+    testAnswers.push({q, correct:ok, time_ms:_tms});
+    saveOneQuestionAttempt(q, ok, _tms);
+    si.disabled=true;
+    setTimeout(()=>nextQuestion(), 300);
+    return;
+  }
+  practiceAnswers.push({q, correct:ok, time_ms:_tms});
+  saveOneQuestionAttempt(q, ok, _tms);
+  si.className='spelling-input '+(ok?'correct':'wrong');
+  si.disabled=true;
+  updateScore(ok); showFeedback(ok,q);
+  document.getElementById('next-btn').classList.remove('hidden');
+}
+
 function checkNumeric() {
   const q=questions[currentQ];
   const ni=document.getElementById('numeric-input');
@@ -2788,7 +2893,9 @@ const WRONG_MSGS  =['Almost! Here\'s the trick:','Not quite — let\'s learn thi
 function showFeedback(ok,q) {
   const fb=document.getElementById('feedback');
   const msg=ok?CORRECT_MSGS[Math.floor(Math.random()*CORRECT_MSGS.length)]:WRONG_MSGS[Math.floor(Math.random()*WRONG_MSGS.length)];
-  const correctLabel=q.type==='numeric'?`Answer: <strong>${q.correct}</strong>`:`Correct: <strong>${q.correct.join(', ')}</strong>`;
+  const correctLabel = q.type==='numeric' ? `Answer: <strong>${q.correct}</strong>`
+    : q.type==='spelling' ? `${q._closeMiss ? 'So close - one letter off. ' : ''}Spelling: <strong>${q.correct}</strong>`
+    : `Correct: <strong>${q.correct.join(', ')}</strong>`;
   fb.className=`feedback show ${ok?'correct-fb':'wrong-fb'}`;
   fb.innerHTML=`<span class="fb-icon">${ok?'✅':'❌'}</span> ${msg}${!ok?`<br>${correctLabel}`:''}<div class="hint-text">💡 ${q.hint}</div>`;
   if(ok) launchConfetti();
@@ -2965,6 +3072,7 @@ function updateTimerDisplay() {
 }
 
 function endTest() {
+  lastSessionKind = 'test';
   if (testTimerInterval) { clearInterval(testTimerInterval); testTimerInterval = null; }
   document.getElementById('test-timer').classList.add('hidden');
 
@@ -3085,10 +3193,10 @@ function showTestResults(data) {
 async function saveQuestionAttempts(attemptId, answers, subject) {
   if (!answers.length) return;
   const rows = answers.map(({ q, correct }) => {
-    const yourAnswer = q.type === 'numeric'
+    const yourAnswer = (q.type === 'numeric' || q.type === 'spelling')
       ? String(q._yourAnswer ?? '')
       : [...(q._chosen || new Set())].join(',');
-    const correctAnswer = q.type === 'numeric'
+    const correctAnswer = (q.type === 'numeric' || q.type === 'spelling')
       ? String(Array.isArray(q.correct) ? q.correct[0] : q.correct)
       : (Array.isArray(q.correct) ? q.correct.join(',') : String(q.correct));
     return {
@@ -3147,10 +3255,10 @@ async function finalizeAttempt(update) {
 // row and the in-memory answer object record the same elapsed time.
 function saveOneQuestionAttempt(q, correct, time_ms) {
   if (!currentAttemptId) return;
-  const yourAnswer = q.type === 'numeric'
+  const yourAnswer = (q.type === 'numeric' || q.type === 'spelling')
     ? String(q._yourAnswer ?? '')
     : [...(q._chosen || new Set())].join(',');
-  const correctAnswer = q.type === 'numeric'
+  const correctAnswer = (q.type === 'numeric' || q.type === 'spelling')
     ? String(Array.isArray(q.correct) ? q.correct[0] : q.correct)
     : (Array.isArray(q.correct) ? q.correct.join(',') : String(q.correct));
   fetch(`${SUPABASE_URL}/rest/v1/question_attempts`, {
@@ -3402,7 +3510,7 @@ function _buildReview(answers, allQuestions, scrollToIdx) {
     const cs = CAT_STYLE[q.cat] || {bg:'#eee', fg:'#333'};
 
     let optionsHTML = '';
-    if (q.type === 'numeric') {
+    if (q.type === 'numeric' || q.type === 'spelling') {
       const yourAns = skipped ? '—' : q._yourAnswer ?? '?';
       const correctCls = correct ? 'ro-chosen-right' : 'ro-chosen-wrong';
       optionsHTML = `
@@ -3935,7 +4043,7 @@ function _renderDomains(attempts) {
     document.getElementById('parent-domain-breakdown').innerHTML = '<div style="color:var(--tx-3);font-size:.85rem;">No domain data yet.</div>';
     return;
   }
-  const allDoms = [...MATH_DOMAINS,...ELA_DOMAINS];
+  const allDoms = [...MATH_DOMAINS,...ELA_DOMAINS,...SPELLING_DOMAINS];
   const html = rows.map(({dom,avg,n}) => {
     const def   = allDoms.find(d=>d.id===dom);
     const label = def ? def.label : dom;
@@ -4162,7 +4270,8 @@ async function loadAppData() {
   // Do NOT restore student_grade here — user must pick a grade each session
 
   // Expose for tests
-  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade };
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
+                        SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance };
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
 }
