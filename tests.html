@@ -724,6 +724,36 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `${n} grade 3 Math test-prep questions still present`;
   });
 
+  // ── Spelling subject + typed-spelling type ───────────────────────────────
+  suite('\u{1F524} Spelling \u2014 subject and typed question type');
+
+  await test('Spelling questions exist as type=spelling with a string answer and a blank in the prompt', async () => {
+    const res = await db("questions?select=text,correct,type&subject=eq.Spelling&type=eq.spelling&active=eq.true&limit=100");
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length >= 20, `expected the week-4 list, got ${rows.length}`);
+    const bad = rows.filter(r => typeof r.correct !== 'string' || !r.text.includes('___'));
+    assert(bad.length === 0, `${bad.length} spelling rows missing a string answer or a ___ blank`);
+    return `${rows.length} typed-spelling questions, all well-formed`;
+  });
+
+  await test('App exposes Spelling as a practice subject with its own domains', async () => {
+    const D = appIframe._mcapData;
+    assert(Array.isArray(D.SPELLING_DOMAINS) && D.SPELLING_DOMAINS.length >= 2, 'SPELLING_DOMAINS missing');
+    assert(D.domainsFor('Spelling') === D.SPELLING_DOMAINS, 'domainsFor(Spelling) wrong');
+    const btn = appIframe.document.querySelector('#pick-subject .pick[data-v="Spelling"]');
+    assert(btn, 'no Spelling button in the practice picker');
+    return 'Spelling picker + domains present';
+  });
+
+  await test('Typed spelling check is case- and whitespace-insensitive, and flags a one-letter miss', async () => {
+    const D = appIframe._mcapData;
+    assert(D._normSpelling('  MicroWave ') === 'microwave', 'normalisation failed');
+    assert(D._editDistance('microwave', 'microwav') === 1, 'one-letter miss not detected');
+    assert(D._editDistance('microwave', 'megaphone') > 1, 'unrelated words scored as close');
+    return 'normalise + close-miss detection OK';
+  });
+
   // ── 12. App Logic — data loading ─────────────────────────────────────────
   suite('🧠 App Logic — data loading (iframe)');
 
