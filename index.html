@@ -2936,13 +2936,22 @@ function checkSpelling() {
   document.getElementById('next-btn').classList.remove('hidden');
 }
 
+// Compare as numbers. `correct` is jsonb and has arrived as a string before
+// (75 questions in Sept 2026); a strict === against a string marked every
+// right answer wrong. Number() makes the stored type irrelevant.
+function gradeNumeric(typed, correct) {
+  const a = Number(typed), b = Number(correct);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+  return Math.abs(a - b) < 1e-9;
+}
+
 function checkNumeric() {
   const q=questions[currentQ];
   const ni=document.getElementById('numeric-input');
-  const val=parseInt(ni.value,10);
+  const val=parseFloat(ni.value);
   if(isNaN(val)) return;
   answered=true;
-  const ok=val===q.correct;
+  const ok = gradeNumeric(val, q.correct);
   const _tms = questionStartTime ? Date.now() - questionStartTime : null;
   if (testMode) {
     q._yourAnswer = val;
@@ -4355,7 +4364,7 @@ async function loadAppData() {
 
   // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
-                        SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance };
+                        SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric };
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
 }

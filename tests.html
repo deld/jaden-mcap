@@ -754,6 +754,33 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'normalise + close-miss detection OK';
   });
 
+  // ── Numeric answers must be stored as numbers ────────────────────────────
+  suite('\u{1F522} Numeric answers \u2014 stored type');
+
+  await test('No active numeric question stores `correct` as a string', async () => {
+    // A string here makes checkNumeric's comparison fail on every right answer.
+    // 75 questions shipped this way in Sept 2026 and marked Jaden wrong when he
+    // was right. The app now compares as numbers regardless, but the data
+    // should still be clean so nothing else trips on it.
+    const rows = await dbAll('questions?select=id,text,correct&active=eq.true&type=eq.numeric');
+    const bad = rows.filter(r => typeof r.correct !== 'number');
+    assert(bad.length === 0,
+      `${bad.length} numeric questions store a non-number correct, e.g. ${JSON.stringify(bad[0])}`);
+    return `${rows.length} numeric questions, all numeric`;
+  });
+
+  await test('Numeric grading tolerates a string-typed correct value', async () => {
+    // Belt and braces: even if a string sneaks back in, the app must grade it right.
+    const g = appIframe._mcapData.gradeNumeric;
+    assert(g(85, '85') === true,   '85 vs "85" should be correct');
+    assert(g('85', 85) === true,   '"85" vs 85 should be correct');
+    assert(g(85, 85) === true,     '85 vs 85 should be correct');
+    assert(g(84, '85') === false,  '84 vs "85" should be wrong');
+    assert(g(0.5, '0.5') === true, 'decimals compare');
+    assert(g('abc', 85) === false, 'garbage never passes');
+    return 'string/number correct values grade identically';
+  });
+
   // ── 12. App Logic — data loading ─────────────────────────────────────────
   suite('🧠 App Logic — data loading (iframe)');
 
