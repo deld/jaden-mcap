@@ -26,7 +26,7 @@ def mc(text, options, correct_idx, hint, solution):
 
 def num(text, answer, hint, solution):
     return {"type": "numeric", "text": text, "options": None,
-            "correct": str(answer), "hint": hint, "solution": solution}
+            "correct": answer, "hint": hint, "solution": solution}
 
 # (domain, category, [questions])
 UNITS = [

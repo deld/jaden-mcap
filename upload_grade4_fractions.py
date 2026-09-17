@@ -18,7 +18,7 @@ L = "ABCDEFGH"
 def mc(text, options, i, hint, solution):
     return {"type":"single","text":text,"options":list(options),"correct":[L[i]],"hint":hint,"solution":solution}
 def num(text, answer, hint, solution):
-    return {"type":"numeric","text":text,"options":None,"correct":str(answer),"hint":hint,"solution":solution}
+    return {"type":"numeric","text":text,"options":None,"correct": answer,"hint":hint,"solution":solution}
 
 UNITS = [
 
