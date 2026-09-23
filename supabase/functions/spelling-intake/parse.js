@@ -88,6 +88,26 @@ export function headerMatchesGroup(header, group) {
 
 const WORD_RE = /^[a-z][a-z'-]{1,24}$/i;
 
+/**
+ * The real doc keeps the roster in the SAME table, under the word lists:
+ *
+ *   ...        | SKY and SEA
+ *   hyperactive| hypersensitive     <- words end here
+ *   Groups     | Sky | Sea          <- a second header row
+ *   Students   | Sam | Jaden | ...  <- children's names
+ *
+ * Without this boundary the names get collected as spelling words, which is
+ * how "sam, jaden, lincoln" ended up in a parsed word list.
+ */
+const ROSTER_LABEL = /^(groups?|students?|names?|roster|teachers?|class)$/i;
+
+export function isRosterBoundary(row, groupHeaders) {
+  if (row.some((c) => ROSTER_LABEL.test((c || "").trim()))) return true;
+  // A repeated header row: two or more cells matching the group names again.
+  const hits = row.filter((c) => c && groupHeaders.some((h) => h && norm(h) === norm(c))).length;
+  return hits >= 2;
+}
+
 export function looksLikeWord(s) {
   const t = s.trim();
   return WORD_RE.test(t) && !/^(word|words|list|group|name|student|sun|sky|sea|green)$/i.test(t);
@@ -106,8 +126,11 @@ export function extractWordList(tables, group) {
     const col = header.findIndex((h) => headerMatchesGroup(h, group));
     if (col < 0) continue;
 
+    const groupHeaders = header.filter(Boolean);
     const words = [];
     for (let r = 1; r < rows.length; r++) {
+      // Everything below the roster boundary is names, not words.
+      if (isRosterBoundary(rows[r], groupHeaders)) break;
       const cell = (rows[r][col] ?? "").trim();
       if (!cell) continue;
       // A cell may hold several words separated by commas or line breaks.
@@ -132,11 +155,70 @@ export function extractWordList(tables, group) {
   throw new Error(`No column matched group "${group}". Headers seen: ${headers}`);
 }
 
-/** The first Google Docs link in an email body. */
+/** Turn any Google Docs URL into its HTML export. */
+export function docExportUrl(url) {
+  const m = String(url).match(/docs\.google\.com\/document\/d\/([A-Za-z0-9_-]{20,})/);
+  return m ? `https://docs.google.com/document/d/${m[1]}/export?format=html` : null;
+}
+
+// Real ClassroomParent mail contains NO direct docs.google.com URL - every
+// link is a click-tracker (url7847.email-support.classroomparent.com/ls/click).
+// So candidates have to be resolved by following redirects.
+//
+// One of those trackers is the UNSUBSCRIBE link. Following it would silently
+// cut off the school's emails, so anything that looks like unsubscribe,
+// opt-out or preferences is excluded and never requested.
+const NEVER_FOLLOW = /unsubscribe|opt[-_ ]?out|preferences|manage.{0,12}subscription|update.{0,12}profile|remove.{0,8}me/i;
+const LIKELY_LIST  = /spelling|word\s*list|\blist\b|homework|assignment/i;
+
+/**
+ * Ordered candidate URLs for the spelling doc, best first.
+ * Anchor text is used for ranking, which is why the HTML body matters.
+ */
+export function findDocCandidates(body) {
+  const text = String(body ?? "");
+  const scored = [];
+  const seen = new Set();
+  // An unsubscribe link is usually identifiable only by its ANCHOR TEXT - the
+  // tracker URL itself is opaque. Record those hrefs so the later bare-URL
+  // sweep cannot quietly re-add the very link we just refused.
+  const banned = new Set();
+
+  const add = (url, score) => {
+    if (!url || seen.has(url) || banned.has(url)) return;
+    if (NEVER_FOLLOW.test(url)) return;
+    seen.add(url);
+    scored.push({ url, score });
+  };
+
+  // Anchors first: their visible text tells us which link is the list.
+  for (const m of text.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi)) {
+    const href = m[1].replace(/&amp;/g, "&");
+    const label = stripTags(m[2]);
+    if (NEVER_FOLLOW.test(label)) { banned.add(href); continue; }   // the unsubscribe anchor
+    if (!/^https?:/i.test(href)) continue;
+    let score = 0;
+    if (docExportUrl(href)) score += 100;      // already a Google Doc
+    if (LIKELY_LIST.test(label)) score += 50;  // "Week 4 SPELLING LIST"
+    if (/classroomparent\.com\/?$/i.test(href)) score -= 20; // the directory link
+    add(href, score);
+  }
+
+  // Then any bare URLs in the plain-text part.
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"')]+/g)) {
+    const url = m[0].replace(/[.,;)]+$/, "");
+    add(url, docExportUrl(url) ? 100 : -10);
+  }
+
+  if (!scored.length) throw new Error("No followable links found in the email body");
+  return scored.sort((a, b) => b.score - a.score).map((c) => c.url);
+}
+
+/** Back-compat: the first direct Google Docs link, if the body has one. */
 export function findDocLink(text) {
-  const m = text.match(/https?:\/\/docs\.google\.com\/document\/d\/([A-Za-z0-9_-]{20,})/);
-  if (!m) throw new Error("No Google Docs link found in the email body");
-  return `https://docs.google.com/document/d/${m[1]}/export?format=html`;
+  const url = findDocCandidates(text).map(docExportUrl).find(Boolean);
+  if (!url) throw new Error("No Google Docs link found in the email body");
+  return url;
 }
 
 export function parseSpellingDoc(html, student) {
