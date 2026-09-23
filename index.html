@@ -323,6 +323,24 @@
     }
     .practice-summary b { color:var(--tx); }
 
+    /* ── IMPORT BANNER ── */
+    .import-banner {
+      width:100%; max-width:760px; display:flex; align-items:flex-start; gap:11px;
+      padding:12px 15px; border-radius:var(--r2); font-size:.88rem; line-height:1.5;
+      border:1px solid var(--acc-line); background:var(--acc-soft); color:var(--tx);
+    }
+    .import-banner.bad { border-color:var(--bad); background:var(--bad-soft); }
+    .import-banner .ico { width:1.15em; height:1.15em; flex:none; margin-top:2px; color:var(--acc); }
+    .import-banner.bad .ico { color:var(--bad); }
+    .import-banner b { font-weight:700; }
+    .import-banner-body { flex:1; min-width:0; }
+    .import-banner-words { color:var(--tx-2); font-size:.8rem; margin-top:3px; word-break:break-word; }
+    .import-banner button {
+      flex:none; background:none; border:none; cursor:pointer; color:var(--tx-3);
+      font-size:1.1rem; line-height:1; padding:2px 4px;
+    }
+    .import-banner button:hover { color:var(--tx); }
+
     /* ── PROGRESS ── */
     .pg-week { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:22px; }
     @media (min-width:600px) { .pg-week { grid-template-columns:repeat(4,1fr); } }
@@ -1324,6 +1342,7 @@
 <nav id="domain-nav"></nav>
 
 <div id="app">
+  <div id="import-banner-slot"></div>
   <!-- START SCREEN -->
   <div id="start-screen" class="card">
     <span class="subject-icon" id="subject-icon"></span>
@@ -2338,6 +2357,59 @@ window.addEventListener('beforeunload', e => {
   e.returnValue = '';
 });
 window.addEventListener('pagehide', () => { if (sessionLive()) abandonSession(true); });
+
+// ═══════════════════════════════════════════════════════════════════
+//  IMPORT BANNER
+//
+//  The weekly spelling list arrives by email and publishes itself. That is
+//  convenient but invisible, so every run is recorded and the newest unseen
+//  one is surfaced here - including a refusal, which matters more than a
+//  success: it means this week's words did NOT arrive.
+// ═══════════════════════════════════════════════════════════════════
+async function showImportBanner() {
+  const slot = document.getElementById('import-banner-slot');
+  if (!slot) return;
+  let run;
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/intake_runs?student=eq.Jaden&seen=eq.false&status=in.(published,failed)&order=created_at.desc&limit=1`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
+    if (!res.ok) return;
+    run = (await res.json())[0];
+  } catch (e) { return; }
+  if (!run) { slot.innerHTML = ''; return; }
+
+  const ok = run.status === 'published';
+  const when = new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const head = ok
+    ? `<b>${run.word_count} new spelling words</b> imported ${when}${run.group_name ? ` (${run.group_name} group)` : ''}`
+    : `<b>This week's spelling list did not import.</b>`;
+  const detail = ok
+    ? (run.detail || '').split(', ').slice(0, 8).join(', ') + ((run.detail || '').split(', ').length > 8 ? '…' : '')
+    : (run.detail || 'Unknown reason') + ' — the words will need adding by hand.';
+
+  slot.innerHTML = `
+    <div class="import-banner ${ok ? '' : 'bad'}">
+      <svg class="ico" aria-hidden="true"><use href="#${ok ? 'ic-check' : 'ic-x'}"></use></svg>
+      <div class="import-banner-body">
+        ${head}
+        <div class="import-banner-words">${detail}</div>
+      </div>
+      <button onclick="dismissImportBanner('${run.id}')" aria-label="Dismiss">&times;</button>
+    </div>`;
+}
+
+async function dismissImportBanner(id) {
+  document.getElementById('import-banner-slot').innerHTML = '';
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/intake_runs?id=eq.${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON,
+                 Authorization: `Bearer ${SUPABASE_ANON}`, Prefer: 'return=minimal' },
+      body: JSON.stringify({ seen: true }),
+    });
+  } catch (e) {}
+}
 
 // ═══════════════════════════════════════════════════════════════════
 //  PROGRESS - plain numbers and bars. No XP, levels or badges.
@@ -4365,6 +4437,7 @@ async function loadAppData() {
   // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
                         SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric };
+  showImportBanner();   // surface any auto-imported spelling list (or a refusal)
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
 }
