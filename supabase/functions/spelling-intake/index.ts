@@ -15,7 +15,7 @@
 // teacher's to change, and a wrong list reaching Jaden is worse than an
 // import that visibly failed.
 // ─────────────────────────────────────────────────────────────────────────
-import { parseSpellingDoc, findDocLink } from "./parse.js";
+import { parseSpellingDoc, findDocCandidates, docExportUrl } from "./parse.js";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -96,10 +96,36 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const docUrl = findDocLink(body);
-    const res = await fetch(docUrl, { redirect: "follow" });
-    if (!res.ok) throw new Error(`Doc fetch failed: HTTP ${res.status}. Is it shared "anyone with the link"?`);
-    const html = await res.text();
+    // Real ClassroomParent mail has no direct Docs URL - the list is behind a
+    // click-tracker, so candidates are followed until one lands on a Doc.
+    // findDocCandidates has already excluded anything resembling unsubscribe.
+    const candidates = findDocCandidates(body).slice(0, 4);
+    let docUrl = "", html = "";
+    const tried: string[] = [];
+    for (const c of candidates) {
+      const direct = docExportUrl(c);
+      const target = direct ?? c;
+      let res: Response;
+      try {
+        res = await fetch(target, { redirect: "follow", headers: { "User-Agent": "Mozilla/5.0" } });
+      } catch (err) {
+        tried.push(`${c} -> ${String(err)}`);
+        continue;
+      }
+      const landed = docExportUrl(res.url) ?? direct;
+      if (!landed) { tried.push(`${c} -> ${res.url}`); continue; }
+      // A tracker resolves to /edit; fetch the export of wherever it landed.
+      const exp = await fetch(landed, { redirect: "follow" });
+      if (!exp.ok) {
+        throw new Error(`Found the doc but could not read it (HTTP ${exp.status}). Is it shared "anyone with the link"?`);
+      }
+      docUrl = landed;
+      html = await exp.text();
+      break;
+    }
+    if (!html) {
+      throw new Error(`No Google Doc behind any link in this email. Tried: ${tried.join(" | ") || "nothing"}`);
+    }
 
     const { group, words, columnHeader } = parseSpellingDoc(html, STUDENT);
     const week = weekOf();
