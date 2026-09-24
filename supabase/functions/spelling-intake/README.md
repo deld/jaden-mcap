@@ -16,9 +16,15 @@ refusal matters more than a success, because it means this week's words did
 
 ## Setup (one time)
 
-**1. Set the shared secret.** Supabase dashboard → Edge Functions → Secrets:
+> **Never commit the secret.** It belongs only in the Supabase dashboard and
+> the CloudMailin target URL. This repository is public; an earlier revision
+> of this file leaked one, which is why the value below is a placeholder.
 
-    INTAKE_SECRET = 7Ot9QmBeVpwGZ7x8JCYEXvp0uOfpqkrg9EdPfkw6DG8
+**1. Set the shared secret.** Generate one with
+`python3 -c "import secrets;print(secrets.token_urlsafe(32))"`, then put it in
+the Supabase dashboard → Edge Functions → Secrets:
+
+    INTAKE_SECRET = <YOUR_INTAKE_SECRET>
 
 Until this is set the endpoint rejects everything (fail-closed), which is the
 safe state.
@@ -26,7 +32,7 @@ safe state.
 **2. Create a CloudMailin address** (free plan, 10k/month, no card). Point its
 target at:
 
-    https://zvffmucghcrqackghhlf.supabase.co/functions/v1/spelling-intake?secret=7Ot9QmBeVpwGZ7x8JCYEXvp0uOfpqkrg9EdPfkw6DG8
+    https://zvffmucghcrqackghhlf.supabase.co/functions/v1/spelling-intake?secret=<YOUR_INTAKE_SECRET>
 
 Format: JSON.
 
@@ -80,7 +86,7 @@ Two consequences the parser handles:
 
     curl -s -X POST "https://zvffmucghcrqackghhlf.supabase.co/functions/v1/spelling-intake?dry=1" \
       -H 'Content-Type: application/json' \
-      -H 'x-intake-secret: 7Ot9QmBeVpwGZ7x8JCYEXvp0uOfpqkrg9EdPfkw6DG8' \
+      -H 'x-intake-secret: <YOUR_INTAKE_SECRET>' \
       -d '{"headers":{"subject":"SPELLING LIST"},"plain":"https://docs.google.com/document/d/YOUR_DOC_ID/edit"}'
 
 It returns the group it found and the exact words it would publish.
@@ -95,3 +101,18 @@ that visibly failed.
 
 Re-forwarding the same email does not double-publish — a list already present
 for that week is detected and skipped.
+
+
+## Why the CloudMailin address is also a credential
+
+CloudMailin attaches our secret to every message it relays, so anyone who
+emails the inbound address gets their content POSTed here **with a valid
+secret**. The shared secret protects the endpoint; it does not protect the
+mailbox.
+
+So the function also checks provenance: the mail must come from a known
+forwarder (`INTAKE_ALLOWED_FROM`) or carry the school's domain in its body
+(`INTAKE_ALLOWED_ORIGIN`). Both are env vars with sensible defaults. Mail that
+passes neither is recorded as ignored and nothing is published.
+
+That is what makes it safe for the inbound address to be known.
