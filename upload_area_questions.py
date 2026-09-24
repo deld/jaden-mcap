@@ -1,0 +1,143 @@
+"""
+89 grade 4 area and its applications questions (MD).
+
+ALREADY RUN -- these questions are live in Supabase. This file is kept as the
+source of record for data that is already in the database.
+
+There is no dry-run flag: running this uploads on sight, and running it again
+would duplicate every question above for Jaden. Check the `questions` table
+before re-running.
+"""
+import json, urllib.request, time
+
+URL = "https://zvffmucghcrqackghhlf.supabase.co/rest/v1/questions"
+KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic"
+
+def upload_batch(batch):
+    data = json.dumps(batch).encode()
+    req = urllib.request.Request(URL, data=data, method='POST')
+    req.add_header('Content-Type', 'application/json')
+    req.add_header('apikey', KEY)
+    req.add_header('Authorization', f'Bearer {KEY}')
+    req.add_header('Prefer', 'return=minimal')
+    try:
+        with urllib.request.urlopen(req) as r:
+            print(f"  Batch of {len(batch)}: HTTP {r.status}")
+    except urllib.error.HTTPError as e:
+        print(f"  ERROR {e.code}: {e.read().decode()}")
+    time.sleep(0.3)
+
+# 88 Area questions (domain MD)
+# 44 numeric + 44 single-choice
+
+numeric_questions = [
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 5 units long and 3 units wide. What is its area in square units?","options":None,"correct":15,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 4 units long. What is its area in square units?","options":None,"correct":16,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 8 units long and 2 units wide. What is its area in square units?","options":None,"correct":16,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 7 units long and 3 units wide. What is its area in square units?","options":None,"correct":21,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 6 units long. What is its area in square units?","options":None,"correct":36,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 9 units long and 4 units wide. What is its area in square units?","options":None,"correct":36,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 6 units long and 6 units wide. What is its area in square units?","options":None,"correct":36,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 10 units long and 5 units wide. What is its area in square units?","options":None,"correct":50,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 7 units long. What is its area in square units?","options":None,"correct":49,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 4 units long and 4 units wide. What is its area in square units?","options":None,"correct":16,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 3 units long and 9 units wide. What is its area in square units?","options":None,"correct":27,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 5 units long. What is its area in square units?","options":None,"correct":25,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 8 units long and 5 units wide. What is its area in square units?","options":None,"correct":40,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 6 units long and 7 units wide. What is its area in square units?","options":None,"correct":42,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 2 units long and 10 units wide. What is its area in square units?","options":None,"correct":20,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 8 units long. What is its area in square units?","options":None,"correct":64,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 11 units long and 3 units wide. What is its area in square units?","options":None,"correct":33,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 12 units long and 4 units wide. What is its area in square units?","options":None,"correct":48,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 5 units long and 7 units wide. What is its area in square units?","options":None,"correct":35,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 9 units long. What is its area in square units?","options":None,"correct":81,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A grid has 6 rows and 4 columns of unit squares. How many unit squares are there in total?","options":None,"correct":24,"hint":"Count all the unit squares by multiplying rows times columns.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is covered by unit squares arranged in 5 rows and 8 columns. What is the area?","options":None,"correct":40,"hint":"Multiply the number of rows by the number of columns.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A shape is made of two rectangles. One is 4 by 3 and the other is 2 by 5. What is the total area?","options":None,"correct":22,"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A shape is made of two rectangles. One is 6 by 2 and the other is 3 by 4. What is the total area?","options":None,"correct":24,"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 7 units long and 7 units wide. What is its area in square units?","options":None,"correct":49,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A floor tile is a square with sides 3 units long. What is the area of one tile in square units?","options":None,"correct":9,"hint":"Multiply the side length by itself for a square.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 10 units long and 3 units wide. What is its area in square units?","options":None,"correct":30,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 9 units long and 9 units wide. What is its area in square units?","options":None,"correct":81,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A shape is made of two rectangles. One is 5 by 5 and the other is 3 by 3. What is the total area?","options":None,"correct":34,"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 4 units long and 7 units wide. What is its area in square units?","options":None,"correct":28,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 6 units long and 8 units wide. What is its area in square units?","options":None,"correct":48,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 3 units long. What is its area in square units?","options":None,"correct":9,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 5 units long and 6 units wide. What is its area in square units?","options":None,"correct":30,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is covered by 3 rows of unit squares with 7 squares in each row. What is the area?","options":None,"correct":21,"hint":"Multiply the number of rows by the number in each row.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A shape is made of two rectangles. One is 8 by 2 and the other is 4 by 3. What is the total area?","options":None,"correct":28,"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 11 units long and 2 units wide. What is its area in square units?","options":None,"correct":22,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 10 units long and 7 units wide. What is its area in square units?","options":None,"correct":70,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A square has sides that are each 10 units long. What is its area in square units?","options":None,"correct":100,"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 3 units long and 3 units wide. What is its area in square units?","options":None,"correct":9,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A shape is made of two rectangles. One is 7 by 2 and the other is 5 by 4. What is the total area?","options":None,"correct":34,"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 9 units long and 5 units wide. What is its area in square units?","options":None,"correct":45,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 8 units long and 8 units wide. What is its area in square units?","options":None,"correct":64,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 6 units long and 9 units wide. What is its area in square units?","options":None,"correct":54,"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"numeric","text":"A rectangle is 4 units long and 9 units wide. What is its area in square units?","options":None,"correct":36,"hint":"Multiply length times width to find area.","active":True},
+]
+
+single_questions = [
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 6 units long and 4 units wide. What is its area?","options":["A 10 square units","B 20 square units","C 24 square units","D 28 square units"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square has sides that are each 5 units long. What is its area?","options":["A 10 square units","B 20 square units","C 25 square units","D 30 square units"],"correct":["C"],"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which shape has the largest area?","options":["A A rectangle 3 by 5","B A square with sides of 4","C A rectangle 2 by 9","D A square with sides of 3"],"correct":["B"],"hint":"Find the area of each shape: multiply length by width. Then compare.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 8 units long and 3 units wide. What is its area?","options":["A 11 square units","B 22 square units","C 24 square units","D 32 square units"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"You tile a floor with unit squares. The floor is 5 units long and 4 units wide. How many tiles do you need?","options":["A 9 tiles","B 18 tiles","C 20 tiles","D 25 tiles"],"correct":["C"],"hint":"Each unit square tile covers 1 square unit. Find the area of the floor.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A garden is shaped like a rectangle. It is 7 meters long and 3 meters wide. What is its area?","options":["A 10 sq meters","B 14 sq meters","C 21 sq meters","D 28 sq meters"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which TWO rectangles have the same area? Rectangle A: 2 by 6. Rectangle B: 3 by 4. Rectangle C: 4 by 3. Rectangle D: 5 by 2.","options":["A A and B","B B and C","C A and D","D C and D"],"correct":["B"],"hint":"Calculate the area of each rectangle and look for matches.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle has an area of 18 square units and a width of 3 units. What is its length?","options":["A 4 units","B 5 units","C 6 units","D 9 units"],"correct":["C"],"hint":"If area = length × width, then length = area ÷ width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is split into two rectangles. Rectangle 1 is 4 by 2. Rectangle 2 is 3 by 5. What is the total area?","options":["A 14 square units","B 23 square units","C 28 square units","D 30 square units"],"correct":["B"],"hint":"Find the area of each part and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 10 units long and 4 units wide. What is its area?","options":["A 14 square units","B 28 square units","C 40 square units","D 44 square units"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square has an area of 49 square units. How long is each side?","options":["A 5 units","B 6 units","C 7 units","D 8 units"],"correct":["C"],"hint":"Think: what number times itself equals 49?","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which shape has a smaller area? Shape A: rectangle 9 by 2. Shape B: rectangle 4 by 5.","options":["A Shape A","B Shape B","C They are equal","D Cannot be determined"],"correct":["B"],"hint":"Calculate the area of each shape and compare.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A classroom floor is 9 meters long and 6 meters wide. What is its area?","options":["A 15 sq meters","B 30 sq meters","C 45 sq meters","D 54 sq meters"],"correct":["D"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle has a length of 8 units and an area of 56 square units. What is its width?","options":["A 5 units","B 6 units","C 7 units","D 8 units"],"correct":["C"],"hint":"If area = length × width, then width = area ÷ length.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of two rectangles. One is 5 by 3, and the other is 4 by 4. What is the total area?","options":["A 27 square units","B 30 square units","C 31 square units","D 32 square units"],"correct":["C"],"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square has sides that are each 9 units long. What is its area?","options":["A 18 square units","B 36 square units","C 72 square units","D 81 square units"],"correct":["D"],"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Unit squares are placed to cover a rectangle with 6 rows and 7 columns. How many unit squares are needed?","options":["A 13 unit squares","B 28 unit squares","C 35 unit squares","D 42 unit squares"],"correct":["D"],"hint":"Multiply the number of rows by the number of columns.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 5 units wide and has an area of 45 square units. What is its length?","options":["A 7 units","B 8 units","C 9 units","D 10 units"],"correct":["C"],"hint":"If area = length × width, then length = area ÷ width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which rectangle has a greater area? Rectangle P: 3 by 8. Rectangle Q: 5 by 5.","options":["A Rectangle P","B Rectangle Q","C They have the same area","D Not enough information"],"correct":["C"],"hint":"Calculate the area of each rectangle: P = 3×8, Q = 5×5. Compare the results.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of two rectangles joined together. One is 6 by 4 and the other is 3 by 2. What is the total area?","options":["A 24 square units","B 28 square units","C 30 square units","D 34 square units"],"correct":["C"],"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square has an area of 36 square units. How long is each side?","options":["A 4 units","B 5 units","C 6 units","D 9 units"],"correct":["C"],"hint":"Think: what number times itself equals 36?","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 12 units long and 3 units wide. What is its area?","options":["A 15 square units","B 30 square units","C 36 square units","D 40 square units"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"You cover a table with unit square tiles. The table is 7 units long and 5 units wide. How many tiles fit exactly?","options":["A 12 tiles","B 24 tiles","C 35 tiles","D 40 tiles"],"correct":["C"],"hint":"The number of tiles equals the area: length times width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle has an area of 24 square units. Its length is 6 units. What is its width?","options":["A 3 units","B 4 units","C 5 units","D 6 units"],"correct":["B"],"hint":"If area = length × width, then width = area ÷ length.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is split into a 4 by 4 rectangle and a 2 by 6 rectangle. What is the total area?","options":["A 16 square units","B 22 square units","C 28 square units","D 32 square units"],"correct":["C"],"hint":"Find the area of each part (4×4 and 2×6) and add them.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square garden has sides that are 8 meters long. What is its area?","options":["A 16 sq meters","B 32 sq meters","C 56 sq meters","D 64 sq meters"],"correct":["D"],"hint":"For a square, multiply the side length by itself.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 4 units wide and has an area of 32 square units. What is its length?","options":["A 6 units","B 7 units","C 8 units","D 9 units"],"correct":["C"],"hint":"If area = length × width, then length = area ÷ width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which figure has the greatest area? Figure 1: 3 by 7. Figure 2: 4 by 6. Figure 3: 5 by 4.","options":["A Figure 1","B Figure 2","C Figure 3","D All are equal"],"correct":["B"],"hint":"Calculate each area: 3×7=21, 4×6=24, 5×4=20.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of a 5 by 5 square and a 3 by 4 rectangle joined together. What is the total area?","options":["A 25 square units","B 37 square units","C 40 square units","D 44 square units"],"correct":["B"],"hint":"Find the area of each part and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 6 units long. Its area is 42 square units. What is its width?","options":["A 5 units","B 6 units","C 7 units","D 8 units"],"correct":["C"],"hint":"If area = length × width, then width = area ÷ length.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A grid has 8 columns and 4 rows of unit squares. What is the area of the grid?","options":["A 12 square units","B 24 square units","C 32 square units","D 40 square units"],"correct":["C"],"hint":"Multiply the number of rows by the number of columns.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Rectangle A has sides 9 and 2. Rectangle B has sides 5 and 4. Which has a smaller area?","options":["A Rectangle A","B Rectangle B","C They are equal","D Cannot be determined"],"correct":["B"],"hint":"Calculate A = 9×2 = 18 and B = 5×4 = 20. Compare them.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of two rectangles. One measures 7 by 3 and the other measures 4 by 5. What is the total area?","options":["A 35 square units","B 38 square units","C 41 square units","D 44 square units"],"correct":["C"],"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A square has an area of 16 square units. How long is each side?","options":["A 2 units","B 3 units","C 4 units","D 5 units"],"correct":["C"],"hint":"Think: what number times itself equals 16?","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 11 units long and 4 units wide. What is its area?","options":["A 30 square units","B 40 square units","C 44 square units","D 48 square units"],"correct":["C"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"You need to tile a wall that is 9 units tall and 5 units wide using unit square tiles. How many tiles do you need?","options":["A 14 tiles","B 36 tiles","C 40 tiles","D 45 tiles"],"correct":["D"],"hint":"The number of tiles equals the area: multiply height by width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is split into a 6 by 3 rectangle and a 4 by 4 square. What is the combined area?","options":["A 34 square units","B 36 square units","C 38 square units","D 42 square units"],"correct":["A"],"hint":"Find the area of each part: 6×3=18 and 4×4=16, then add.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 3 units wide and has an area of 27 square units. What is its length?","options":["A 7 units","B 8 units","C 9 units","D 10 units"],"correct":["C"],"hint":"If area = length × width, then length = area ÷ width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"Which pair of dimensions gives the largest area? Compare these rectangles: 2×10, 4×6, 3×8, 5×5.","options":["A 2 by 10","B 4 by 6","C 3 by 8","D 5 by 5"],"correct":["D"],"hint":"Calculate each area: 2×10=20, 4×6=24, 3×8=24, 5×5=25.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of two rectangles joined together. One is 8 by 3 and the other is 2 by 6. What is the total area?","options":["A 30 square units","B 34 square units","C 36 square units","D 40 square units"],"correct":["C"],"hint":"Find the area of each rectangle and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle has an area of 30 square units and a width of 5 units. What is its length?","options":["A 5 units","B 6 units","C 7 units","D 8 units"],"correct":["B"],"hint":"If area = length × width, then length = area ÷ width.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle is 7 units long and 8 units wide. What is its area?","options":["A 42 square units","B 48 square units","C 54 square units","D 56 square units"],"correct":["D"],"hint":"Multiply length times width to find area.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A room floor is covered with unit square tiles. There are 9 rows with 8 tiles in each row. What is the area of the floor?","options":["A 17 square units","B 56 square units","C 72 square units","D 80 square units"],"correct":["C"],"hint":"Multiply the number of rows by the number of tiles in each row.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A shape is made of a 6 by 6 square and a 5 by 2 rectangle. What is the total area?","options":["A 36 square units","B 42 square units","C 46 square units","D 50 square units"],"correct":["C"],"hint":"Find the area of each part and add them together.","active":True},
+    {"subject":"Math","domain":"MD","category":"Area","type":"single","text":"A rectangle has a length of 12 units and a width of 5 units. What is its area?","options":["A 34 square units","B 48 square units","C 56 square units","D 60 square units"],"correct":["D"],"hint":"Multiply length times width to find area.","active":True},
+]
+
+print(f"Numeric questions: {len(numeric_questions)}")
+print(f"Single questions: {len(single_questions)}")
+print(f"Total: {len(numeric_questions) + len(single_questions)}")
+print()
+
+print("Uploading numeric Area questions...")
+for i in range(0, len(numeric_questions), 25):
+    batch = numeric_questions[i:i+25]
+    upload_batch(batch)
+
+print("Uploading single-choice Area questions...")
+for i in range(0, len(single_questions), 25):
+    batch = single_questions[i:i+25]
+    upload_batch(batch)
+
+print("Done!")
