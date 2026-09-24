@@ -20,6 +20,21 @@ import { parseSpellingDoc, findDocCandidates, docExportUrl } from "./parse.js";
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const SHARED_SECRET = Deno.env.get("INTAKE_SECRET") ?? "";
+
+// The CloudMailin address is itself a credential: CloudMailin attaches our
+// secret to every message it relays, so ANYONE who emails that address gets
+// their content POSTed here with a valid secret. The shared secret protects
+// the endpoint, not the mailbox.
+//
+// So also verify the mail actually came from the school: either a known
+// forwarder sent it, or the teacher's domain appears in the body (which it
+// does on a Gmail forward, in the quoted header block).
+const ALLOWED_FROM = (Deno.env.get("INTAKE_ALLOWED_FROM") ??
+  "lt.dzirasa@gmail.com,delali.dzirasa@gmail.com")
+  .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
+const ALLOWED_ORIGIN = (Deno.env.get("INTAKE_ALLOWED_ORIGIN") ??
+  "classroomparent.com")
+  .split(",").map((x) => x.trim().toLowerCase()).filter(Boolean);
 const STUDENT = "Jaden";
 const GRADE = 4;
 
@@ -91,8 +106,21 @@ Deno.serve(async (req) => {
   // Only act on spelling mail; anything else is acknowledged and ignored so
   // a broad Gmail filter cannot cause junk imports.
   if (!/spelling/i.test(subject)) {
-    await recordRun({ ...base, status: "ignored", detail: "subject is not a spelling list" });
+    if (!dryRun) await recordRun({ ...base, status: "ignored", detail: "subject is not a spelling list" });
     return Response.json({ ok: true, action: "ignored" });
+  }
+
+  // Provenance check - see ALLOWED_FROM above.
+  const fromLc = from.toLowerCase();
+  const bodyLc = body.toLowerCase();
+  const knownSender = ALLOWED_FROM.some((a) => fromLc.includes(a));
+  const knownOrigin = ALLOWED_ORIGIN.some((d) => bodyLc.includes(d) || fromLc.includes(d));
+  if (!knownSender && !knownOrigin) {
+    if (!dryRun) {
+      await recordRun({ ...base, status: "ignored",
+                        detail: `rejected: not from a known sender or origin (from: ${from || "unknown"})` });
+    }
+    return Response.json({ ok: true, action: "ignored", reason: "unrecognised sender" });
   }
 
   try {
@@ -135,14 +163,23 @@ Deno.serve(async (req) => {
                              words, count: words.length, note: "nothing was written" });
     }
 
-    // Idempotency: a re-forwarded email must not double-publish.
-    const dupe = await db(
-      `questions?select=id&subject=eq.Spelling&type=eq.spelling&assignment=eq.${encodeURIComponent(`Spelling week of ${week}`)}&limit=1`,
-    ).then((r) => r.json());
-    if (Array.isArray(dupe) && dupe.length) {
+    // Idempotency by CONTENT, not by tag. An assignment tag only catches a
+    // re-forward of the same week; it misses a list that was loaded by hand,
+    // or the same words arriving under a different week. Compare the words
+    // themselves - that is what would actually be duplicated.
+    const existing = await db(
+      `questions?select=correct&subject=eq.Spelling&type=eq.spelling&grade=eq.${GRADE}&active=eq.true&limit=2000`,
+    ).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    const have = new Set(
+      (Array.isArray(existing) ? existing : [])
+        .map((r: { correct: unknown }) => String(r.correct ?? "").trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const fresh = words.filter((w) => !have.has(w));
+    if (fresh.length === 0) {
       await recordRun({ ...base, status: "duplicate", week_of: week, group_name: group, word_count: words.length,
-                        detail: "a list for this week is already published" });
-      return Response.json({ ok: true, action: "duplicate", week, words: words.length });
+                        detail: `all ${words.length} words are already in the bank` });
+      return Response.json({ ok: true, action: "duplicate", week, words: words.length, added: 0 });
     }
 
     const packet = await db("packets", {
@@ -151,11 +188,11 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         student: STUDENT, grade: GRADE, subject: "Spelling", week_of: week, status: "approved",
         notes: `Auto-imported from ${from || "the weekly spelling email"} on ${new Date().toISOString().slice(0, 10)}. `
-             + `Group "${group}" (column "${columnHeader}"), ${words.length} words. Source: ${docUrl}`,
+             + `Group "${group}" (column "${columnHeader}"), ${fresh.length} new of ${words.length} words. Source: ${docUrl}`,
       }),
     }).then((r) => r.json());
 
-    const rows = words.map((w) => ({
+    const rows = fresh.map((w) => ({
       grade: GRADE, subject: "Spelling", domain: "Words Their Way", category: group,
       type: "spelling", text: clozeFor(w), options: null, correct: w,
       hint: prefixHint(w),
@@ -169,11 +206,12 @@ Deno.serve(async (req) => {
     if (!ins.ok) throw new Error(`Insert failed: HTTP ${ins.status} ${await ins.text()}`);
 
     await recordRun({ ...base, status: "published", week_of: week, group_name: group,
-                      word_count: words.length, doc_url: docUrl,
+                      word_count: fresh.length, doc_url: docUrl,
                       packet_id: Array.isArray(packet) ? packet[0]?.id : null,
-                      detail: words.join(", ") });
+                      detail: fresh.join(", ") });
 
-    return Response.json({ ok: true, action: "published", week, group, words: words.length });
+    return Response.json({ ok: true, action: "published", week, group,
+                           words: words.length, added: fresh.length });
   } catch (e) {
     // Refused, not crashed: nothing was published and the reason is recorded.
     const msg = String((e as Error).message ?? e);
