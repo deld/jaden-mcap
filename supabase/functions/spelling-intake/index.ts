@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────
 // spelling-intake — webhook for the weekly spelling list.
 //
-//   Teacher emails ClassroomParent  ->  Gmail filter forwards to CloudMailin
+//   Teacher emails ClassroomParent  ->  forwarded by hand to CloudMailin
 //   ->  CloudMailin POSTs JSON here  ->  we read the linked Google Doc,
 //   find Jaden's group on the roster, take that group's words, and publish
 //   them as typed-spelling questions.
@@ -15,7 +15,7 @@
 // teacher's to change, and a wrong list reaching Jaden is worse than an
 // import that visibly failed.
 // ─────────────────────────────────────────────────────────────────────────
-import { parseSpellingDoc, findDocCandidates, docExportUrl } from "./parse.js";
+import { parseSpellingDoc, findDocCandidates, docExportUrl, triage } from "./parse.js";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -103,24 +103,13 @@ Deno.serve(async (req) => {
 
   const base = { student: STUDENT, subject_line: subject, sender: from };
 
-  // Only act on spelling mail; anything else is acknowledged and ignored so
-  // a broad Gmail filter cannot cause junk imports.
-  if (!/spelling/i.test(subject)) {
-    if (!dryRun) await recordRun({ ...base, status: "ignored", detail: "subject is not a spelling list" });
-    return Response.json({ ok: true, action: "ignored" });
-  }
-
-  // Provenance check - see ALLOWED_FROM above.
-  const fromLc = from.toLowerCase();
-  const bodyLc = body.toLowerCase();
-  const knownSender = ALLOWED_FROM.some((a) => fromLc.includes(a));
-  const knownOrigin = ALLOWED_ORIGIN.some((d) => bodyLc.includes(d) || fromLc.includes(d));
-  if (!knownSender && !knownOrigin) {
-    if (!dryRun) {
-      await recordRun({ ...base, status: "ignored",
-                        detail: `rejected: not from a known sender or origin (from: ${from || "unknown"})` });
-    }
-    return Response.json({ ok: true, action: "ignored", reason: "unrecognised sender" });
+  // Provenance and subject in one decision - see triage() in parse.js for why
+  // a forward from a known person skips the subject check.
+  const gate = triage({ subject, from, body,
+                        allowedFrom: ALLOWED_FROM, allowedOrigin: ALLOWED_ORIGIN });
+  if (!gate.process) {
+    if (!dryRun) await recordRun({ ...base, status: "ignored", detail: gate.detail });
+    return Response.json({ ok: true, action: "ignored", reason: gate.detail });
   }
 
   try {

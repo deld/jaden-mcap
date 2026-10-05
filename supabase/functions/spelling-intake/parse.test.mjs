@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {
   parseSpellingDoc, findDocLink, headerMatchesGroup, looksLikeWord,
   findStudentGroup, extractTables, findDocCandidates, docExportUrl, isRosterBoundary,
+  triage,
 } from './parse.js';
 
 const cell = (s) => `<td><p>${s}</p></td>`;
@@ -157,6 +158,58 @@ t('isRosterBoundary spots both a label row and a repeated header', () => {
   assert.ok(isRosterBoundary(['Students', 'Alpha', 'Jaden'], ['SUN', 'SKY and SEA']));
   assert.ok(isRosterBoundary(['', 'SUN', 'SKY and SEA'], ['SUN', 'SKY and SEA']));
   assert.ok(!isRosterBoundary(['', 'care', 'microwave'], ['SUN', 'SKY and SEA']));
+});
+
+// ── triage: who gets through the door ────────────────────────────────────
+const FROM   = ['lt.dzirasa@gmail.com', 'delali.dzirasa@gmail.com'];
+const ORIGIN = ['classroomparent.com'];
+const gate = (o) => triage({ allowedFrom: FROM, allowedOrigin: ORIGIN, ...o });
+
+t('a human forward is accepted whatever the subject says', () => {
+  // The Week 7 regression: the teacher wrote "word list", not "SPELLING LIST".
+  const r = gate({ subject: 'Fwd: sending the word list Wk 7 and....',
+                   from: 'Delali Dzirasa <delali.dzirasa@gmail.com>' });
+  assert.ok(r.process, r.detail);
+  assert.equal(r.via, 'known sender');
+});
+
+t('a human forward is accepted with no subject at all', () => {
+  assert.ok(gate({ subject: '', from: 'lt.dzirasa@gmail.com' }).process);
+});
+
+t('school mail still has to look like spelling mail', () => {
+  const r = gate({ subject: 'Picture day', from: 'mailer@email-support.classroomparent.com' });
+  assert.ok(!r.process);
+  assert.equal(r.detail, 'subject is not a spelling list');
+});
+
+t('school mail saying "word list" is accepted', () => {
+  assert.ok(gate({ subject: 'Wk 7 word list', from: 'mailer@email-support.classroomparent.com' }).process);
+  assert.ok(gate({ subject: '[BMPCS] Week 4 SPELLING LIST', from: 'x@classroomparent.com' }).process);
+});
+
+t('a stranger is rejected even with a perfect subject line', () => {
+  const r = gate({ subject: 'Week 7 SPELLING LIST', from: 'attacker@example.com' });
+  assert.ok(!r.process);
+  assert.match(r.detail, /not from a known sender or origin/);
+});
+
+t("Gmail's own forwarding confirmation is rejected", () => {
+  const r = gate({ subject: 'Gmail Forwarding Confirmation', from: 'forwarding-noreply@google.com' });
+  assert.ok(!r.process);
+  assert.match(r.detail, /not from a known sender or origin/);
+});
+
+t('an empty sender does not match the allow-list', () => {
+  assert.ok(!gate({ subject: 'Picture day', from: '', body: '' }).process);
+  // ...but school mail with an empty From is still placed by its body.
+  assert.ok(gate({ subject: 'Week 7 spelling', from: '',
+                   body: 'sent via classroomparent.com' }).process);
+});
+
+t('an empty allow-list cannot be matched by an empty sender', () => {
+  const r = triage({ subject: 'spelling', from: '', allowedFrom: ['', ' '], allowedOrigin: [''] });
+  assert.ok(!r.process);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
