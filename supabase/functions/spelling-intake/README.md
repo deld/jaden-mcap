@@ -4,7 +4,7 @@ Weekly spelling list, from the teacher's email into the app, without anyone
 retyping it.
 
     teacher emails ClassroomParent
-      -> Gmail filter forwards to CloudMailin
+      -> forwarded by hand to CloudMailin
       -> CloudMailin POSTs JSON to this function
       -> read the linked Google Doc, find Jaden's group on the roster,
          take that group's words
@@ -36,10 +36,15 @@ target at:
 
 Format: JSON.
 
-**3. Add a Gmail filter** on lt.dzirasa@gmail.com:
-from `mailer@email-support.classroomparent.com` **or** subject contains
-`SPELLING LIST` → forward to the CloudMailin address. Gmail will ask to verify
-the forwarding address once.
+**3. Forward the email by hand** each week, to the CloudMailin address.
+
+No Gmail filter: Gmail's native forwarding needs a verification code sent to
+the CloudMailin address, and CloudMailin's free plan does not retain message
+bodies, so the code cannot be read. See #67 for the full reasoning.
+
+Use **Forward**, not *forward as attachment* — the parser reads the HTML body
+to find the link to the doc. Forward from an address on `INTAKE_ALLOWED_FROM`,
+and leave the quoted original intact.
 
 **4. The doc must be shared "anyone with the link"** — the function fetches its
 HTML export with no credentials. Verified against the real Week 4 doc.
@@ -116,3 +121,24 @@ forwarder (`INTAKE_ALLOWED_FROM`) or carry the school's domain in its body
 passes neither is recorded as ignored and nothing is published.
 
 That is what makes it safe for the inbound address to be known.
+
+
+## The subject gate, and why a human forward skips it
+
+Mail that is not from a known person must also *look* like spelling mail —
+`/spelling|word list/i` on the subject — so that a broad filter cannot cause
+junk imports.
+
+A forward from an allow-listed sender skips that check entirely. The subject
+line belongs to the teacher and has already changed once: the gate was built
+against `[BMPCS] Week 4 SPELLING LIST`, and the first real manual forward
+arrived as `sending the word list Wk 7` and was rejected. Someone who hits
+Forward has already decided this is the spelling email; their judgement is
+better evidence than the teacher's wording.
+
+Nothing else is relaxed. The parser still has to find a Google Doc, a roster
+and the student's group, and refuses rather than guessing — so a mistaken
+forward records a parse failure instead of publishing junk.
+
+`triage()` in `parse.js` is this decision, kept pure so `parse.test.mjs`
+covers it.

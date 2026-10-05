@@ -227,3 +227,42 @@ export function parseSpellingDoc(html, student) {
   const group = findStudentGroup(tables, student);
   return extractWordList(tables, group);
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Who gets through the door.
+//
+// Two gates used to run in sequence: a subject-line check for the word
+// "spelling", then a provenance check. The subject check went first, which
+// meant a deliberate human forward could be thrown out over the teacher's
+// wording -- and it was. The first real manual forward (Week 7) arrived as
+// "sending the word list Wk 7" and was rejected, because the gate had been
+// built against "[BMPCS] Week 4 SPELLING LIST".
+//
+// The subject gate exists to stop a broad Gmail FILTER sweeping in unrelated
+// school mail. A person hitting Forward has already made that decision, so
+// for an allow-listed sender their judgement replaces the subject line.
+// Nothing is trusted beyond that: the parser still has to find a Google Doc,
+// a roster, and the student's group, and refuses rather than guessing.
+//
+// Mail that is not from a known person still has to look like spelling mail.
+// ─────────────────────────────────────────────────────────────────────────
+export const SPELLING_SUBJECT = /spelling|word\s?list/i;
+
+export function triage({ subject = "", from = "", body = "",
+                         allowedFrom = [], allowedOrigin = [] } = {}) {
+  const fromLc = String(from).toLowerCase();
+  const bodyLc = String(body).toLowerCase();
+  const knownSender = allowedFrom.some((a) => a && fromLc.includes(a));
+  const knownOrigin = allowedOrigin.some((d) => d && (bodyLc.includes(d) || fromLc.includes(d)));
+
+  if (knownSender) return { process: true, via: "known sender", detail: "forwarded by a known sender" };
+
+  if (!knownOrigin) {
+    return { process: false, via: "unknown",
+             detail: `rejected: not from a known sender or origin (from: ${from || "unknown"})` };
+  }
+  if (!SPELLING_SUBJECT.test(String(subject))) {
+    return { process: false, via: "known origin", detail: "subject is not a spelling list" };
+  }
+  return { process: true, via: "known origin", detail: "spelling mail from a known origin" };
+}
