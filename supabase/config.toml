@@ -1,0 +1,12 @@
+# Minimal project config so that deploying from the CLI cannot silently change
+# how the function is exposed.
+#
+# spelling-intake MUST keep verify_jwt = false: CloudMailin posts to it from
+# outside Supabase and cannot send a Supabase JWT. It authenticates with a
+# shared secret instead, and verifies sender provenance (see its README).
+# Without this file a CLI deploy re-enables JWT verification and every
+# forwarded spelling list starts failing with 401.
+project_id = "zvffmucghcrqackghhlf"
+
+[functions.spelling-intake]
+verify_jwt = false
