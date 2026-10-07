@@ -1,0 +1,11 @@
+{
+  "name": "After School Knowledge",
+  "short_name": "ASK",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f2f6f1",
+  "theme_color": "#2f6b4f",
+  "description": "Grade 4 practice: math, reading, spelling and classwork."
+}

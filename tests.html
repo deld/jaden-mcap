@@ -1188,6 +1188,135 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'youtubekids.com/watch links confirmed';
   });
 
+
+  // ── Offline mode (#75) ───────────────────────────────────────────────────
+  // Driven against the real app in the iframe, not a reimplementation: the
+  // point of the feature is that a car ride does not silently lose answers,
+  // so the tests make writes fail the way a dead connection does and then
+  // check the work is still there.
+  suite('\u{1F4F4} Offline mode — cache, outbox and sync');
+
+  const off = appData;
+
+  await test('the offline layer is installed', async () => {
+    assert(typeof off.syncOutbox === 'function', 'syncOutbox missing');
+    assert(typeof off.odbAll === 'function', 'IndexedDB helpers missing');
+    assert(off._isDbUrl('https://zvffmucghcrqackghhlf.supabase.co/rest/v1/attempts'),
+      'Supabase URLs should be recognised');
+    assert(!off._isDbUrl('https://fonts.googleapis.com/css2'),
+      'non-Supabase URLs must not be intercepted');
+    return 'fetch wrapper + IndexedDB present';
+  });
+
+  await test('a 4xx is reported, not queued (it would never succeed)', async () => {
+    assert(off._permanent(400) && off._permanent(404) && off._permanent(409),
+      '4xx should be treated as permanent');
+    assert(!off._permanent(408) && !off._permanent(429),
+      '408/429 mean try again, so they must NOT be permanent');
+    assert(!off._permanent(500) && !off._permanent(503),
+      '5xx must be queued for retry');
+    return 'permanent vs retryable classified correctly';
+  });
+
+  await test('the outbox starts clean', async () => {
+    const rows = (await off.odbAll('outbox')) || [];
+    for (const r of rows) await off.odbDel('outbox', r.seq);
+    assert(((await off.odbAll('outbox')) || []).length === 0, 'outbox should be empty');
+    return 'empty';
+  });
+
+  await test('a write made with no connection is queued, not lost', async () => {
+    const win = appIframe;
+    const real = win.fetch;
+    // Simulate a dead connection the way the browser reports one.
+    const desc = Object.getOwnPropertyDescriptor(win.navigator, 'onLine');
+    Object.defineProperty(win.navigator, 'onLine', { value: false, configurable: true });
+    try {
+      const res = await win.fetch(`${SUPABASE_URL}/rest/v1/attempts`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // A complete row, exactly as createAttempt() builds one. A partial row
+        // is rejected 4xx on replay and correctly discarded as permanent -
+        // which proves the classifier, not the queue.
+        body: JSON.stringify({
+          id: crypto.randomUUID(), student: '__offline_test__', subject: 'Math',
+          mode: 'practice', domain: 'All', track: 'test_prep',
+          score: 0, total: 0, pct: 0, time_sec: 0, breakdown: {}, completed: false,
+        }),
+      });
+      assert(res.status === 202, `expected 202 queued, got ${res.status}`);
+      assert(res.headers.get('X-ASK-Offline') === 'queued', 'response should be marked as queued');
+    } finally {
+      if (desc) Object.defineProperty(win.navigator, 'onLine', desc);
+      else Object.defineProperty(win.navigator, 'onLine', { value: true, configurable: true });
+      win.fetch = real;
+    }
+    const n = await off.outboxCount();
+    assert(n === 1, `expected 1 queued write, found ${n}`);
+    return '1 write waiting in the outbox';
+  });
+
+  await test('queued writes replay in sequence order', async () => {
+    const rows = (await off.odbAll('outbox')) || [];
+    assert(rows.length >= 1, 'nothing queued to inspect');
+    const seqs = rows.map(r => r.seq);
+    const sorted = [...seqs].sort((a, b) => a - b);
+    assert(JSON.stringify(seqs.slice().sort((a,b)=>a-b)) === JSON.stringify(sorted),
+      'sequence numbers must be orderable - an attempt row has to land before its PATCH');
+    assert(rows[0].method === 'POST' && typeof rows[0].body === 'string',
+      'queued item should carry method and body');
+    return `seq ${sorted.join(', ')} replayable in order`;
+  });
+
+  await test('sync drains the outbox and leaves nothing behind', async () => {
+    await off.syncOutbox();
+    const n = await off.outboxCount();
+    assert(n === 0, `outbox should be empty after sync, found ${n}`);
+    return 'drained';
+  });
+
+  await test('the test row was really written, then cleaned up', async () => {
+    const res = await db("attempts?student=eq.__offline_test__&select=id");
+    assert(res.ok, `HTTP ${res.status}`);
+    const rows = await res.json();
+    assert(rows.length >= 1, 'the queued write never reached the database');
+    await fetch(`${SUPABASE_URL}/rest/v1/attempts?student=eq.__offline_test__`, {
+      method: 'DELETE', headers: HEADERS,
+    });
+    return `${rows.length} row(s) synced and removed`;
+  });
+
+  await test('a GET is cached so it can be served with no connection', async () => {
+    const url = `${SUPABASE_URL}/rest/v1/app_config?select=key,value`;
+    await appIframe.fetch(url, { headers: HEADERS });   // populate the cache
+    const hit = await off.odbAll('kv');
+    assert(hit !== null, 'kv store unavailable');
+    const res = await appIframe.fetch(url, { headers: HEADERS });
+    assert(res.ok, 'read should succeed');
+    return 'GET responses are cached for offline reads';
+  });
+
+  await test('the service worker and manifest are deployable', async () => {
+    const sw = await fetch('/sw.js');
+    assert(sw.ok, `sw.js missing (HTTP ${sw.status})`);
+    const body = await sw.text();
+    assert(body.includes("addEventListener('fetch'"), 'sw.js has no fetch handler');
+    assert(!body.includes('supabase.co'),
+      'the service worker must NOT touch Supabase traffic - the page handles that');
+    const mf = await fetch('/manifest.webmanifest');
+    assert(mf.ok, `manifest missing (HTTP ${mf.status})`);
+    const json = await mf.json();
+    assert(json.start_url && json.display === 'standalone', 'manifest not installable');
+    return 'sw.js + manifest present and shell-only';
+  });
+
+  await test('index.html registers the service worker and the manifest', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    assert(src.includes("rel=\"manifest\""), 'manifest not linked');
+    assert(src.includes("serviceWorker' in navigator"), 'no service worker registration');
+    return 'wired up in the page';
+  });
+
   document.getElementById('run-btn').disabled = false;
   updateSummary();
 }
