@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>After School Knowledge (ASK)</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#2f6b4f">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700&family=Syne:wght@700;800&display=swap">
@@ -2068,6 +2070,222 @@ let pendingPassageId = null;
 // ── TEST MODE STATE ────────────────────────────────────────────────
 const SUPABASE_URL  = 'https://zvffmucghcrqackghhlf.supabase.co';
 const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2ZmZtdWNnaGNycWFja2doaGxmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY3MjkyNTIsImV4cCI6MjA5MjMwNTI1Mn0.eJHX6LmInRdBd5nt9t_jBJwILGEQ6_SeN6ADorlsWic';
+
+// ══════════════════════════════════════════════════════════════════════
+// OFFLINE MODE  (issue #75)
+//
+// Jaden practises in the car. Before this, no network meant a blank page,
+// and an already-open tab silently dropped every answer - the UI showed the
+// session completing while nothing was written. Losing work quietly is worse
+// than failing loudly, so the rule here is: never claim something is saved
+// when it is only queued.
+//
+// Three parts:
+//   1. a read-through cache, so GETs answer from IndexedDB when offline
+//   2. an outbox, so writes are queued in order and replayed on reconnect
+//   3. a status chip, so a queued session never looks like a saved one
+//
+// Everything degrades to the old behaviour if IndexedDB is unavailable
+// (private windows, locked-down iframes). Offline support must never be the
+// reason the app stops working.
+// ══════════════════════════════════════════════════════════════════════
+const ODB_NAME = 'ask-offline', ODB_VER = 1;
+let _odbP = null;
+
+function _odb() {
+  if (_odbP) return _odbP;
+  _odbP = new Promise((resolve) => {
+    let req;
+    try { req = indexedDB.open(ODB_NAME, ODB_VER); } catch (e) { return resolve(null); }
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains('kv'))     db.createObjectStore('kv');
+      if (!db.objectStoreNames.contains('outbox')) db.createObjectStore('outbox', { keyPath: 'seq', autoIncrement: true });
+    };
+    req.onsuccess = () => resolve(req.result);
+    // Resolve, never reject: a missing store degrades, it does not break.
+    req.onerror   = () => resolve(null);
+    req.onblocked = () => resolve(null);
+  });
+  return _odbP;
+}
+
+function _odbDo(store, mode, fn) {
+  return _odb().then((db) => {
+    if (!db) return null;
+    return new Promise((resolve) => {
+      let tx;
+      try { tx = db.transaction(store, mode); } catch (e) { return resolve(null); }
+      const req = fn(tx.objectStore(store));
+      if (!req) { tx.oncomplete = () => resolve(null); tx.onerror = () => resolve(null); return; }
+      req.onsuccess = () => resolve(req.result);
+      req.onerror   = () => resolve(null);
+    });
+  }).catch(() => null);
+}
+
+const odbGet = (s, k)    => _odbDo(s, 'readonly',  (o) => o.get(k));
+const odbAll = (s)       => _odbDo(s, 'readonly',  (o) => o.getAll());
+const odbPut = (s, v, k) => _odbDo(s, 'readwrite', (o) => (k === undefined ? o.put(v) : o.put(v, k)));
+const odbDel = (s, k)    => _odbDo(s, 'readwrite', (o) => o.delete(k));
+
+const _rawFetch = window.fetch.bind(window);
+const _isDbUrl  = (u) => typeof u === 'string' && u.indexOf(SUPABASE_URL) === 0;
+
+// A 4xx will never succeed on retry, so it is reported rather than queued.
+// 408 and 429 are the exceptions - those mean "try again".
+const _permanent = (s) => s >= 400 && s < 500 && s !== 408 && s !== 429;
+
+let _syncFailures = 0;
+
+// Every Supabase call in the app goes through plain fetch(), in about 25
+// places. Wrapping fetch itself is one choke point instead of 25 edits, and
+// it cannot miss a call site that someone adds later.
+window.fetch = function (input, init) {
+  const url = typeof input === 'string' ? input : (input && input.url) || '';
+  if (!_isDbUrl(url)) return _rawFetch(input, init);
+  init = init || {};
+  const method = (init.method || 'GET').toUpperCase();
+  return method === 'GET' ? _offlineRead(url, init) : _offlineWrite(url, init);
+};
+
+async function _offlineRead(url, init) {
+  try {
+    const res = await _rawFetch(url, init);
+    if (res.ok) {
+      res.clone().text().then((body) => odbPut('kv', { body, at: Date.now() }, 'GET:' + url)).catch(() => {});
+    }
+    return res;
+  } catch (e) {
+    const hit = await odbGet('kv', 'GET:' + url);
+    if (!hit) throw e;
+    return new Response(hit.body, {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', 'X-ASK-Offline': 'cache' },
+    });
+  }
+}
+
+async function _offlineWrite(url, init) {
+  if (navigator.onLine !== false) {
+    try {
+      const res = await _rawFetch(url, init);
+      if (res.ok || _permanent(res.status)) return res;   // 5xx falls through and queues
+    } catch (e) { /* connection died mid-flight - queue it */ }
+  }
+  await odbPut('outbox', {
+    url, method: (init.method || 'POST').toUpperCase(),
+    headers: init.headers || {}, body: init.body || null, at: Date.now(),
+  });
+  _renderSyncChip();
+  return new Response(JSON.stringify({ queued: true }), {
+    status: 202, headers: { 'Content-Type': 'application/json', 'X-ASK-Offline': 'queued' },
+  });
+}
+
+let _syncing = false;
+
+// Replayed strictly in sequence: an attempt row has to land before the PATCH
+// that completes it, and before its question_attempts children. Any transient
+// failure stops the run rather than skipping ahead, so order always holds.
+async function syncOutbox() {
+  if (_syncing || navigator.onLine === false) return;
+  _syncing = true;
+  try {
+    const items = (await odbAll('outbox')) || [];
+    items.sort((a, b) => a.seq - b.seq);
+    for (const it of items) {
+      let res;
+      try {
+        // Re-stamp credentials at replay time. A write queued in the car may
+        // not go out for hours, and if the anon key changed in between, the
+        // stored headers would 401 - which is "permanent", so Jaden's work
+        // would be thrown away. The URL and body are his; the key is ours.
+        res = await _rawFetch(it.url, {
+          method: it.method,
+          headers: { ...(it.headers || {}), 'Content-Type': 'application/json',
+                     'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` },
+          body: it.body,
+        });
+      } catch (e) {
+        break;                                  // still offline; keep the queue intact
+      }
+      // 409 means the row is already there from an earlier replay. Ids are
+      // minted on this device (createAttempt uses crypto.randomUUID), so a
+      // duplicate key is proof it landed - that is what makes retries safe.
+      if (res.ok || res.status === 409) { await odbDel('outbox', it.seq); continue; }
+      if (_permanent(res.status)) { _syncFailures++; await odbDel('outbox', it.seq); continue; }
+      break;                                    // 5xx: stop and preserve order
+    }
+  } finally {
+    _syncing = false;
+    _renderSyncChip();
+  }
+}
+
+// The chip exists so a queued session never looks like a saved one.
+async function _renderSyncChip() {
+  if (!document.body) return;
+  let el = document.getElementById('syncChip');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'syncChip';
+    el.style.cssText =
+      'position:fixed;left:14px;bottom:14px;z-index:9999;display:none;align-items:center;gap:7px;' +
+      'padding:7px 13px;border-radius:40px;font:600 .8rem/1 var(--f-body,system-ui);' +
+      'border:1px solid var(--line-strong);background:var(--surface);color:var(--tx-2);' +
+      'box-shadow:0 2px 10px rgba(0,0,0,.09);';
+    document.body.appendChild(el);
+  }
+  const pending = ((await odbAll('outbox')) || []).length;
+  const offline = navigator.onLine === false;
+
+  if (!offline && !pending && !_syncFailures) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+
+  let dot = 'var(--tx-3)', text = '';
+  if (_syncFailures) {
+    dot = 'var(--bad)';
+    text = `${_syncFailures} answer${_syncFailures === 1 ? '' : 's'} could not sync`;
+  } else if (offline && pending) {
+    dot = 'var(--warn)';
+    text = `Offline — ${pending} waiting to sync`;
+  } else if (offline) {
+    dot = 'var(--warn)'; text = 'Offline — work is saved on this device';
+  } else if (pending) {
+    dot = 'var(--acc)'; text = `Syncing ${pending}…`;
+  }
+  el.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:${dot};flex:none"></span>${text}`;
+}
+
+window.addEventListener('online',  () => { _renderSyncChip(); syncOutbox(); });
+window.addEventListener('offline', () => _renderSyncChip());
+
+// Pull every subject's questions into the read-through cache while there is a
+// connection, so a session can be STARTED offline and not merely finished.
+// Questions are otherwise only fetched at session start, which is too late in
+// a car. Runs idle and after first paint so it never delays the app.
+async function prewarmOffline() {
+  if (navigator.onLine === false) return;
+  // DOMAIN_COUNTS is keyed by subject for the active track, so it is the
+  // app's own answer to "what can he practise?" rather than a second list.
+  const subjects = Object.keys(DOMAIN_COUNTS || {});
+  for (const s of subjects) {
+    try { await ensureQuestionsLoaded(s, 'All'); } catch (e) { /* one subject failing is not fatal */ }
+  }
+}
+
+function startOffline() {
+  if ('serviceWorker' in navigator &&
+      (location.protocol === 'https:' || location.hostname === 'localhost')) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  _renderSyncChip();
+  syncOutbox();
+  const idle = window.requestIdleCallback || ((f) => setTimeout(f, 1200));
+  idle(() => prewarmOffline());
+}
+
 let testMode        = false;
 let testAnswers     = [];
 let practiceAnswers = [];   // tracks answers in practice/domain mode
@@ -4436,7 +4654,10 @@ async function loadAppData() {
 
   // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
-                        SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric };
+                        SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric,
+                        // offline layer (#75) - exported so the suite can drive it
+                        _isDbUrl, _permanent, syncOutbox, odbAll, odbPut, odbDel, _rawFetch,
+                        outboxCount: () => odbAll('outbox').then(r => (r || []).length) };
   showImportBanner();   // surface any auto-imported spelling list (or a refusal)
   window._qKey      = _qKey;
   window.Q_CACHE    = Q_CACHE;
@@ -4472,7 +4693,7 @@ async function initApp() {
     </div>`;
   }
 }
-initApp();
+initApp().then(startOffline, startOffline);
 </script>
 </body>
 </html>
