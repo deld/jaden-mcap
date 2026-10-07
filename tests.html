@@ -1310,6 +1310,24 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'sw.js + manifest present and shell-only';
   });
 
+  await test('Chrome will offer a real Install (icons, not just a shortcut)', async () => {
+    const mf = await fetch('/manifest.webmanifest').then(r => r.json());
+    const icons = mf.icons || [];
+    const sizes = icons.map(i => i.sizes);
+    // Chrome's installability bar: a 192px and a 512px icon. Without these it
+    // only ever offers "Add to Home screen", which is a bookmark, not an app.
+    assert(sizes.includes('192x192'), 'no 192x192 icon - Chrome will not offer Install');
+    assert(sizes.includes('512x512'), 'no 512x512 icon - Chrome will not offer Install');
+    assert(icons.some(i => (i.purpose || '').includes('maskable')),
+      'no maskable icon - Android will letterbox the launcher icon');
+    for (const i of icons) {
+      const r = await fetch('/' + i.src);
+      assert(r.ok, `${i.src} missing (HTTP ${r.status})`);
+      assert((r.headers.get('Content-Type') || '').includes('png'), `${i.src} is not a PNG`);
+    }
+    return `${icons.length} icons: ${sizes.join(', ')} (+maskable)`;
+  });
+
   await test('index.html registers the service worker and the manifest', async () => {
     const src = await fetch('/index.html').then(r => r.text());
     assert(src.includes("rel=\"manifest\""), 'manifest not linked');

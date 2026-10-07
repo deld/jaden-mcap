@@ -11,7 +11,8 @@
 // the whole exercise), then refresh in the background so a new deploy is
 // picked up on the next load rather than never.
 const CACHE = 'ask-shell-v1';
-const SHELL = ['./', './index.html', './manifest.webmanifest'];
+const SHELL = ['./', './index.html', './manifest.webmanifest',
+               './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', (e) => {
   // addAll fails the whole install if any one URL 404s, so each is added
