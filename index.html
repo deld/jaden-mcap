@@ -342,6 +342,16 @@
       font-size:1.1rem; line-height:1; padding:2px 4px;
     }
     .import-banner button:hover { color:var(--tx); }
+    .import-banner .ib-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; }
+    .import-banner .ib-actions button {
+      font-size:.8rem; font-weight:600; padding:6px 12px; border-radius:var(--r1);
+      border:1px solid var(--acc-line); background:var(--bg); color:var(--tx);
+    }
+    .import-banner .ib-actions button.ib-primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+    .import-banner .ib-actions button:disabled { opacity:.5; cursor:default; }
+    .import-banner .ib-list { margin:9px 0 0; padding-left:1.2em; font-size:.8rem; color:var(--tx-2); }
+    .import-banner .ib-list li { margin:5px 0; white-space:pre-line; }
+    .import-banner .ib-list .ib-ans { color:var(--tx); font-weight:600; }
 
     /* ── PROGRESS ── */
     .pg-week { display:grid; grid-template-columns:repeat(2,1fr); gap:10px; margin-bottom:22px; }
@@ -2590,12 +2600,14 @@ async function showImportBanner() {
   let run;
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/intake_runs?student=eq.Jaden&seen=eq.false&status=in.(published,failed)&order=created_at.desc&limit=1`,
+      `${SUPABASE_URL}/rest/v1/intake_runs?student=eq.Jaden&seen=eq.false&status=in.(published,failed,review,processing)&order=created_at.desc&limit=1`,
       { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
     if (!res.ok) return;
     run = (await res.json())[0];
   } catch (e) { return; }
   if (!run) { slot.innerHTML = ''; return; }
+  if (run.kind === 'worksheet') { _worksheetBanner(slot, run); return; }
+  if (run.status !== 'published' && run.status !== 'failed') { slot.innerHTML = ''; return; }
 
   const ok = run.status === 'published';
   const when = new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
@@ -2615,6 +2627,108 @@ async function showImportBanner() {
       </div>
       <button onclick="dismissImportBanner('${run.id}')" aria-label="Dismiss">&times;</button>
     </div>`;
+}
+
+// Worksheets emailed in are written by a model, so unlike spelling they never
+// go live on their own: the questions arrive inactive and wait here for a
+// parent to look them over and press Publish.
+const _esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+
+function _worksheetBanner(slot, run) {
+  const when = new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const stale = Date.now() - new Date(run.created_at).getTime() > 15 * 60e3;
+  const dismiss = `<button onclick="dismissImportBanner('${run.id}')" aria-label="Dismiss">&times;</button>`;
+  const banner = (cls, ico, body, closable = true) => {
+    slot.innerHTML = `
+      <div class="import-banner ${cls}">
+        <svg class="ico" aria-hidden="true"><use href="#${ico}"></use></svg>
+        <div class="import-banner-body">${body}</div>
+        ${closable ? dismiss : ''}
+      </div>`;
+  };
+
+  if (run.status === 'processing' && !stale) {
+    banner('', 'ic-classwork', `<b>Reading the worksheet you emailed…</b>
+      <div class="import-banner-words">New practice questions will be ready to review in a minute or two.</div>`, false);
+    setTimeout(showImportBanner, 30e3);   // check back until it lands
+    return;
+  }
+  if (run.status === 'processing' || run.status === 'failed') {
+    const why = run.status === 'failed' ? _esc(run.detail || 'Unknown reason') : 'It stopped before finishing.';
+    banner('bad', 'ic-x', `<b>The worksheet emailed ${when} did not import.</b>
+      <div class="import-banner-words">${why}<br>Nothing was added.</div>`);
+    return;
+  }
+  if (run.status === 'published') {
+    banner('', 'ic-check', `<b>${run.question_count} questions published</b> as “${_esc(run.assignment)}”.`);
+    return;
+  }
+  // review
+  banner('', 'ic-classwork', `
+    <b>${run.question_count} ${_esc(run.subject || '')} questions ready to review</b> from the worksheet emailed ${when}
+    <div class="import-banner-words">“${_esc(run.assignment)}” — ${_esc(run.detail || '')}</div>
+    <ol class="ib-list hidden" id="ib-list"></ol>
+    <div class="ib-actions">
+      <button onclick="toggleWorksheetPreview('${run.id}')" id="ib-preview">Show questions</button>
+      <button class="ib-primary" onclick="publishWorksheet('${run.id}')">Publish to Classwork</button>
+      <button onclick="discardWorksheet('${run.id}')">Discard</button>
+    </div>`, false);
+  slot._run = run;
+}
+
+async function toggleWorksheetPreview() {
+  const list = document.getElementById('ib-list');
+  const btn = document.getElementById('ib-preview');
+  const run = document.getElementById('import-banner-slot')._run;
+  if (!list || !run) return;
+  if (!list.classList.contains('hidden')) { list.classList.add('hidden'); btn.textContent = 'Show questions'; return; }
+  if (!list.childElementCount) {
+    const ids = (run.question_ids || []).join(',');
+    const rows = await fetch(`${SUPABASE_URL}/rest/v1/questions?id=in.(${ids})&select=id,type,text,options,correct`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } })
+      .then(r => r.ok ? r.json() : []).catch(() => []);
+    const order = new Map((run.question_ids || []).map((id, i) => [id, i]));
+    rows.sort((a, b) => order.get(a.id) - order.get(b.id));
+    list.innerHTML = rows.map(q => {
+      const ans = q.type === 'single' ? q.options['ABCDEFGH'.indexOf((q.correct || [])[0])] : q.correct;
+      return `<li>${_esc(q.text)}<br><span class="ib-ans">Answer: ${_esc(ans)}</span></li>`;
+    }).join('') || '<li>Could not load the questions.</li>';
+  }
+  list.classList.remove('hidden');
+  btn.textContent = 'Hide questions';
+}
+
+async function _worksheetDecision(id, status, activate) {
+  const run = document.getElementById('import-banner-slot')._run;
+  document.querySelectorAll('.ib-actions button').forEach(b => b.disabled = true);
+  const H = { 'Content-Type': 'application/json', apikey: SUPABASE_ANON,
+              Authorization: `Bearer ${SUPABASE_ANON}`, Prefer: 'return=minimal' };
+  try {
+    if (activate) {
+      const ids = (run?.question_ids || []).join(',');
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/questions?id=in.(${ids})`,
+        { method: 'PATCH', headers: H, body: JSON.stringify({ active: true }) });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    }
+    await fetch(`${SUPABASE_URL}/rest/v1/intake_runs?id=eq.${id}`,
+      { method: 'PATCH', headers: H, body: JSON.stringify({ status, seen: true }) });
+  } catch (e) {
+    document.querySelectorAll('.ib-actions button').forEach(b => b.disabled = false);
+    alert("Couldn't save that - check the connection and try again.");
+    return false;
+  }
+  return true;
+}
+
+async function publishWorksheet(id) {
+  if (!(await _worksheetDecision(id, 'published', true))) return;
+  location.reload();   // reload so the new sheet shows up in Classwork with its count
+}
+
+async function discardWorksheet(id) {
+  if (!window.confirm('Discard these questions? They will not be added.')) return;
+  if (!(await _worksheetDecision(id, 'discarded', false))) return;
+  document.getElementById('import-banner-slot').innerHTML = '';
 }
 
 async function dismissImportBanner(id) {
