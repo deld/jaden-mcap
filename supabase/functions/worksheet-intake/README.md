@@ -24,8 +24,15 @@ Parent Dashboard -> **Upload a Worksheet**. Take photos or pick a PDF, add an
 optional note, and press Upload. The worksheet then goes through the same
 steps as an emailed one and lands in the same review banner.
 
-The first time on each device, the parent signs in. They enter their email,
-get a one-time code, and type it in. After that the device stays signed in.
+The first time on each device, the parent signs in with their email and
+password. After that the device stays signed in.
+
+Email and password rather than an emailed code: Supabase's built-in mailer
+only delivers to members of the project's own organisation, so a code would
+never reach a parent, and the alternative was a Gmail app password or a mail
+provider in the stack to send a handful of emails a year. The function is
+unaffected either way - it checks a Supabase Auth access token and looks the
+address up in `parents`, and does not care how the token was obtained.
 
 - **Why sign-in:** the PIN only hides screens. Its value is in the public
   `index.html`, so it can't authorise paid model calls.
@@ -82,14 +89,10 @@ uses. Nothing new is needed for them.
 - *Authentication -> Users -> Add user -> Create new user* for each parent:
   their email, any strong password (it's never used), and **Auto Confirm User**
   ticked. They must also have a row in `parents`.
-- *Authentication -> Emails -> SMTP Settings*: turn on custom SMTP with the
-  same Gmail account the weekly report uses: host `smtp.gmail.com`, port
-  `465`, username = the Gmail address, password = its app password, sender
-  name "Jaden's practice". Supabase's built-in email only delivers to the
-  project's own team members and is heavily rate-limited.
-- *Authentication -> Emails -> Templates -> Magic Link*: make the body show
-  the code, e.g. `<p>Your sign-in code: <b>{{ .Token }}</b></p>`. Without
-  `{{ .Token }}` the email has only a link, and the app asks for a code.
+  Set a real password and record it in a password manager - the parent types
+  it when signing in on a device.
+
+No SMTP is needed. Nothing in this path sends email.
 
 **5. Create a second CloudMailin address** and point its target at:
 

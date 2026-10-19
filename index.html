@@ -4404,7 +4404,6 @@ if (sessionStorage.getItem('pin_ok') === '1') {
 // in Safari, whose storage is separate - the sign-in would land in the
 // wrong place.
 const _PARENT_KEY = 'parent_session';
-let _wsuEmail = '';
 
 function _parentSession() {
   try { return JSON.parse(localStorage.getItem(_PARENT_KEY) || 'null'); } catch (e) { return null; }
@@ -4447,23 +4446,17 @@ function renderWorksheetUpload(msg = '', bad = false) {
   const s = _parentSession();
   const note = msg ? `<div class="parent-error ${bad ? 'err' : 'ok'}">${_esc(msg)}</div>` : '<div class="parent-error"></div>';
 
-  if (!s && !_wsuEmail) {
-    host.innerHTML = `<div class="wsu">
-      <p>Sign in once on this device to upload worksheets. We'll email you a code. Only parents linked to Jaden can sign in.</p>
-      <div class="wsu-row">
-        <input class="parent-input" id="wsu-email" type="email" placeholder="you@example.com" autocomplete="email">
-        <button class="btn btn-check" onclick="parentSendCode()">Email me a code</button>
-      </div>${note}</div>`;
-    return;
-  }
   if (!s) {
     host.innerHTML = `<div class="wsu">
-      <p>Enter the code we emailed to <b>${_esc(_wsuEmail)}</b>.</p>
+      <p>Sign in once on this device to upload worksheets. Only parents linked to Jaden can sign in.</p>
       <div class="wsu-row">
-        <input class="parent-input" id="wsu-code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10">
-        <button class="btn btn-check" onclick="parentVerifyCode()">Sign in</button>
-      </div>${note}
-      <div class="wsu-who"><button onclick="_wsuEmail='';renderWorksheetUpload()">Use a different email</button></div></div>`;
+        <input class="parent-input" id="wsu-email" type="email" placeholder="you@example.com" autocomplete="username">
+      </div>
+      <div class="wsu-row">
+        <input class="parent-input" id="wsu-pass" type="password" placeholder="Password" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')parentSignIn()">
+        <button class="btn btn-check" onclick="parentSignIn()">Sign in</button>
+      </div>${note}</div>`;
     return;
   }
   host.innerHTML = `<div class="wsu">
@@ -4478,29 +4471,29 @@ function renderWorksheetUpload(msg = '', bad = false) {
     <div class="wsu-who">Signed in as ${_esc(s.email)} · <button onclick="parentSignOut()">Sign out</button></div></div>`;
 }
 
-async function parentSendCode() {
+// Email and password rather than an emailed code. The code route needed a
+// custom SMTP server: Supabase's built-in mailer only delivers to members of
+// the project's own organisation, so a parent would never receive anything,
+// and the alternative was putting a Gmail app password or a mail provider in
+// the stack to send two emails a year.
+//
+// Nothing server-side changes. worksheet-intake checks a Supabase Auth access
+// token and looks the address up in `parents`; it does not care whether the
+// token came from a password or a one-time code.
+async function parentSignIn() {
   const email = (document.getElementById('wsu-email')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('wsu-pass')?.value || '';
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { renderWorksheetUpload('Enter an email address.', true); return; }
+  if (!password) { renderWorksheetUpload('Enter your password.', true); return; }
   try {
-    // create_user:false - only parents already added in Supabase Auth get a code.
-    await _authPost('otp', { email, create_user: false });
-    _wsuEmail = email;
-    renderWorksheetUpload('Code sent. It can take a minute to arrive.');
-  } catch (e) {
-    renderWorksheetUpload(/signups not allowed|not found|otp_disabled/i.test(e.message)
-      ? "That email isn't set up as a parent for this app." : `Couldn't send a code: ${e.message}`, true);
-  }
-}
-
-async function parentVerifyCode() {
-  const token = (document.getElementById('wsu-code')?.value || '').replace(/\s/g, '');
-  if (!token) return;
-  try {
-    _saveParentSession(_sessionFrom(await _authPost('verify', { type: 'email', email: _wsuEmail, token })));
-    _wsuEmail = '';
+    _saveParentSession(_sessionFrom(await _authPost('token?grant_type=password', { email, password })));
     renderWorksheetUpload('Signed in.');
   } catch (e) {
-    renderWorksheetUpload("That code didn't work - check it, or send a new one.", true);
+    // Supabase says "Invalid login credentials" whether the address is unknown
+    // or the password is wrong, and that is the right amount to say back.
+    renderWorksheetUpload(/invalid login/i.test(e.message)
+      ? "That email and password didn't match an account set up for this app."
+      : `Couldn't sign in: ${e.message}`, true);
   }
 }
 
