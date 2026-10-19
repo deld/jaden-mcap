@@ -551,13 +551,14 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `pin_student = ${rows[0].value}`;
   });
 
-  await test('app_config: pin_parent key exists with a value', async () => {
-    const res = await db('app_config?key=eq.pin_parent&select=key,value');
-    assert(res.ok, `HTTP ${res.status}`);
-    const rows = await res.json();
-    assert(rows.length === 1, 'pin_parent missing from app_config');
-    assert(rows[0].value && rows[0].value.length > 0, 'pin_parent value is empty');
-    return `pin_parent = ${rows[0].value}`;
+  await test('app_config: pin_parent is no longer read by the app', async () => {
+    // Parents sign in with a real account now. A second PIN was worthless -
+    // its value sits in the public index.html - and the old test printed it
+    // into the test output, which is its own small problem.
+    const src = await fetch('/index.html').then(r => r.text());
+    assert(!src.includes('PIN_PARENT'), 'PIN_PARENT should be gone from the app');
+    assert(!src.includes("cfg['pin_parent']"), 'the app should no longer read pin_parent');
+    return 'pin_parent unused; the row in app_config is inert';
   });
 
   await test('FK integrity: all passage_id values in questions reference existing passages', async () => {
@@ -819,9 +820,18 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return `PIN_CORRECT = ${appData.PIN_CORRECT}`;
   });
 
-  await test('loadAppData() sets PIN_PARENT from app_config', async () => {
-    assert(appData.PIN_PARENT && appData.PIN_PARENT.length === 4, `PIN_PARENT invalid: "${appData.PIN_PARENT}"`);
-    return `PIN_PARENT = ${appData.PIN_PARENT}`;
+  await test('the gate offers Jaden a PIN and parents a real sign-in', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    assert(appData.PIN_CORRECT && appData.PIN_CORRECT.length === 4, "Jaden's PIN should still work");
+    assert(appData.PIN_PARENT === undefined, 'PIN_PARENT should no longer be exported');
+    assert(src.includes('parentGateSignIn'), 'the gate should have a parent sign-in');
+    // The old gate had a "Parent Login" button wired straight to
+    // enterParentMode() with no check whatsoever.
+    assert(!/onclick="enterParentMode\(\)"/.test(src),
+      'nothing should enter parent mode without signing in');
+    assert(src.includes('if (!_parentSession()) { showParentSignIn(true); return; }'),
+      'enterParentMode must refuse without a session');
+    return 'PIN for Jaden, account for parents';
   });
 
   await test('Question objects have correct structure after DB transform (domain, cat, type, text, correct)', async () => {
