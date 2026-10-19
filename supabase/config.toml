@@ -15,3 +15,7 @@ verify_jwt = false
 # Supabase JWT, so the function authenticates with INTAKE_SECRET instead.
 [functions.worksheet-intake]
 verify_jwt = false
+
+# weekly-report: called by pg_cron with REPORT_SECRET, not a Supabase JWT.
+[functions.weekly-report]
+verify_jwt = false
