@@ -826,9 +826,14 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     assert(appData.PIN_PARENT === undefined, 'PIN_PARENT should no longer be exported');
     assert(src.includes('parentGateSignIn'), 'the gate should have a parent sign-in');
     // The old gate had a "Parent Login" button wired straight to
-    // enterParentMode() with no check whatsoever.
-    assert(!/onclick="enterParentMode\(\)"/.test(src),
-      'nothing should enter parent mode without signing in');
+    // enterParentMode() with no check whatsoever. There is one caller of it
+    // in the markup now - the Parent tab - and it ships hidden and is only
+    // revealed for a session. The guarantee is the guard inside the
+    // function, not the absence of the onclick, so assert both.
+    const callers = [...src.matchAll(/<button[^>]*onclick="enterParentMode\(\)"[^>]*>/g)].map(m => m[0]);
+    assert(callers.length === 1, `expected one caller in the markup, found ${callers.length}`);
+    assert(/id="sec-btn-parent"/.test(callers[0]), 'the only caller should be the Parent tab');
+    assert(/class="[^"]*\bhidden\b/.test(callers[0]), 'the Parent tab must ship hidden');
     assert(src.includes('if (!_parentSession()) { showParentSignIn(true); return; }'),
       'enterParentMode must refuse without a session');
     return 'PIN for Jaden, account for parents';
@@ -1396,6 +1401,23 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     assert(!src.includes('.import-banner .ib-actions button {'),
       'review button styles must not be scoped to the banner');
     return 'all waiting worksheets listed in the Parent Dashboard';
+  });
+
+  await test('a parent session survives a refresh and keeps a way back', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    // The gate used to be reopened on every load because startup asked only
+    // whether Jaden had typed his PIN.
+    assert(/pin_ok'\) === '1' \|\| _parentSession\(\)/.test(src),
+      'a stored parent session must unlock the gate at startup');
+    // And the unlock has to run AFTER _PARENT_KEY is initialised: the const
+    // is not hoisted, so calling _parentSession() earlier threw a temporal
+    // dead zone error that its own try/catch swallowed into a null.
+    assert(src.indexOf("const _PARENT_KEY") < src.indexOf("=== '1' || _parentSession()"),
+      'the startup unlock must come after _PARENT_KEY, or it silently sees no session');
+    // #81 removed the parent PIN, which was the only route to the dashboard.
+    assert(src.includes('sec-btn-parent'), 'signed-in parents need a way back to the dashboard');
+    assert(src.includes('_syncParentTab'), 'the Parent tab should follow the session');
+    return 'session persists; Parent tab appears only when signed in';
   });
 
   await test('Chrome will offer a real Install (icons, not just a shortcut)', async () => {

@@ -1359,6 +1359,10 @@
   <button class="section-btn" id="sec-btn-classwork" onclick="switchSection('classwork')"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg><span class="sec-label">Classwork</span></button>
   <button class="section-btn" id="sec-btn-progress" onclick="switchSection('progress')"><svg class="ico" aria-hidden="true"><use href="#ic-chart"></use></svg><span class="sec-label">Progress</span></button>
   <button class="section-btn hidden" id="sec-btn-grades" onclick="switchSection('grades')"><svg class="ico" aria-hidden="true"><use href="#ic-grades"></use></svg><span class="sec-label">Grades</span></button>
+  <!-- Only route back to the dashboard. The old one was typing the parent
+       PIN, which #81 removed; without this a parent who pressed Back to App
+       - which uploading does on its own - could not return. -->
+  <button class="section-btn hidden" id="sec-btn-parent" onclick="enterParentMode()"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg><span class="sec-label">Parent</span></button>
 </nav>
 
 <!-- ══ SUBJECT TOGGLE ══ -->
@@ -4456,10 +4460,6 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Escape') pinReset();
 });
 
-// Auto-unlock if already verified this session
-if (sessionStorage.getItem('pin_ok') === '1') {
-  document.getElementById('pin-gate').classList.add('unlocked');
-}
 
 // ── PARENT SIGN-IN + WORKSHEET UPLOAD ──────────────────────────────────
 //
@@ -4474,12 +4474,30 @@ if (sessionStorage.getItem('pin_ok') === '1') {
 // wrong place.
 const _PARENT_KEY = 'parent_session';
 
+
+// The Parent tab is only there for someone who is signed in.
+function _syncParentTab() {
+  const b = document.getElementById('sec-btn-parent');
+  if (b) b.classList.toggle('hidden', !_parentSession());
+}
 function _parentSession() {
   try { return JSON.parse(localStorage.getItem(_PARENT_KEY) || 'null'); } catch (e) { return null; }
 }
 function _saveParentSession(s) {
   try { s ? localStorage.setItem(_PARENT_KEY, JSON.stringify(s)) : localStorage.removeItem(_PARENT_KEY); } catch (e) {}
+  _syncParentTab();
 }
+// Already through the gate? Stay through it. This used to ask only whether
+// Jaden had typed his PIN, so a signed-in parent met the gate again on every
+// refresh even though their session was sitting valid in localStorage - the
+// same "is Jaden unlocked" / "is anyone unlocked" mix-up fixed in
+// exitParentMode. Jaden's unlock is per tab (sessionStorage); a parent's
+// lasts until they sign out (localStorage), which is the point of signing in.
+if (sessionStorage.getItem('pin_ok') === '1' || _parentSession()) {
+  document.getElementById('pin-gate').classList.add('unlocked');
+}
+_syncParentTab();
+
 function _sessionFrom(d) {
   return { access_token: d.access_token, refresh_token: d.refresh_token,
            expires_at: Date.now() + (d.expires_in || 3600) * 1000, email: d.user?.email || '' };
