@@ -2154,7 +2154,13 @@ const odbPut = (s, v, k) => _odbDo(s, 'readwrite', (o) => (k === undefined ? o.p
 const odbDel = (s, k)    => _odbDo(s, 'readwrite', (o) => o.delete(k));
 
 const _rawFetch = window.fetch.bind(window);
-const _isDbUrl  = (u) => typeof u === 'string' && u.indexOf(SUPABASE_URL) === 0;
+// PostgREST only. Everything under the project domain used to match, which
+// swept in /functions/v1 and /auth/v1 once worksheets could be uploaded in the
+// app: an upload with no connection was queued as a multi-megabyte row, told
+// the caller 202, and then replayed with the anon key stamped over the
+// parent's token - a 401, classified permanent, and silently dropped. Those
+// endpoints are not replayable writes, so they must fail honestly instead.
+const _isDbUrl  = (u) => typeof u === 'string' && u.indexOf(SUPABASE_URL + '/rest/v1/') === 0;
 
 // A 4xx will never succeed on retry, so it is reported rather than queued.
 // 408 and 429 are the exceptions - those mean "try again".
@@ -2712,8 +2718,22 @@ async function toggleWorksheetPreview() {
   btn.textContent = 'Hide questions';
 }
 
+// Publishing is the step that puts model-written questions in front of Jaden,
+// so it asks for the same parent sign-in the upload does. Note what this is
+// and is not: the anon key can already flip `active` on any question, so this
+// is not a server-side control. It stops the child whose home screen the
+// button sits on, which is the actual risk here. Enforcing it properly means
+// an RLS policy on questions plus an Edge Function to do the update.
 async function _worksheetDecision(id, status, activate) {
   const run = document.getElementById('import-banner-slot')._run;
+  if (!(await _parentToken())) {
+    const slot = document.getElementById('import-banner-slot');
+    const note = slot && slot.querySelector('.ib-actions');
+    if (note) note.insertAdjacentHTML('afterend',
+      '<div class="import-banner-words" style="color:var(--bad);margin-top:8px">' +
+      'Only a signed-in parent can publish these. Open the Parent Dashboard and sign in, then come back.</div>');
+    return false;
+  }
   document.querySelectorAll('.ib-actions button').forEach(b => b.disabled = true);
   const H = { 'Content-Type': 'application/json', apikey: SUPABASE_ANON,
               Authorization: `Bearer ${SUPABASE_ANON}`, Prefer: 'return=minimal' };

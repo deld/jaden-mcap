@@ -47,6 +47,32 @@ const db = (path: string, init: RequestInit = {}) =>
     },
   });
 
+/**
+ * Assignment names already in use, so a new worksheet does not reuse one.
+ *
+ * Paginated deliberately. PostgREST caps a response at db-max-rows (1000 on
+ * this project) and does NOT say it truncated - a bare `limit=5000` silently
+ * returns the first 1000 rows, and the missing names then look free. Classwork
+ * grows by roughly a packet a week, so this would start quietly merging two
+ * worksheets under one name rather than failing.
+ */
+async function takenAssignments(): Promise<string[]> {
+  const PAGE = 1000;
+  const names = new Set<string>();
+  for (let offset = 0; ; offset += PAGE) {
+    const res = await db(
+      `questions?select=assignment&grade=eq.${GRADE}&track=eq.classwork` +
+      `&assignment=not.is.null&order=id&offset=${offset}&limit=${PAGE}`,
+    ).catch(() => null);
+    if (!res || !res.ok) break;
+    const rows = await res.json().catch(() => []);
+    if (!Array.isArray(rows) || rows.length === 0) break;
+    for (const r of rows) if (r?.assignment) names.add(String(r.assignment));
+    if (rows.length < PAGE) break;
+  }
+  return [...names];
+}
+
 async function startRun(row: Record<string, unknown>): Promise<string | null> {
   const r = await db("intake_runs", {
     method: "POST", headers: { Prefer: "return=representation" },
@@ -230,11 +256,7 @@ async function handle(req: Request): Promise<Response> {
     try {
       const { out, written, kept, dropped } = await readWorksheet(pages, note);
 
-      const taken = await db(
-        `questions?select=assignment&grade=eq.${GRADE}&track=eq.classwork&assignment=not.is.null&limit=5000`,
-      ).then((r) => (r.ok ? r.json() : [])).catch(() => []);
-      const assignment = assignmentName(out.title, new Date(),
-        (Array.isArray(taken) ? taken : []).map((r: { assignment: string }) => r.assignment));
+      const assignment = assignmentName(out.title, new Date(), await takenAssignments());
 
       const packet = await db("packets", {
         method: "POST", headers: { Prefer: "return=representation" },
