@@ -10,3 +10,12 @@ project_id = "zvffmucghcrqackghhlf"
 
 [functions.spelling-intake]
 verify_jwt = false
+
+# worksheet-intake: same reason as spelling-intake - CloudMailin cannot send a
+# Supabase JWT, so the function authenticates with INTAKE_SECRET instead.
+[functions.worksheet-intake]
+verify_jwt = false
+
+# weekly-report: called by pg_cron with REPORT_SECRET, not a Supabase JWT.
+[functions.weekly-report]
+verify_jwt = false

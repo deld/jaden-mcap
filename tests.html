@@ -1202,10 +1202,19 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     assert(typeof off.syncOutbox === 'function', 'syncOutbox missing');
     assert(typeof off.odbAll === 'function', 'IndexedDB helpers missing');
     assert(off._isDbUrl('https://zvffmucghcrqackghhlf.supabase.co/rest/v1/attempts'),
-      'Supabase URLs should be recognised');
+      'PostgREST URLs should be recognised');
     assert(!off._isDbUrl('https://fonts.googleapis.com/css2'),
       'non-Supabase URLs must not be intercepted');
-    return 'fetch wrapper + IndexedDB present';
+    // Only PostgREST is replayable. A queued worksheet upload would be a
+    // multi-megabyte row replayed with the anon key stamped over the parent's
+    // token, and a queued sign-in would report success for a code never sent.
+    assert(!off._isDbUrl('https://zvffmucghcrqackghhlf.supabase.co/functions/v1/worksheet-intake'),
+      'Edge Function calls must NOT be queued - they are not replayable writes');
+    assert(!off._isDbUrl('https://zvffmucghcrqackghhlf.supabase.co/auth/v1/otp'),
+      'Auth calls must NOT be queued - sign-in has to fail honestly when offline');
+    assert(!off._isDbUrl('https://zvffmucghcrqackghhlf.supabase.co/auth/v1/verify'),
+      'Auth calls must NOT be queued');
+    return 'fetch wrapper scoped to /rest/v1/ only';
   });
 
   await test('a 4xx is reported, not queued (it would never succeed)', async () => {
@@ -1294,6 +1303,17 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     const res = await appIframe.fetch(url, { headers: HEADERS });
     assert(res.ok, 'read should succeed');
     return 'GET responses are cached for offline reads';
+  });
+
+  await test('Publish needs a signed-in parent, not just the app PIN', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    const fn = src.slice(src.indexOf('async function _worksheetDecision'));
+    const body = fn.slice(0, fn.indexOf('\nasync function publishWorksheet'));
+    assert(body.includes('_parentToken()'),
+      'publishing model-written questions must check the parent session');
+    assert(body.indexOf('_parentToken()') < body.indexOf("method: 'PATCH'"),
+      'the check has to run BEFORE the update, not after');
+    return 'publish and discard are behind parent sign-in';
   });
 
   await test('the service worker and manifest are deployable', async () => {
