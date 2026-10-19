@@ -1356,6 +1356,31 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'sw.js + manifest present and shell-only';
   });
 
+  await test('a signed-in parent is not sent back to the gate', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    const fn = src.slice(src.indexOf('function exitParentMode()'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+    // Uploading a worksheet calls exitParentMode(). It used to check only
+    // Jaden's PIN, which a parent never types, so the gate came back up over
+    // the very banner they were being sent to look at.
+    assert(/_parentSession\(\)/.test(body),
+      'exitParentMode must treat a parent session as unlocked, not just pin_ok');
+    return 'parent session keeps the gate down';
+  });
+
+  await test('the page is network-first so a deploy lands on the next open', async () => {
+    const sw = await fetch('/sw.js').then(r => r.text());
+    assert(sw.includes('NET_TIMEOUT'), 'no network timeout for the page');
+    assert(/isPage/.test(sw), 'the page needs a different strategy from the assets');
+    // Cache-first on the document meant a change did not show until the
+    // SECOND open - including the day the parent PIN was removed.
+    const pageBlock = sw.slice(sw.indexOf('if (isPage('), sw.indexOf('e.respondWith((async () => {\n    const cached'));
+    assert(pageBlock.indexOf('fetch(req)') < pageBlock.indexOf('caches.match(req)'),
+      'the page must try the network before the cache');
+    assert(sw.includes("'ask-shell-v2'"), 'bump the cache name so old shells are dropped');
+    return 'page network-first with cache fallback; assets still cache-first';
+  });
+
   await test('Chrome will offer a real Install (icons, not just a shortcut)', async () => {
     const mf = await fetch('/manifest.webmanifest').then(r => r.json());
     const icons = mf.icons || [];
