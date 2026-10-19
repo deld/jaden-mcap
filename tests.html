@@ -1316,6 +1316,22 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'publish and discard are behind parent sign-in';
   });
 
+  await test('parent sign-in uses a password, not an emailed code', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    assert(src.includes("token?grant_type=password"),
+      'sign-in should use the Supabase password grant');
+    // The OTP route needed custom SMTP, because Supabase's built-in mailer
+    // only delivers to the project's own org members. Nothing should be left
+    // asking a parent for a code that will never arrive.
+    assert(!/parentSendCode|parentVerifyCode/.test(src),
+      'the one-time-code sign-in should be gone, not just unused');
+    assert(!src.includes("create_user: false"),
+      'the otp call should be gone');
+    assert(src.includes("autocomplete=\"current-password\""),
+      'the password field should be a real password field');
+    return 'email + password, no SMTP dependency';
+  });
+
   await test('the service worker and manifest are deployable', async () => {
     const sw = await fetch('/sw.js');
     assert(sw.ok, `sw.js missing (HTTP ${sw.status})`);
