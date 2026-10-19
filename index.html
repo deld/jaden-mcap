@@ -4614,9 +4614,13 @@ function enterParentMode() {
 }
 
 function exitParentMode() {
-  const pinUnlocked = sessionStorage.getItem('pin_ok') === '1';
+  // A signed-in parent has already got through the gate, so leaving the
+  // dashboard must not put it back up. This only checked Jaden's PIN, which
+  // a parent never types, so uploading a worksheet bounced them to the PIN
+  // screen - and the banner they were being sent to look at was behind it.
+  const unlocked = sessionStorage.getItem('pin_ok') === '1' || !!_parentSession();
   showParentSignIn(false);
-  document.getElementById('pin-gate').style.display       = pinUnlocked ? 'none' : '';
+  document.getElementById('pin-gate').style.display       = unlocked ? 'none' : '';
   document.getElementById('subject-toggle').style.display = '';
   document.getElementById('domain-nav').style.display     = '';
   document.getElementById('app').style.display            = '';

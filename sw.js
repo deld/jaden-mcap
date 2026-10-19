@@ -7,10 +7,18 @@
 // service worker cannot make that distinction, and guessing would mean
 // answering a write with a lie.
 //
-// Strategy is stale-while-revalidate: open instantly from cache (the point of
-// the whole exercise), then refresh in the background so a new deploy is
-// picked up on the next load rather than never.
-const CACHE = 'ask-shell-v1';
+// Two strategies, because the page and its assets want different things.
+//
+// The PAGE is network-first with a short timeout, falling back to cache. It
+// was cache-first, which meant a deploy did not appear until the SECOND open
+// - fine for a stylesheet, not fine the day the parent PIN was removed and a
+// phone carried on offering it. Online you get the current app; offline you
+// still get the cached one, which is the whole point of this file.
+//
+// ASSETS (fonts, icons) stay stale-while-revalidate. They are immutable
+// enough that a load behind is harmless, and they are the slow ones.
+const CACHE = 'ask-shell-v2';
+const NET_TIMEOUT = 3000;
 const SHELL = ['./', './index.html', './manifest.webmanifest',
                './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
@@ -37,6 +45,10 @@ const cacheable = (url) =>
   url.hostname === 'fonts.googleapis.com' ||
   url.hostname === 'fonts.gstatic.com';
 
+const isPage = (req, url) =>
+  req.mode === 'navigate' || req.destination === 'document' ||
+  url.pathname.endsWith('/') || url.pathname.endsWith('/index.html');
+
 self.addEventListener('fetch', (e) => {
   const req = e.request;
   if (req.method !== 'GET') return;
@@ -45,13 +57,30 @@ self.addEventListener('fetch', (e) => {
   if (!cacheable(url)) return;          // Supabase and everything else: untouched
   if (url.pathname.endsWith('/tests.html')) return;   // never serve tests from cache
 
+  const save = (res) => {
+    if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone())).catch(() => {});
+    return res;
+  };
+
+  if (isPage(req, url)) {
+    e.respondWith((async () => {
+      // Race the network against a short timer rather than waiting it out: a
+      // phone on one bar should fall back to cache quickly, not hang.
+      const net = fetch(req).then(save).catch(() => null);
+      const timed = await Promise.race([
+        net,
+        new Promise((r) => setTimeout(() => r(undefined), NET_TIMEOUT)),
+      ]);
+      if (timed) return timed;
+      return (await caches.match(req)) || (await net) ||
+             new Response('offline', { status: 503 });
+    })());
+    return;
+  }
+
   e.respondWith((async () => {
     const cached = await caches.match(req);
-    const network = fetch(req).then((res) => {
-      if (res && res.ok) caches.open(CACHE).then((c) => c.put(req, res.clone())).catch(() => {});
-      return res;
-    }).catch(() => null);
-    // Cache first so the car ride works, network behind it so deploys land.
-    return cached || (await network) || new Response('offline', { status: 503 });
+    const net = fetch(req).then(save).catch(() => null);
+    return cached || (await net) || new Response('offline', { status: 503 });
   })());
 });
