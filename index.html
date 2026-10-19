@@ -947,6 +947,12 @@
     }
     .pin-key:hover { background: var(--acc-soft); border-color: var(--tx); }
     .pin-key.clear { color: var(--bad); font-size: .9rem; }
+    .pin-switch {
+      margin-top: 14px; background: none; border: none; cursor: pointer;
+      color: var(--tx-2); font-size: .8rem; font-weight: 600;
+      text-decoration: underline; padding: 4px 8px;
+    }
+    .pin-switch:hover { color: var(--tx); }
     .parent-trigger {
       margin-top: 14px; background: none; border: none; cursor: pointer;
       color: rgba(255,255,255,.35); font-size: .72rem; font-weight: 600;
@@ -1812,13 +1818,24 @@
     <span class="pin-icon">🔐</span>
     <h2>After School Knowledge</h2>
     <p>Enter your PIN to continue</p>
-    <div class="pin-dots">
+    <div id="parent-signin" class="hidden">
+      <input class="parent-input" id="pg-email" type="email" placeholder="you@example.com"
+             autocomplete="username" style="margin-bottom:10px">
+      <input class="parent-input" id="pg-pass" type="password" placeholder="Password"
+             autocomplete="current-password" onkeydown="if(event.key==='Enter')parentGateSignIn()">
+      <button class="btn btn-check" style="width:100%;margin-top:12px" onclick="parentGateSignIn()">Sign in</button>
+      <div class="pin-error" id="pg-error"></div>
+      <div style="text-align:center;">
+        <button class="pin-switch" onclick="showParentSignIn(false)">Back to Jaden's PIN</button>
+      </div>
+    </div>
+    <div class="pin-dots" id="pin-dots">
       <div class="pin-dot" id="pd0"></div>
       <div class="pin-dot" id="pd1"></div>
       <div class="pin-dot" id="pd2"></div>
       <div class="pin-dot" id="pd3"></div>
     </div>
-    <div class="pin-pad">
+    <div class="pin-pad" id="pin-pad">
       <button class="pin-key" onclick="pinKey('1')">1</button>
       <button class="pin-key" onclick="pinKey('2')">2</button>
       <button class="pin-key" onclick="pinKey('3')">3</button>
@@ -1834,7 +1851,7 @@
     </div>
     <div class="pin-error" id="pin-error"></div>
     <div style="text-align:center;">
-      <button class="parent-trigger" onclick="enterParentMode()">👨‍👩‍👧 Parent Login</button>
+      <button class="pin-switch" id="pin-to-parent" onclick="showParentSignIn(true)">Parent sign-in</button>
     </div>
   </div>
 </div>
@@ -4339,7 +4356,6 @@ function _applyGradeLabels() {
 
 // ── PIN GATE ───────────────────────────────────────────────────────
 let PIN_CORRECT   = '2016';  // overwritten by loadAppData()
-let PIN_PARENT    = '1713';
 let studentGrade  = 3;       // overwritten by loadAppData() from app_config.student_grade
 let pinEntry = '';
 
@@ -4358,8 +4374,6 @@ function pinKey(digit) {
     if (pinEntry === PIN_CORRECT) {
       sessionStorage.setItem('pin_ok', '1');
       document.getElementById('pin-gate').classList.add('unlocked');
-    } else if (pinEntry === PIN_PARENT) {
-      enterParentMode();
     } else {
       document.getElementById('pin-error').textContent = 'Wrong PIN — try again';
       setTimeout(() => { pinEntry = ''; pinUpdateDots(); }, 800);
@@ -4446,17 +4460,14 @@ function renderWorksheetUpload(msg = '', bad = false) {
   const s = _parentSession();
   const note = msg ? `<div class="parent-error ${bad ? 'err' : 'ok'}">${_esc(msg)}</div>` : '<div class="parent-error"></div>';
 
+  // Sign-in happens at the gate now, so reaching here signed out means the
+  // session lapsed mid-visit. Say so and send them back rather than growing
+  // a second sign-in form.
   if (!s) {
     host.innerHTML = `<div class="wsu">
-      <p>Sign in once on this device to upload worksheets. Only parents linked to Jaden can sign in.</p>
-      <div class="wsu-row">
-        <input class="parent-input" id="wsu-email" type="email" placeholder="you@example.com" autocomplete="username">
-      </div>
-      <div class="wsu-row">
-        <input class="parent-input" id="wsu-pass" type="password" placeholder="Password" autocomplete="current-password"
-               onkeydown="if(event.key==='Enter')parentSignIn()">
-        <button class="btn btn-check" onclick="parentSignIn()">Sign in</button>
-      </div>${note}</div>`;
+      <p>Your sign-in has ended. Sign in again to upload a worksheet.</p>
+      <div class="wsu-row"><button class="btn btn-check" onclick="exitParentMode()">Back</button></div>
+      </div>`;
     return;
   }
   host.innerHTML = `<div class="wsu">
@@ -4471,38 +4482,12 @@ function renderWorksheetUpload(msg = '', bad = false) {
     <div class="wsu-who">Signed in as ${_esc(s.email)} · <button onclick="parentSignOut()">Sign out</button></div></div>`;
 }
 
-// Email and password rather than an emailed code. The code route needed a
-// custom SMTP server: Supabase's built-in mailer only delivers to members of
-// the project's own organisation, so a parent would never receive anything,
-// and the alternative was putting a Gmail app password or a mail provider in
-// the stack to send two emails a year.
-//
-// Nothing server-side changes. worksheet-intake checks a Supabase Auth access
-// token and looks the address up in `parents`; it does not care whether the
-// token came from a password or a one-time code.
-async function parentSignIn() {
-  const email = (document.getElementById('wsu-email')?.value || '').trim().toLowerCase();
-  const password = document.getElementById('wsu-pass')?.value || '';
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { renderWorksheetUpload('Enter an email address.', true); return; }
-  if (!password) { renderWorksheetUpload('Enter your password.', true); return; }
-  try {
-    _saveParentSession(_sessionFrom(await _authPost('token?grant_type=password', { email, password })));
-    renderWorksheetUpload('Signed in.');
-  } catch (e) {
-    // Supabase says "Invalid login credentials" whether the address is unknown
-    // or the password is wrong, and that is the right amount to say back.
-    renderWorksheetUpload(/invalid login/i.test(e.message)
-      ? "That email and password didn't match an account set up for this app."
-      : `Couldn't sign in: ${e.message}`, true);
-  }
-}
-
 function parentSignOut() {
   const s = _parentSession();
   if (s) fetch(`${SUPABASE_URL}/auth/v1/logout`, { method: 'POST',
     headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${s.access_token}` } }).catch(() => {});
   _saveParentSession(null);
-  renderWorksheetUpload();
+  exitParentMode();
 }
 
 // Phone photos are 3-12 MB each. Redraw them at a size that is still easy
@@ -4570,7 +4555,55 @@ async function uploadWorksheet() {
 }
 
 // ── PARENT MODE ────────────────────────────────────────────────────────
+// Two ways through the gate. Jaden types his PIN. A parent signs in with a
+// real account.
+//
+// There used to be a second PIN for parents, and next to it a "Parent Login"
+// button that called enterParentMode() with no check at all. Neither was
+// worth anything: both PINs sit in the public index.html, and the button
+// skipped even that. The dashboard shows Jaden's whole record and can spend
+// money on model calls, so it needs an account, not a shared number.
+//
+// Password rather than a magic link: Supabase's built-in mailer only delivers
+// to members of the project's own organisation, so a link would never reach a
+// parent, and wiring up SMTP to send a few emails a year is not worth it.
+function showParentSignIn(on) {
+  document.getElementById('parent-signin').classList.toggle('hidden', !on);
+  document.getElementById('pin-dots').classList.toggle('hidden', on);
+  document.getElementById('pin-pad').classList.toggle('hidden', on);
+  document.getElementById('pin-to-parent').classList.toggle('hidden', on);
+  document.querySelector('#pin-gate .pin-card p').textContent =
+    on ? 'Parents sign in with their email and password' : 'Enter your PIN to continue';
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('pg-error').textContent = '';
+  if (on) document.getElementById('pg-email').focus();
+}
+
+async function parentGateSignIn() {
+  const email = (document.getElementById('pg-email')?.value || '').trim().toLowerCase();
+  const password = document.getElementById('pg-pass')?.value || '';
+  const err = document.getElementById('pg-error');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { err.textContent = 'Enter an email address.'; return; }
+  if (!password) { err.textContent = 'Enter your password.'; return; }
+  err.textContent = 'Signing in…';
+  try {
+    _saveParentSession(_sessionFrom(await _authPost('token?grant_type=password', { email, password })));
+    err.textContent = '';
+    document.getElementById('pg-pass').value = '';
+    enterParentMode();
+  } catch (e) {
+    // Supabase says "Invalid login credentials" whether the address is unknown
+    // or the password is wrong, which is the right amount to say back.
+    err.textContent = /invalid login/i.test(e.message)
+      ? "That email and password didn't match an account for this app."
+      : `Couldn't sign in: ${e.message}`;
+  }
+}
+
 function enterParentMode() {
+  // Nothing calls this without signing in first, but it is a global on a
+  // public page, so it checks rather than trusts its callers.
+  if (!_parentSession()) { showParentSignIn(true); return; }
   document.getElementById('pin-gate').style.display       = 'none';
   document.getElementById('subject-toggle').style.display = 'none';
   document.getElementById('domain-nav').style.display     = 'none';
@@ -4582,6 +4615,7 @@ function enterParentMode() {
 
 function exitParentMode() {
   const pinUnlocked = sessionStorage.getItem('pin_ok') === '1';
+  showParentSignIn(false);
   document.getElementById('pin-gate').style.display       = pinUnlocked ? 'none' : '';
   document.getElementById('subject-toggle').style.display = '';
   document.getElementById('domain-nav').style.display     = '';
@@ -4975,11 +5009,10 @@ async function loadAppData() {
   const cfg = {};
   for (const c of dbCfg) cfg[c.key] = c.value;
   if (cfg['pin_student']) PIN_CORRECT = cfg['pin_student'];
-  if (cfg['pin_parent'])  PIN_PARENT  = cfg['pin_parent'];
   // Do NOT restore student_grade here — user must pick a grade each session
 
   // Expose for tests
-  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, PIN_PARENT, DOMAIN_COUNTS, studentGrade,
+  window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, DOMAIN_COUNTS, studentGrade,
                         SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric,
                         // offline layer (#75) - exported so the suite can drive it
                         _isDbUrl, _permanent, syncOutbox, odbAll, odbPut, odbDel, _rawFetch,
