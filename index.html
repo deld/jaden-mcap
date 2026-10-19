@@ -342,16 +342,16 @@
       font-size:1.1rem; line-height:1; padding:2px 4px;
     }
     .import-banner button:hover { color:var(--tx); }
-    .import-banner .ib-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; }
-    .import-banner .ib-actions button {
+    .ib-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:9px; }
+    .ib-actions button {
       font-size:.8rem; font-weight:600; padding:6px 12px; border-radius:var(--r1);
       border:1px solid var(--acc-line); background:var(--bg); color:var(--tx);
     }
-    .import-banner .ib-actions button.ib-primary { background:var(--acc); border-color:var(--acc); color:#fff; }
-    .import-banner .ib-actions button:disabled { opacity:.5; cursor:default; }
-    .import-banner .ib-list { margin:9px 0 0; padding-left:1.2em; font-size:.8rem; color:var(--tx-2); }
-    .import-banner .ib-list li { margin:5px 0; white-space:pre-line; }
-    .import-banner .ib-list .ib-ans { color:var(--tx); font-weight:600; }
+    .ib-actions button.ib-primary { background:var(--acc); border-color:var(--acc); color:#fff; }
+    .ib-actions button:disabled { opacity:.5; cursor:default; }
+    .ib-list { margin:9px 0 0; padding-left:1.2em; font-size:.8rem; color:var(--tx-2); }
+    .ib-list li { margin:5px 0; white-space:pre-line; }
+    .ib-list .ib-ans { color:var(--tx); font-weight:600; }
 
     /* ── WORKSHEET UPLOAD (parent dashboard) ── */
     .wsu p { font-size:.85rem; color:var(--tx-2); margin:0 0 10px; line-height:1.5; }
@@ -359,6 +359,9 @@
     .wsu-row .parent-input { flex:1; min-width:180px; }
     #wsu-files { font-size:.82rem; color:var(--tx-2); margin:4px 0 10px; }
     .wsu-who { font-size:.78rem; color:var(--tx-3); margin-top:10px; }
+    .wsp { padding:12px 0; border-bottom:1px solid var(--line); }
+    .wsp:last-child { border-bottom:none; }
+    .wsp-sub { font-size:.8rem; color:var(--tx-2); margin-top:3px; }
     .wsu-who button { background:none; border:none; color:var(--tx-2); text-decoration:underline; cursor:pointer; font-size:inherit; padding:0; }
 
     /* ── PROGRESS ── */
@@ -1763,6 +1766,14 @@
       <button class="btn btn-outlined" style="padding:7px 16px;font-size:.82rem;" onclick="exitParentMode()">← Back to App</button>
     </div>
 
+    <!-- Worksheets waiting on a parent. The banner in the app shows the newest
+         one, but a parent signing in lands HERE, where #app is hidden - so the
+         only person who can publish never saw it. This lists all of them. -->
+    <div class="parent-dash-card hidden" id="ws-pending-card">
+      <div class="parent-section-title"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>Waiting for your review</div>
+      <div id="ws-pending"></div>
+    </div>
+
     <!-- Upload a worksheet (signed-in parents only) -->
     <div class="parent-dash-card">
       <div class="parent-section-title"><svg class="ico" aria-hidden="true"><use href="#ic-classwork"></use></svg>Upload a Worksheet</div>
@@ -2711,12 +2722,19 @@ function _worksheetBanner(slot, run) {
       <button onclick="discardWorksheet('${run.id}')">Discard</button>
     </div>`, false);
   slot._run = run;
+  _runs[run.id] = run;
 }
 
-async function toggleWorksheetPreview() {
-  const list = document.getElementById('ib-list');
-  const btn = document.getElementById('ib-preview');
-  const run = document.getElementById('import-banner-slot')._run;
+// Runs the parent can act on, by id. The banner used to stash the single run
+// it was showing on the slot element; the dashboard lists several at once, so
+// they live here and both views look them up the same way.
+const _runs = {};
+const _runById = (id) => _runs[id] || (document.getElementById('import-banner-slot') || {})._run;
+
+async function toggleWorksheetPreview(id, prefix = 'ib') {
+  const list = document.getElementById(`${prefix}-list${prefix === 'ib' ? '' : '-' + id}`);
+  const btn = document.getElementById(`${prefix}-preview${prefix === 'ib' ? '' : '-' + id}`);
+  const run = _runById(id);
   if (!list || !run) return;
   if (!list.classList.contains('hidden')) { list.classList.add('hidden'); btn.textContent = 'Show questions'; return; }
   if (!list.childElementCount) {
@@ -2742,7 +2760,7 @@ async function toggleWorksheetPreview() {
 // button sits on, which is the actual risk here. Enforcing it properly means
 // an RLS policy on questions plus an Edge Function to do the update.
 async function _worksheetDecision(id, status, activate) {
-  const run = document.getElementById('import-banner-slot')._run;
+  const run = _runById(id);
   if (!(await _parentToken())) {
     const slot = document.getElementById('import-banner-slot');
     const note = slot && slot.querySelector('.ib-actions');
@@ -2771,15 +2789,52 @@ async function _worksheetDecision(id, status, activate) {
   return true;
 }
 
-async function publishWorksheet(id) {
+async function publishWorksheet(id, fromDash = false) {
   if (!(await _worksheetDecision(id, 'published', true))) return;
+  if (fromDash) { delete _runs[id]; renderPendingWorksheets(); return; }
   location.reload();   // reload so the new sheet shows up in Classwork with its count
 }
 
-async function discardWorksheet(id) {
+async function discardWorksheet(id, fromDash = false) {
   if (!window.confirm('Discard these questions? They will not be added.')) return;
   if (!(await _worksheetDecision(id, 'discarded', false))) return;
+  delete _runs[id];
+  if (fromDash) { renderPendingWorksheets(); return; }
   document.getElementById('import-banner-slot').innerHTML = '';
+}
+
+// Every worksheet still waiting, oldest first, each with its own preview and
+// its own decision. The in-app banner only ever shows the newest.
+async function renderPendingWorksheets() {
+  const host = document.getElementById('ws-pending');
+  const card = document.getElementById('ws-pending-card');
+  if (!host || !card) return;
+  let runs = [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/intake_runs?student=eq.Jaden&kind=eq.worksheet&status=eq.review` +
+      `&order=created_at.asc&select=*`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
+    if (res.ok) runs = await res.json();
+  } catch (e) { /* offline: the card just stays hidden */ }
+
+  card.classList.toggle('hidden', runs.length === 0);
+  if (!runs.length) { host.innerHTML = ''; return; }
+
+  host.innerHTML = runs.map((run) => {
+    _runs[run.id] = run;
+    const when = new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return `<div class="wsp">
+      <b>${run.question_count} ${_esc(run.subject || '')} questions</b> — “${_esc(run.assignment)}”
+      <div class="wsp-sub">${when} · ${_esc(run.detail || '')}</div>
+      <ol class="ib-list hidden" id="wsp-list-${run.id}"></ol>
+      <div class="ib-actions">
+        <button id="wsp-preview-${run.id}" onclick="toggleWorksheetPreview('${run.id}','wsp')">Show questions</button>
+        <button class="ib-primary" onclick="publishWorksheet('${run.id}', true)">Publish to Classwork</button>
+        <button onclick="discardWorksheet('${run.id}', true)">Discard</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function dismissImportBanner(id) {
@@ -4610,6 +4665,7 @@ function enterParentMode() {
   document.getElementById('app').style.display            = 'none';
   document.getElementById('parent-mode').classList.add('visible');
   renderWorksheetUpload();
+  renderPendingWorksheets();
   _showParentDash();
 }
 
