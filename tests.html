@@ -1381,6 +1381,23 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'page network-first with cache fallback; assets still cache-first';
   });
 
+  await test('waiting worksheets are listed where the parent actually lands', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    // The in-app banner sits inside #app, which is hidden in parent mode - so
+    // the only person who can publish never saw it. And it shows one run;
+    // three were waiting at once.
+    assert(src.includes('renderPendingWorksheets'), 'no pending list on the dashboard');
+    assert(/renderWorksheetUpload\(\);\s*\n\s*renderPendingWorksheets\(\);/.test(src),
+      'the dashboard must render the pending list when it opens');
+    assert(src.includes('status=eq.review'), 'the list should query every run awaiting review');
+    assert(src.includes('order=created_at.asc'), 'oldest first, so nothing is buried');
+    // The action styles were scoped to .import-banner, so the dashboard
+    // copies rendered as bare browser buttons.
+    assert(!src.includes('.import-banner .ib-actions button {'),
+      'review button styles must not be scoped to the banner');
+    return 'all waiting worksheets listed in the Parent Dashboard';
+  });
+
   await test('Chrome will offer a real Install (icons, not just a shortcut)', async () => {
     const mf = await fetch('/manifest.webmanifest').then(r => r.json());
     const icons = mf.icons || [];
