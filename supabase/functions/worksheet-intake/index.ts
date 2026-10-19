@@ -11,6 +11,8 @@
 //
 // Same posture as spelling-intake: PUBLIC endpoint (CloudMailin cannot send a
 // Supabase JWT), shared-secret auth, sender allow-list, every run recorded.
+// The app's Upload button reaches the same pipeline with a parent's sign-in
+// token instead of the secret.
 // Unlike spelling, the output is model-written, so it never goes live on its
 // own: a person looks at it first.
 // ─────────────────────────────────────────────────────────────────────────
@@ -109,31 +111,75 @@ async function readWorksheet(pages: Page[], note: string) {
   return { out, written, kept, dropped };
 }
 
+/** Email addresses in `parents`. Any linked parent may send a worksheet. */
+async function parentEmails(): Promise<string[]> {
+  const rows = await db("parents?select=email&limit=500").then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  return (Array.isArray(rows) ? rows : []).map((r: { email: string }) => String(r.email).trim().toLowerCase());
+}
+
+/**
+ * The signed-in parent behind a Supabase Auth access token, or null. The
+ * token proves an email address; the `parents` table decides whether that
+ * address may upload. The app's anon key is also a JWT, but it has no user,
+ * so it fails here.
+ */
+async function uploaderFrom(token: string): Promise<string | null> {
+  if (!token) return null;
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${token}` },
+  }).catch(() => null);
+  if (!r?.ok) return null;
+  const email = String((await r.json())?.email ?? "").toLowerCase();
+  return email && (await parentEmails()).includes(email) ? email : null;
+}
+
+// The in-app upload calls this from the browser, so it must answer CORS.
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-intake-secret",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS });
+  const res = await handle(req);
+  for (const [k, v] of Object.entries(CORS)) res.headers.set(k, v);
+  return res;
+});
+
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return new Response("POST only", { status: 405 });
 
+  // Two ways in. CloudMailin relays email with the shared secret; the app's
+  // upload button sends a parent's sign-in token instead. Either way the
+  // sender must be a known parent.
   const url = new URL(req.url);
   const given = req.headers.get("x-intake-secret") ?? url.searchParams.get("secret") ?? "";
   // ?dry=1 reads the worksheet and returns the questions without writing
   // anything, so a real worksheet can be tried before the first live email.
   const dryRun = url.searchParams.get("dry") === "1";
-  if (!SHARED_SECRET || given !== SHARED_SECRET) {
-    return new Response("unauthorized", { status: 401 });
+  const viaEmail = Boolean(SHARED_SECRET) && given === SHARED_SECRET;
+  const uploader = viaEmail ? null
+    : await uploaderFrom((req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, ""));
+  if (!viaEmail && !uploader) {
+    return Response.json({ ok: false, error: "Sign in as a linked parent to upload." }, { status: 401 });
   }
 
   let payload: Record<string, any>;
   try { payload = await req.json(); } catch { return new Response("bad json", { status: 400 }); }
   const subject = payload?.headers?.subject ?? payload?.envelope?.subject ?? payload?.subject ?? "";
-  const from    = payload?.headers?.from ?? payload?.envelope?.from ?? payload?.from ?? "";
+  const from    = uploader ?? payload?.headers?.from ?? payload?.envelope?.from ?? payload?.from ?? "";
   // What the parent typed ("fractions, pages 46-53") helps; a quoted thread does not.
   const note = [subject, String(payload?.plain ?? "").split(/\n-- ?\n|\nOn .+wrote:/)[0]]
     .map((s) => String(s).trim()).filter(Boolean).join("\n").slice(0, 1000);
-  const base = { subject_line: subject, sender: from };
+  const base = { subject_line: uploader ? `Uploaded in the app${subject ? `: ${subject}` : ""}` : subject, sender: from };
 
-  const gate = triage({ from, allowedFrom: ALLOWED_FROM });
-  if (!gate.process) {
-    if (!dryRun) await startRun({ ...base, status: "ignored", detail: gate.detail });
-    return Response.json({ ok: true, action: "ignored", reason: gate.detail });
+  if (viaEmail) {
+    const gate = triage({ from, allowedFrom: [...ALLOWED_FROM, ...(await parentEmails())] });
+    if (!gate.process) {
+      if (!dryRun) await startRun({ ...base, status: "ignored", detail: gate.detail });
+      return Response.json({ ok: true, action: "ignored", reason: gate.detail });
+    }
   }
 
   let pages: Page[];
@@ -221,4 +267,4 @@ Deno.serve(async (req) => {
   if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(work);
   else await work;
   return Response.json({ ok: true, action: "processing", run: runId, pages: pages.length });
-});
+}

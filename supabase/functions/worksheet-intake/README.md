@@ -18,6 +18,33 @@ This differs from spelling on purpose: spelling words are copied from the
 teacher's doc as written, so spelling publishes itself. Worksheet questions are
 written by a model, so a person sees them before Jaden does.
 
+## Uploading in the app
+
+Parent Dashboard -> **Upload a Worksheet**. Take photos or pick a PDF, add an
+optional note, and press Upload. The worksheet then goes through the same
+steps as an emailed one and lands in the same review banner.
+
+The first time on each device, the parent signs in. They enter their email,
+get a one-time code, and type it in. After that the device stays signed in.
+
+- **Why sign-in:** the PIN only hides screens. Its value is in the public
+  `index.html`, so it can't authorise paid model calls.
+- **Who can sign in:** only addresses added as users in Supabase Auth get a
+  code (`create_user: false`). The function then checks the address is in the
+  `parents` table, so being in one place isn't enough.
+- **Why a code and not a link:** an app installed on an iPhone opens email
+  links in Safari, which keeps its own storage, so the sign-in would land in
+  the wrong place.
+- **Big photos:** they're shrunk on the device to 2000 px JPEG before
+  upload. That also turns an iPhone HEIC into JPEG wherever the browser can
+  decode it.
+
+## Who may send
+
+A sender is allowed if their address is in `parents` (migration 007) or in
+`INTAKE_ALLOWED_FROM`. Adding a parent row is enough to let someone email
+worksheets in as well as upload them.
+
 ## Sending a worksheet
 
 - Attach JPEG/PNG photos or a PDF. Send each worksheet as its own email. One
@@ -27,8 +54,8 @@ written by a model, so a person sees them before Jaden does.
 - iPhone HEIC photos can't be read. If one is attached, the run is refused and
   the banner says how to send JPEG instead. Mail from an iPhone usually
   converts photos to JPEG on its own.
-- Send from an address on `INTAKE_ALLOWED_FROM`. Mail from anyone else is
-  recorded as ignored.
+- Send from a linked parent's address (see "Who may send"). Mail from anyone
+  else is recorded as ignored.
 - Sending the same pages twice does not create a second set.
 
 ## Setup (one time)
@@ -50,7 +77,21 @@ uses. Nothing new is needed for them.
 
 `supabase/config.toml` pins `verify_jwt = false` for it, as it does for spelling.
 
-**4. Create a second CloudMailin address** and point its target at:
+**4. For in-app upload, set up Supabase Auth (one time):**
+
+- *Authentication -> Users -> Add user -> Create new user* for each parent:
+  their email, any strong password (it's never used), and **Auto Confirm User**
+  ticked. They must also have a row in `parents`.
+- *Authentication -> Emails -> SMTP Settings*: turn on custom SMTP with the
+  same Gmail account the weekly report uses: host `smtp.gmail.com`, port
+  `465`, username = the Gmail address, password = its app password, sender
+  name "Jaden's practice". Supabase's built-in email only delivers to the
+  project's own team members and is heavily rate-limited.
+- *Authentication -> Emails -> Templates -> Magic Link*: make the body show
+  the code, e.g. `<p>Your sign-in code: <b>{{ .Token }}</b></p>`. Without
+  `{{ .Token }}` the email has only a link, and the app asks for a code.
+
+**5. Create a second CloudMailin address** and point its target at:
 
     https://zvffmucghcrqackghhlf.supabase.co/functions/v1/worksheet-intake?secret=<YOUR_INTAKE_SECRET>
 
