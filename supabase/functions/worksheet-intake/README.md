@@ -52,6 +52,29 @@ A sender is allowed if their address is in `parents` (migration 007) or in
 `INTAKE_ALLOWED_FROM`. Adding a parent row is enough to let someone email
 worksheets in as well as upload them.
 
+## The original is always kept
+
+Every worksheet's source file is saved in the private `worksheets` storage
+bucket (migration 008), whether it worked or not:
+
+| How it came in | Saved by | Where |
+|---|---|---|
+| Email | this function, before reading | `email/<run id>/01-<name>` |
+| In-app upload | the browser, **full size**, before shrinking | `uploads/<timestamp>/01-<name>` |
+
+The run's `source_files` lists them. In-app uploads send Claude a copy
+shrunk to 2000 px, so the browser saves the original first. If that save
+fails, the upload stops rather than carrying on without an original.
+
+To view one, open Parent Dashboard -> **Worksheets Sent In**, or use **View
+original** on a worksheet waiting for review. The app asks for a link that
+lasts 10 minutes, using the parent's sign-in. The bucket isn't public, and
+the anon key can't read or write it. Storage policies allow a signed-in
+user only if `is_parent()` finds their address in `parents`.
+
+Worksheets sent in before migration 008 have no original. Their pages were
+never kept.
+
 ## Sending a worksheet
 
 - Attach JPEG/PNG photos or a PDF. Send each worksheet as its own email. One
@@ -69,6 +92,10 @@ worksheets in as well as upload them.
 
 **1. Run `migrations/006_worksheet_intake.sql`** in the Supabase SQL editor. It
 adds the worksheet columns and statuses to `intake_runs`.
+
+**1b. Run `migrations/008_worksheet_sources.sql`** (after 007, which creates
+`parents`). It creates the private `worksheets` bucket, `is_parent()`, the
+storage policies and `intake_runs.source_files`.
 
 **2. Add the Anthropic API key** in Supabase dashboard -> Edge Functions ->
 Secrets:

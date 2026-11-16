@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   triage, pickAttachments, checkQuestion, agrees, reconcile, checkWorksheet,
   assignmentName, toRows, solverView, parseNumber, GENERATE_SCHEMA,
+  safeName, emailSourcePath, checkSourceFiles,
 } from './worksheet.js';
 
 let pass = 0, fail = 0;
@@ -169,6 +170,27 @@ t('parseNumber rejects anything the number box would not', () => {
   assert.equal(parseNumber('-3.25'), -3.25);
   assert.equal(parseNumber('1/2'), null);
   assert.equal(parseNumber(''), null);
+});
+
+// ── keeping the original ──
+t('file names are made storage-safe without losing what they were', () => {
+  assert.equal(safeName('IMG 2041 (1).JPG'), 'IMG-2041-1.JPG');
+  assert.equal(safeName('../../etc/passwd'), 'etc-passwd');
+  assert.equal(safeName('Fracción página 2.pdf'), 'Fraccion-pagina-2.pdf');
+  assert.equal(safeName(''), 'file');
+});
+t('emailed pages are kept under their run, numbered in the order sent', () => {
+  assert.equal(emailSourcePath('3f2a-run', 0, 'page one.jpg'), 'email/3f2a-run/01-page-one.jpg');
+  assert.equal(emailSourcePath('3f2a-run', 11, 'x.pdf'), 'email/3f2a-run/12-x.pdf');
+});
+t('an upload may only point at files under uploads/', () => {
+  const ok = checkSourceFiles([{ path: 'uploads/2026-11-16T10-00-00-000Z-ab12cd/01-IMG_2041.jpg', name: 'IMG_2041.jpg', type: 'image/jpeg', bytes: 4e6 }]);
+  assert.equal(ok[0].bytes, 4e6);
+  assert.deepEqual(checkSourceFiles(undefined), []);
+  for (const bad of ['email/run/01-x.jpg', 'uploads/../email/run/x.jpg', 'uploads//x.jpg', '/uploads/x.jpg', 'uploads/a b.jpg']) {
+    assert.throws(() => checkSourceFiles([{ path: bad }]), /Not an upload path/, bad);
+  }
+  assert.throws(() => checkSourceFiles('uploads/x.jpg'), /list/);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
