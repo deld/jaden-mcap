@@ -1784,6 +1784,12 @@
       <div id="ws-upload"></div>
     </div>
 
+    <!-- Every worksheet sent in, with the original file it came from -->
+    <div class="parent-dash-card">
+      <div class="parent-section-title"><svg class="ico" aria-hidden="true"><use href="#ic-rl"></use></svg>Worksheets Sent In</div>
+      <div id="ws-history"></div>
+    </div>
+
     <!-- At-a-glance stats -->
     <div class="parent-dash-card">
       <div class="parent-section-title"><svg class="ico" aria-hidden="true"><use href="#ic-chart"></use></svg>At a Glance</div>
@@ -2795,7 +2801,7 @@ async function _worksheetDecision(id, status, activate) {
 
 async function publishWorksheet(id, fromDash = false) {
   if (!(await _worksheetDecision(id, 'published', true))) return;
-  if (fromDash) { delete _runs[id]; renderPendingWorksheets(); return; }
+  if (fromDash) { delete _runs[id]; renderPendingWorksheets(); renderWorksheetHistory(); return; }
   location.reload();   // reload so the new sheet shows up in Classwork with its count
 }
 
@@ -2803,7 +2809,7 @@ async function discardWorksheet(id, fromDash = false) {
   if (!window.confirm('Discard these questions? They will not be added.')) return;
   if (!(await _worksheetDecision(id, 'discarded', false))) return;
   delete _runs[id];
-  if (fromDash) { renderPendingWorksheets(); return; }
+  if (fromDash) { renderPendingWorksheets(); renderWorksheetHistory(); return; }
   document.getElementById('import-banner-slot').innerHTML = '';
 }
 
@@ -2836,7 +2842,9 @@ async function renderPendingWorksheets() {
         <button id="wsp-preview-${run.id}" onclick="toggleWorksheetPreview('${run.id}','wsp')">Show questions</button>
         <button class="ib-primary" onclick="publishWorksheet('${run.id}', true)">Publish to Classwork</button>
         <button onclick="discardWorksheet('${run.id}', true)">Discard</button>
+        ${_sourceButton(run, 'wsp-src-' + run.id)}
       </div>
+      <div class="wsp-sub" id="wsp-src-${run.id}"></div>
     </div>`;
   }).join('');
 }
@@ -4592,6 +4600,89 @@ function _readBase64(file) {
   });
 }
 
+// ── Worksheet originals ─────────────────────────────────────────────────
+// Kept in the private `worksheets` bucket (migration 008). Only a signed-in
+// parent can write under uploads/ or read anything there; the app shows a
+// file through a signed URL that lasts ten minutes.
+const _WS_BUCKET = 'worksheets';
+const _WS_TYPES = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+                    gif: 'image/gif', webp: 'image/webp', heic: 'image/heic', heif: 'image/heif' };
+// Same rule as safeName() in worksheet.js, which the server checks paths against.
+const _wsSafeName = (n) => (String(n || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^\w.-]+/g, '-').replace(/-+\./g, '.').replace(/^[-.]+|-+$/g, '').slice(-80)) || 'file';
+
+async function _keepOriginal(file, i, stamp, token) {
+  const type = file.type || _WS_TYPES[(file.name.split('.').pop() || '').toLowerCase()] || 'application/octet-stream';
+  const path = `uploads/${stamp}/${String(i + 1).padStart(2, '0')}-${_wsSafeName(file.name)}`;
+  const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${_WS_BUCKET}/${path}`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${token}`, 'Content-Type': type },
+    body: file,
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    throw new Error(`couldn't save the original ${file.name} (${d.message || d.error || 'HTTP ' + r.status})`);
+  }
+  return { path, name: file.name, type, bytes: file.size };
+}
+
+// Turn a run's files into links. Signing happens on click, not on render:
+// the links expire, and the list may sit open a while.
+async function showWorksheetSource(id, hostId) {
+  const run = _runById(id);
+  const host = document.getElementById(hostId);
+  if (!run || !host) return;
+  const token = await _parentToken();
+  if (!token) { host.innerHTML = '<span class="wsp-sub">Sign in as a parent to see the original.</span>'; return; }
+  host.innerHTML = '<span class="wsp-sub">Opening…</span>';
+  const links = await Promise.all((run.source_files || []).map(async (f) => {
+    try {
+      const r = await fetch(`${SUPABASE_URL}/storage/v1/object/sign/${_WS_BUCKET}/${f.path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON, Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ expiresIn: 600 }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.signedURL) throw new Error();
+      return `<a href="${SUPABASE_URL}/storage/v1${_esc(d.signedURL)}" target="_blank" rel="noopener">${_esc(f.name)}</a>`;
+    } catch (e) { return `<span>${_esc(f.name)} (couldn't open)</span>`; }
+  }));
+  host.innerHTML = links.join(' · ') || '<span class="wsp-sub">No original was kept for this one.</span>';
+}
+
+const _sourceButton = (run, hostId) => (run.source_files || []).length
+  ? `<button onclick="showWorksheetSource('${run.id}','${hostId}')">View original${run.source_files.length > 1 ? ` (${run.source_files.length} files)` : ''}</button>`
+  : '';
+
+// Every worksheet sent in, newest first, with its original - including the
+// ones that failed, which are the ones most worth looking at again.
+async function renderWorksheetHistory() {
+  const host = document.getElementById('ws-history');
+  if (!host) return;
+  let runs = [];
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/intake_runs?student=eq.Jaden&kind=eq.worksheet` +
+      `&status=in.(review,published,discarded,failed)&order=created_at.desc&limit=15&select=*`,
+      { headers: { apikey: SUPABASE_ANON, Authorization: `Bearer ${SUPABASE_ANON}` } });
+    if (res.ok) runs = await res.json();
+  } catch (e) { /* offline */ }
+  if (!runs.length) { host.innerHTML = '<div class="wsp-sub">Nothing sent in yet.</div>'; return; }
+  const label = { review: 'waiting for review', published: 'published', discarded: 'discarded', failed: 'did not import' };
+  host.innerHTML = runs.map((run) => {
+    _runs[run.id] = run;
+    const when = new Date(run.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const name = run.assignment || run.subject_line || 'Worksheet';
+    return `<div class="wsp">
+      <b>${_esc(name)}</b>
+      <div class="wsp-sub">${when} · ${label[run.status] || run.status}</div>
+      <div class="ib-actions">${_sourceButton(run, 'wsh-src-' + run.id)
+        || '<span class="wsp-sub">No original kept (sent in before originals were saved).</span>'}</div>
+      <div class="wsp-sub" id="wsh-src-${run.id}"></div>
+    </div>`;
+  }).join('');
+}
+
 async function uploadWorksheet() {
   const files = [...(document.getElementById('wsu-files')?.files || [])];
   if (!files.length) { renderWorksheetUpload('Choose photos or a PDF first.', true); return; }
@@ -4601,6 +4692,13 @@ async function uploadWorksheet() {
   try {
     const token = await _parentToken();
     if (!token) { renderWorksheetUpload('Your sign-in expired. Sign in again.', true); return; }
+    // Keep the originals, full size, before anything is shrunk. If they can't
+    // be saved, stop: a worksheet nobody can look at again is the gap this closes.
+    btn.textContent = 'Saving originals…';
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-') + '-' + Math.random().toString(36).slice(2, 8);
+    const source_files = [];
+    for (const [i, f] of files.entries()) source_files.push(await _keepOriginal(f, i, stamp, token));
+    btn.textContent = 'Uploading…';
     const attachments = [];
     for (const f of files) {
       const small = f.type.startsWith('image/') || /\.(heic|heif)$/i.test(f.name) ? await _shrinkImage(f) : null;
@@ -4613,7 +4711,7 @@ async function uploadWorksheet() {
     const r = await fetch(`${SUPABASE_URL}/functions/v1/worksheet-intake`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON, Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ headers: { subject: note }, plain: note, attachments }),
+      body: JSON.stringify({ headers: { subject: note }, plain: note, attachments, source_files }),
     });
     const d = await r.json().catch(() => ({}));
     if (r.status === 401) { _saveParentSession(null); renderWorksheetUpload(d.error || 'Sign in again.', true); return; }
@@ -4684,6 +4782,7 @@ function enterParentMode() {
   document.getElementById('parent-mode').classList.add('visible');
   renderWorksheetUpload();
   renderPendingWorksheets();
+  renderWorksheetHistory();
   _showParentDash();
 }
 

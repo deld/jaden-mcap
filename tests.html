@@ -1403,6 +1403,24 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'all waiting worksheets listed in the Parent Dashboard';
   });
 
+  await test('every worksheet keeps its original file, viewable by a parent', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    // Pages used to go to the model and be thrown away. The upload must save
+    // the full-size originals BEFORE it shrinks anything or calls in, and
+    // tell the function where they are.
+    const up = src.slice(src.indexOf('async function uploadWorksheet'));
+    assert(up.indexOf('_keepOriginal(') > 0 && up.indexOf('_keepOriginal(') < up.indexOf('_shrinkImage('),
+      'originals must be saved before the shrunk copies are made');
+    assert(/attachments, source_files \}/.test(up), 'the function must be told which originals were saved');
+    // Viewing goes through a short-lived signed URL with the PARENT's token -
+    // the bucket is private and the anon key has no access to it.
+    const view = src.slice(src.indexOf('async function showWorksheetSource'));
+    assert(view.includes('/storage/v1/object/sign/'), 'originals are shown through signed URLs');
+    assert(view.indexOf('_parentToken()') < view.indexOf('/object/sign/'), 'signing needs a parent session');
+    assert(src.includes('renderWorksheetHistory();'), 'the dashboard lists past worksheets with their originals');
+    return 'originals saved first, shown to parents via signed URLs';
+  });
+
   await test('a parent session survives a refresh and keeps a way back', async () => {
     const src = await fetch('/index.html').then(r => r.text());
     // The gate used to be reopened on every load because startup asked only

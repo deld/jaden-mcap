@@ -293,3 +293,42 @@ export function toRows(questions, { subject, domain, assignment, grade = 4 }) {
     };
   });
 }
+
+// ── Keeping the original ─────────────────────────────────────────────────
+// Every worksheet's source file is kept in the private `worksheets` bucket,
+// so a parent can look at the real page behind a set of questions - to check
+// one, or to re-run it later. Emailed pages are saved here by the function
+// (email/<run>/...); in-app uploads are saved full-size by the browser first
+// (uploads/...), because the copy sent for reading has been shrunk.
+export const BUCKET = "worksheets";
+
+/** A storage-safe file name: letters, digits, dot, dash, underscore. */
+export function safeName(name) {
+  const clean = String(name ?? "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^\w.-]+/g, "-")
+    .replace(/-+\./g, ".").replace(/^[-.]+|-+$/g, "");
+  return clean.slice(-80) || "file";
+}
+
+/** Where an emailed page is kept: email/<run>/01-page.jpg */
+export function emailSourcePath(runKey, i, name) {
+  return `email/${safeName(runKey)}/${String(i + 1).padStart(2, "0")}-${safeName(name)}`;
+}
+
+/**
+ * The originals an in-app upload says it saved. The browser chose these
+ * paths, so they are held to the shape it is allowed to write (see the
+ * storage policy in migration 008): under uploads/, no traversal.
+ * @returns {{ path: string, name: string, type: string, bytes: number }[]}
+ */
+export function checkSourceFiles(list) {
+  if (list == null) return [];
+  if (!Array.isArray(list) || list.length > 20) throw new Error("source_files must be a list of at most 20 files");
+  return list.map((f) => {
+    const path = String(f?.path ?? "");
+    if (!/^uploads\/[\w.\/-]+$/.test(path) || path.includes("..") || path.includes("//")) {
+      throw new Error(`Not an upload path: "${path}"`);
+    }
+    return { path, name: String(f.name ?? path.split("/").pop()).slice(0, 120),
+             type: String(f.type ?? "").slice(0, 80), bytes: Number(f.bytes) || 0 };
+  });
+}

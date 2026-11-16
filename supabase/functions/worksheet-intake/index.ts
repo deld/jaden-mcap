@@ -15,10 +15,15 @@
 // token instead of the secret.
 // Unlike spelling, the output is model-written, so it never goes live on its
 // own: a person looks at it first.
+//
+// The original file is always kept, in the private `worksheets` bucket
+// (migration 008): emailed pages are saved here, in-app uploads are saved
+// full-size by the browser before it calls in. The run records which files.
 // ─────────────────────────────────────────────────────────────────────────
 import Anthropic from "npm:@anthropic-ai/sdk@0.132.1";
 import {
   triage, pickAttachments, checkWorksheet, reconcile, solverView, toRows, assignmentName,
+  checkSourceFiles, emailSourcePath, BUCKET,
   GENERATE_SCHEMA, GENERATE_PROMPT, SOLVE_SCHEMA, SOLVE_PROMPT, MIN_QUESTIONS, MAX_QUESTIONS,
 } from "./worksheet.js";
 
@@ -73,18 +78,28 @@ async function takenAssignments(): Promise<string[]> {
   return [...names];
 }
 
+// `source_files` arrives with migration 008. If the function is deployed
+// first, a write carrying it is rejected outright - and a run that is never
+// recorded is a worksheet nobody can review. So retry without it.
+const withoutSources = ({ source_files: _, ...rest }: Record<string, unknown>) => rest;
+
 async function startRun(row: Record<string, unknown>): Promise<string | null> {
-  const r = await db("intake_runs", {
+  const post = (body: Record<string, unknown>) => db("intake_runs", {
     method: "POST", headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ kind: "worksheet", student: STUDENT, ...row }),
+    body: JSON.stringify({ kind: "worksheet", student: STUDENT, ...body }),
   }).catch(() => null);
+  let r = await post(row);
+  if (!r?.ok && "source_files" in row) r = await post(withoutSources(row));
   if (!r?.ok) return null;
   return (await r.json())[0]?.id ?? null;
 }
 
 async function finishRun(id: string | null, row: Record<string, unknown>) {
   if (!id) { await startRun(row); return; }
-  await db(`intake_runs?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(row) }).catch(() => {});
+  const patch = (body: Record<string, unknown>) =>
+    db(`intake_runs?id=eq.${id}`, { method: "PATCH", body: JSON.stringify(body) }).catch(() => null);
+  const r = await patch(row);
+  if (!r?.ok && "source_files" in row) await patch(withoutSources(row));
 }
 
 function toBase64(buf: ArrayBuffer): string {
@@ -97,6 +112,26 @@ function toBase64(buf: ArrayBuffer): string {
 async function sha256(parts: string[]): Promise<string> {
   const h = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(parts.join("|")));
   return [...new Uint8Array(h)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+type Source = { path: string; name: string; type: string; bytes: number };
+
+/** Save emailed pages as they arrived. Never fatal: a failed save is reported, the import goes on. */
+async function keepEmailedPages(runKey: string, pages: Page[]): Promise<{ saved: Source[]; error: string }> {
+  const saved: Source[] = [];
+  for (const [i, p] of pages.entries()) {
+    const path = emailSourcePath(runKey, i, p.name);
+    const bytes = Uint8Array.from(atob(p.data!), (c) => c.charCodeAt(0));
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${path}`, {
+      method: "POST",
+      headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`,
+                 "Content-Type": p.mediaType, "x-upsert": "true" },
+      body: bytes,
+    }).catch((e) => ({ ok: false, status: 0, text: async () => String(e) }) as const);
+    if (!r.ok) return { saved, error: `original not saved (${p.name}: HTTP ${r.status} ${await r.text()})` };
+    saved.push({ path, name: p.name, type: p.mediaType, bytes: bytes.length });
+  }
+  return { saved, error: "" };
 }
 
 /** One structured-output call. Throws on a refusal or a truncated answer. */
@@ -193,12 +228,17 @@ async function handle(req: Request): Promise<Response> {
 
   let payload: Record<string, any>;
   try { payload = await req.json(); } catch { return new Response("bad json", { status: 400 }); }
+  // An in-app upload has already saved the full-size originals; it says where.
+  let uploaded: Source[] = [];
+  try { uploaded = uploader ? checkSourceFiles(payload?.source_files) : []; }
+  catch (e) { return Response.json({ ok: false, error: String((e as Error).message ?? e) }, { status: 400 }); }
   const subject = payload?.headers?.subject ?? payload?.envelope?.subject ?? payload?.subject ?? "";
   const from    = uploader ?? payload?.headers?.from ?? payload?.envelope?.from ?? payload?.from ?? "";
   // What the parent typed ("fractions, pages 46-53") helps; a quoted thread does not.
   const note = [subject, String(payload?.plain ?? "").split(/\n-- ?\n|\nOn .+wrote:/)[0]]
     .map((s) => String(s).trim()).filter(Boolean).join("\n").slice(0, 1000);
-  const base = { subject_line: uploader ? `Uploaded in the app${subject ? `: ${subject}` : ""}` : subject, sender: from };
+  const base = { subject_line: uploader ? `Uploaded in the app${subject ? `: ${subject}` : ""}` : subject, sender: from,
+                 ...(uploaded.length ? { source_files: uploaded } : {}) };
 
   if (viaEmail) {
     const gate = triage({ from, allowedFrom: [...ALLOWED_FROM, ...(await parentEmails())] });
@@ -253,6 +293,14 @@ async function handle(req: Request): Promise<Response> {
   // Reading and checking takes longer than CloudMailin waits for a reply, so
   // answer now and finish in the background. The run row carries the outcome.
   const work = (async () => {
+    // Keep the original first, so even a worksheet that fails to import can
+    // be looked at - and re-sent - later.
+    let sources = uploaded, keepError = "";
+    if (!uploader) {
+      ({ saved: sources, error: keepError } = await keepEmailedPages(runId ?? hash.slice(0, 16), pages));
+      if (sources.length && runId) await finishRun(runId, { source_files: sources });
+    }
+    const note2 = keepError ? ` [${keepError}]` : "";
     try {
       const { out, written, kept, dropped } = await readWorksheet(pages, note);
 
@@ -262,6 +310,7 @@ async function handle(req: Request): Promise<Response> {
         method: "POST", headers: { Prefer: "return=representation" },
         body: JSON.stringify({
           student: STUDENT, grade: GRADE, subject: out.subject, status: "processed",
+          raw_image_url: sources[0]?.path ?? null,   // first page, in the private worksheets bucket
           week_of: new Date().toISOString().slice(0, 10),
           notes: `Emailed in by ${from || "unknown"}. ${out.skills} ` +
                  `${kept.length} of ${written.length} generated questions agreed with an independent solve.`,
@@ -276,13 +325,13 @@ async function handle(req: Request): Promise<Response> {
       const ids = (await ins.json()).map((r: { id: string }) => r.id);
 
       await finishRun(runId, {
-        status: "review", assignment, subject: out.subject, question_count: ids.length, question_ids: ids,
+        status: "review", source_files: sources.length ? sources : null, assignment, subject: out.subject, question_count: ids.length, question_ids: ids,
         packet_id: Array.isArray(packet) ? packet[0]?.id : null,
-        detail: out.skills + (dropped.length ? ` (${dropped.length} dropped: ${dropped.map((d) => d.reason).join("; ")})` : ""),
+        detail: out.skills + (dropped.length ? ` (${dropped.length} dropped: ${dropped.map((d) => d.reason).join("; ")})` : "") + note2,
       });
     } catch (e) {
       // Refused, not crashed: nothing was inserted and the reason is recorded.
-      await finishRun(runId, { status: "failed", detail: String((e as Error).message ?? e) });
+      await finishRun(runId, { status: "failed", source_files: sources.length ? sources : null, detail: String((e as Error).message ?? e) + note2 });
     }
   })();
 
