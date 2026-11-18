@@ -15,7 +15,9 @@
 // teacher's to change, and a wrong list reaching Jaden is worse than an
 // import that visibly failed.
 // ─────────────────────────────────────────────────────────────────────────
-import { parseSpellingDoc, findDocCandidates, docExportUrl, triage } from "./parse.js";
+import {
+  parseSpellingDoc, findDocCandidates, docExportUrl, triage, docWeekOf, gmailForwardingCode, linkedDocs,
+} from "./parse.js";
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -103,6 +105,14 @@ Deno.serve(async (req) => {
 
   const base = { student: STUDENT, subject_line: subject, sender: from };
 
+  // Gmail's forwarding confirmation comes to this address. Keep its code -
+  // it is what turns on automatic forwarding - instead of discarding it.
+  const fwdCode = gmailForwardingCode(from, body);
+  if (fwdCode) {
+    if (!dryRun) await recordRun({ ...base, status: "ignored", detail: `Gmail forwarding confirmation code: ${fwdCode}` });
+    return Response.json({ ok: true, action: "ignored", reason: "gmail forwarding confirmation recorded" });
+  }
+
   // Provenance and subject in one decision - see triage() in parse.js for why
   // a forward from a known person skips the subject check.
   const gate = triage({ subject, from, body,
@@ -144,8 +154,27 @@ Deno.serve(async (req) => {
       throw new Error(`No Google Doc behind any link in this email. Tried: ${tried.join(" | ") || "nothing"}`);
     }
 
-    const { group, words, columnHeader } = parseSpellingDoc(html, STUDENT);
-    const week = weekOf();
+    // Sometimes the list is one link further away: the email links a
+    // newsletter doc, and the newsletter links the list (Week 10 -> Week 11).
+    // If this doc is not a list, follow the doc links inside it - once.
+    let parsed;
+    try {
+      parsed = parseSpellingDoc(html, STUDENT);
+    } catch (first) {
+      let found = false;
+      for (const next of linkedDocs(html, docUrl).slice(0, 3)) {
+        const r = await fetch(next, { redirect: "follow" }).catch(() => null);
+        if (!r?.ok) continue;
+        const h = await r.text();
+        try { parsed = parseSpellingDoc(h, STUDENT); html = h; docUrl = next; found = true; break; }
+        catch { /* not the list either */ }
+      }
+      if (!found) throw first;
+    }
+    const { group, words, columnHeader } = parsed!;
+    // File under the week the doc names ("Week of November 9-13"), not the
+    // day it happened to be forwarded.
+    const week = docWeekOf(html) ?? weekOf();
 
     if (dryRun) {
       return Response.json({ ok: true, action: "dry-run", week, group, columnHeader,
