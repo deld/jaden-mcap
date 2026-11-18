@@ -134,8 +134,12 @@ export function extractWordList(tables, group) {
       const cell = (rows[r][col] ?? "").trim();
       if (!cell) continue;
       // A cell may hold several words separated by commas or line breaks.
-      for (const part of cell.split(/[,;\n]/).map((p) => p.trim()).filter(Boolean)) {
-        if (looksLikeWord(part)) words.push(part.toLowerCase());
+      // A trailing "*" is the teacher's footnote mark ("project*", "object*"
+      // in Week 12) - the word is still on the list. Treating the mark as part
+      // of the word silently dropped them.
+      for (const raw of cell.split(/[,;\n]/)) {
+        const part = raw.replace(/^[*†]+|[*†]+$/g, "").trim();
+        if (part && looksLikeWord(part)) words.push(part.toLowerCase());
       }
     }
 
@@ -248,6 +252,7 @@ export function parseSpellingDoc(html, student) {
 // ─────────────────────────────────────────────────────────────────────────
 export const SPELLING_SUBJECT = /spelling|word\s?list/i;
 
+/** @param {{ subject?: string, from?: string, body?: string, allowedFrom?: string[], allowedOrigin?: string[] }} [args] */
 export function triage({ subject = "", from = "", body = "",
                          allowedFrom = [], allowedOrigin = [] } = {}) {
   const fromLc = String(from).toLowerCase();
@@ -265,4 +270,59 @@ export function triage({ subject = "", from = "", body = "",
     return { process: false, via: "known origin", detail: "subject is not a spelling list" };
   }
   return { process: true, via: "known origin", detail: "spelling mail from a known origin" };
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Which week a list is for.
+//
+// The run used to be stamped with the Monday of the day it ARRIVED. A list
+// forwarded late landed under the wrong week, and two forwarded together were
+// merged into one assignment (Weeks 12 and 13, both forwarded Nov 17). The
+// doc says which week it is - "Week of November 9-13", "Week of Oct 26-30" -
+// so read it from there. Returns the Monday as YYYY-MM-DD, or null.
+// ─────────────────────────────────────────────────────────────────────────
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+
+export function docWeekOf(html, now = new Date()) {
+  const m = stripTags(html).match(/week\s+of\s+([a-z]{3,9})\.?\s+(\d{1,2})\b/i);
+  if (!m) return null;
+  const month = MONTHS.indexOf(m[1].slice(0, 3).toLowerCase());
+  const day = Number(m[2]);
+  if (month < 0 || day < 1 || day > 31) return null;
+  // No year in the doc: take the one that puts the date nearest to now, so a
+  // December list read in January still lands in December.
+  const y = now.getUTCFullYear();
+  const date = [y - 1, y, y + 1].map((yr) => new Date(Date.UTC(yr, month, day)))
+    .filter((d) => d.getUTCMonth() === month)
+    .sort((a, b) => Math.abs(a - now) - Math.abs(b - now))[0];
+  if (!date) return null;
+  date.setUTCDate(date.getUTCDate() - ((date.getUTCDay() + 6) % 7));   // back to Monday
+  return date.toISOString().slice(0, 10);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Gmail's forwarding confirmation.
+//
+// Auto-forwarding needs Gmail to send a code to the forwarding address -
+// which is this function. It arrived once (Oct 5) and was thrown away,
+// because only the subject is recorded and the code is in the body. Pull it
+// out so it can be read back from intake_runs.
+// ─────────────────────────────────────────────────────────────────────────
+export function gmailForwardingCode(from, body) {
+  if (!/forwarding-noreply@google\.com/i.test(String(from))) return null;
+  const m = stripTags(String(body)).match(/confirmation\s+code:?\s*(\d{6,12})/i);
+  return m ? m[1] : null;
+}
+
+/**
+ * Google Docs linked FROM a doc, best first, excluding `currentUrl` itself.
+ * The teacher sometimes puts the list one step further away: the Week 10
+ * email linked a newsletter doc, and the newsletter linked the Week 11 list.
+ * @returns {string[]}
+ */
+export function linkedDocs(html, currentUrl) {
+  let candidates = [];
+  try { candidates = findDocCandidates(html); } catch { return []; }
+  const self = docExportUrl(currentUrl);
+  return [...new Set(candidates.map(docExportUrl).filter((u) => u && u !== self))];
 }

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {
   parseSpellingDoc, findDocLink, headerMatchesGroup, looksLikeWord,
   findStudentGroup, extractTables, findDocCandidates, docExportUrl, isRosterBoundary,
-  triage,
+  triage, docWeekOf, gmailForwardingCode, linkedDocs,
 } from './parse.js';
 
 const cell = (s) => `<td><p>${s}</p></td>`;
@@ -210,6 +210,55 @@ t('an empty sender does not match the allow-list', () => {
 t('an empty allow-list cannot be matched by an empty sender', () => {
   const r = triage({ subject: 'spelling', from: '', allowedFrom: ['', ' '], allowedOrigin: [''] });
   assert.ok(!r.process);
+});
+
+// ── Week 12: footnote-marked words ──
+t('keeps words the teacher marked with an asterisk', () => {
+  const words = ['fracture','fraction','reflect','flexible','reject','eject','project*','trajectory','object*','admit'];
+  const doc = table([['SUN', 'SKY and SEA'], ...words.map(w => ['cat', w])]) + table([['Student','Group'], ['Jaden','Sky']]);
+  const r = parseSpellingDoc(`<html><body>${doc}</body></html>`, 'Jaden');
+  assert.ok(r.words.includes('project') && r.words.includes('object'), r.words.join(','));
+  assert.equal(r.words.length, 10);
+});
+
+// ── which week ──
+const nov18 = new Date('2026-11-18T03:00:00Z');
+t('reads the week from the doc, not the day it was forwarded', () => {
+  assert.equal(docWeekOf('<p><b>SPELLING WORDS!</b> <b>Week of November 9-13</b></p>', nov18), '2026-11-09');
+  assert.equal(docWeekOf('<p>Week of November 16-20</p>', nov18), '2026-11-16');
+  assert.equal(docWeekOf('<p>Week of Oct 26-30</p>', nov18), '2026-10-26');
+});
+t('a mid-week date still files under that Monday', () => {
+  assert.equal(docWeekOf('<p>Week of Nov. 11</p>', nov18), '2026-11-09');
+});
+t('picks the nearest year when the doc has none', () => {
+  assert.equal(docWeekOf('<p>Week of December 7-11</p>', new Date('2027-01-04T12:00:00Z')), '2026-12-07');
+});
+t('no week in the doc means no guess', () => {
+  assert.equal(docWeekOf('<p>Spelling words</p>', nov18), null);
+  assert.equal(docWeekOf('<p>Week of Smarch 3</p>', nov18), null);
+});
+
+// ── Gmail forwarding confirmation ──
+t('captures the code from Gmail\'s forwarding confirmation', () => {
+  const body = '<p>delali.dzirasa@gmail.com has requested to automatically forward mail to your email address.</p><p>Confirmation code: 583926372</p>';
+  assert.equal(gmailForwardingCode('Gmail Team <forwarding-noreply@google.com>', body), '583926372');
+});
+t('only from Gmail itself', () => {
+  assert.equal(gmailForwardingCode('someone@example.com', 'Confirmation code: 583926372'), null);
+});
+
+// ── a list one link further away ──
+t('finds the list doc linked from a newsletter doc', () => {
+  const newsletter = '<p><b>Spelling:</b> We will get back to spelling next week with this list: ' +
+    '<a href="https://www.google.com/url?q=https://docs.google.com/document/d/19B-zMC2jomNG4FDftWkTRVvHw35pGJ3sOMRxo9GXtkY/edit">Week 11</a></p>' +
+    '<a href="https://docs.google.com/document/d/1PruW6yMps2amJ5KH07BRwThU97dITfllOdbZhHb50Rw/edit">this doc</a>';
+  const self = 'https://docs.google.com/document/d/1PruW6yMps2amJ5KH07BRwThU97dITfllOdbZhHb50Rw/export?format=html';
+  assert.deepEqual(linkedDocs(newsletter, self),
+    ['https://docs.google.com/document/d/19B-zMC2jomNG4FDftWkTRVvHw35pGJ3sOMRxo9GXtkY/export?format=html']);
+});
+t('a doc with no links leads nowhere', () => {
+  assert.deepEqual(linkedDocs('<p>nothing here</p>', 'x'), []);
 });
 
 console.log(`\n${pass} passed, ${fail} failed`);
