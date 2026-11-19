@@ -312,6 +312,46 @@
     .pick:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
     .pick.active { border-color:var(--acc); background:var(--acc); color:var(--acc-on); }
     .pick .ico { width:1.1em; height:1.1em; }
+    /* ── SPELLING LEARN ── */
+    .learn-entry { text-align:center; margin:4px 0 14px; }
+    .learn-entry-sub { font-size:.8rem; color:var(--tx-3); margin-top:6px; }
+    .learn-top { display:flex; align-items:center; gap:10px; justify-content:space-between; margin-bottom:10px; }
+    .learn-top #learn-title { font-family:var(--f-disp); font-weight:700; font-size:1.05rem; }
+    .learn-count { font-size:.8rem; color:var(--tx-3); font-family:var(--f-num); white-space:nowrap; }
+    .learn-dots { display:flex; flex-wrap:wrap; gap:4px; justify-content:center; margin-bottom:18px; }
+    .ld { width:9px; height:9px; border-radius:50%; background:var(--line); }
+    .ld-now { background:var(--acc); transform:scale(1.25); }
+    .ld-done { background:var(--ok-soft); box-shadow:inset 0 0 0 1.5px var(--ok); }
+    .ld-star { background:var(--ok); }
+    .learn-step { text-align:center; font-size:.8rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--tx-3); margin-bottom:10px; }
+    .learn-step.ok { color:var(--ok); font-size:1rem; text-transform:none; letter-spacing:0; }
+    .learn-step.bad { color:var(--bad); font-size:1rem; text-transform:none; letter-spacing:0; }
+    .learn-word { text-align:center; font-family:var(--f-disp); font-size:clamp(2rem, 9vw, 3.2rem); font-weight:700; line-height:1.15; margin:6px 0 12px; word-break:break-word; }
+    .learn-word.small { font-size:1.6rem; margin-top:14px; }
+    .wp-prefix { color:var(--warn); }
+    .wp-root   { color:var(--acc); text-decoration:underline; text-decoration-thickness:3px; text-underline-offset:6px; }
+    .wp-suffix { color:var(--ok); }
+    .wp-plain  { color:var(--tx); }
+    .wp-dot { color:var(--tx-3); font-weight:400; margin:0 .08em; }
+    .learn-meanings { display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px; }
+    .wm { font-size:.85rem; padding:4px 10px; border-radius:50px; background:var(--surface-2); border:1px solid var(--line); }
+    .wm-prefix b { color:var(--warn); } .wm-root b { color:var(--acc); } .wm-suffix b { color:var(--ok); }
+    .learn-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:12px 0; }
+    .learn-hidden { text-align:center; font-family:var(--f-num); font-size:1.8rem; letter-spacing:.1em; color:var(--tx-3); margin-top:8px; }
+    .learn-sub { text-align:center; font-size:.8rem; color:var(--tx-3); margin:4px 0; }
+    .learn-write { display:flex; gap:8px; justify-content:center; margin-top:10px; }
+    .learn-write input { max-width:280px; }
+    .learn-cmp { display:flex; gap:12px; align-items:baseline; justify-content:center; margin:6px 0; }
+    .learn-cmp-l { font-size:.75rem; color:var(--tx-3); width:70px; text-align:right; }
+    .learn-typed, .learn-marks { font-family:var(--f-num); font-size:1.5rem; letter-spacing:.05em; }
+    .learn-typed { color:var(--tx-2); text-decoration:line-through; text-decoration-color:var(--bad); }
+    .lm { padding:0 1px; border-radius:3px; }
+    .lm-ok { color:var(--ok); }
+    .lm-wrong { color:#fff; background:var(--bad); }
+    .lm-missing { color:var(--bad); border-bottom:3px solid var(--bad); }
+    .learn-done { text-align:center; }
+    .learn-big { font-size:3rem; }
+    .learn-tricky { color:var(--tx-2); font-size:.9rem; }
     .pick .wk-sub { font-weight:500; opacity:.75; margin-left:4px; font-size:.85em; }
     .wk-past-label { font-size:.78rem; color:var(--tx-3); margin:12px 0 6px; font-weight:600; }
     #pick-topic.wk-mode { display:block; }
@@ -1418,6 +1458,17 @@
   </div>
 
   <!-- QUESTION SCREEN -->
+  <!-- SPELLING LEARN: look, listen, cover, write, check - before the quiz -->
+  <div id="learn-screen" class="card hidden">
+    <div class="learn-top">
+      <button class="link-btn" onclick="exitLearn()">&larr; Back</button>
+      <span id="learn-title"></span>
+      <span id="learn-count" class="learn-count"></span>
+    </div>
+    <div class="learn-dots" id="learn-dots"></div>
+    <div id="learn-body"></div>
+  </div>
+
   <div id="question-screen" class="card hidden">
     <div class="hud">
       <div class="hud-left">
@@ -1578,6 +1629,11 @@
     </div>
 
     <div class="practice-summary" id="practice-summary"></div>
+    <div class="learn-entry hidden" id="learn-entry">
+      <button class="btn btn-outlined btn-lg" onclick="startLearn(practiceWeek)">
+        <svg class="ico" aria-hidden="true"><use href="#ic-books"></use></svg>Learn the words first</button>
+      <div class="learn-entry-sub" id="learn-entry-sub"></div>
+    </div>
     <div style="text-align:center;">
       <button class="btn btn-primary btn-lg" onclick="startTimedPractice()"><svg class="ico" aria-hidden="true"><use href="#ic-play"></use></svg>Start</button>
     </div>
@@ -2491,8 +2547,10 @@ function renderPracticeScreen() {
       : 'All words';
     document.getElementById('practice-summary').innerHTML =
       `<b>Spelling</b> &middot; <b>${which}</b> &middot; <b>${practiceMinutes} minutes</b>`;
+    _renderLearnEntry();
     return;
   }
+  _renderLearnEntry();
   document.getElementById('pick-topic').innerHTML = doms.map(d => {
     const n = d.id === 'All' ? (counts.All || 0) : (counts[d.id] || 0);
     const label = d.id === 'All' ? 'Everything' : d.label;
@@ -2739,8 +2797,9 @@ async function showImportBanner() {
       <div class="import-banner-body">
         ${head}
         <div class="import-banner-words">${detail}</div>
-        ${ok && run.week_of ? `<div class="ib-actions"><button class="ib-primary"
-          onclick="practiceSpellingWeek('Spelling week of ${run.week_of}')">Practise these words</button></div>` : ''}
+        ${ok && run.week_of ? `<div class="ib-actions">
+          <button class="ib-primary" onclick="startLearn('Spelling week of ${run.week_of}')">Learn these words</button>
+          <button onclick="practiceSpellingWeek('Spelling week of ${run.week_of}')">Quiz me</button></div>` : ''}
       </div>
       <button onclick="dismissImportBanner('${run.id}')" aria-label="Dismiss">&times;</button>
     </div>`;
@@ -3116,7 +3175,7 @@ async function selectGrade(grade) {
 }
 
 function show(id) {
-  ['start-screen','grades-screen','classwork-screen','practice-screen','progress-screen',
+  ['start-screen','grades-screen','classwork-screen','practice-screen','learn-screen','progress-screen',
    'reading-screen','question-screen','end-screen',
    'test-config-screen','test-results-screen','history-screen',
    'test-review-screen'].forEach(s=>
@@ -3484,6 +3543,303 @@ function speakCurrentWord() {
   speechSynthesis.speak(_utter(word, { rate: 0.8 }));
   if (sentence && sentence !== word) speechSynthesis.speak(_utter(sentence, { rate: 0.95 }));
   speechSynthesis.speak(_utter(word, { rate: 0.75 }));
+}
+
+// ── WORD PARTS (spelling Learn) ─────────────────────────────────────
+// Jaden's group learns words by their Latin and Greek parts - a week is
+// "fract, flect, ject, mit" - so the Learn screen splits each word into
+// prefix + root + suffix and says what each part means. The lexicon covers
+// the roots his lists have used; a word with no known root is shown whole.
+const WORD_PARTS = {
+  prefix: {
+    in: 'not / into', im: 'not / into', il: 'not', ir: 'not', re: 'again / back', de: 'down / away',
+    e: 'out', ex: 'out', pro: 'forward', trans: 'across', tra: 'across', sub: 'under', ad: 'to',
+    ag: 'to', at: 'to', ac: 'to', per: 'through', con: 'together', com: 'together', dis: 'apart / not',
+    di: 'apart', inter: 'between', pre: 'before', ab: 'away', ob: 'toward / against', loco: 'place',
+    arti: 'skill', micro: 'small', mega: 'great', super: 'above', hyper: 'over', tele: 'far',
+    un: 'not', mis: 'wrongly', anti: 'against', auto: 'self', bi: 'two', tri: 'three',
+  },
+  root: {
+    fract: 'break', frag: 'break', flect: 'bend', flex: 'bend', ject: 'throw', mit: 'send', miss: 'send',
+    manu: 'hand', mani: 'hand', man: 'hand', mand: 'order', scrib: 'write', script: 'write',
+    cred: 'believe', fac: 'make / do', fact: 'make / do', facil: 'easy', simil: 'like', cur: 'care', cure: 'care', crib: 'write',
+    gress: 'go / step', rupt: 'break', tract: 'pull', mot: 'move', mov: 'move', icon: 'picture',
+    spect: 'look', port: 'carry', form: 'shape', foli: 'leaf', dict: 'say', vis: 'see', vid: 'see',
+    aud: 'hear', struct: 'build', duct: 'lead', graph: 'write', phon: 'sound', photo: 'light',
+    scope: 'look at', meter: 'measure', bio: 'life', geo: 'earth', tele: 'far',
+  },
+  suffix: {
+    ion: 'act of', tion: 'act of', sion: 'act of', ation: 'act of', ure: 'act / result of',
+    ive: 'tending to', or: 'one who', er: 'one who', ator: 'one who', able: 'can be', ible: 'can be',
+    ous: 'full of', ious: 'full of', ulous: 'tending to', ory: 'place for / relating to',
+    ity: 'state of', ate: 'to make', al: 'relating to', ar: 'relating to', ment: 'result of',
+    ence: 'state of', ance: 'state of', ic: 'relating to', ful: 'full of', less: 'without',
+    ness: 'state of', ly: 'in a way', s: 'more than one', es: 'more than one', ed: 'happened', ing: 'doing',
+  },
+};
+
+/**
+ * Split a word into [{ text, kind, meaning }] where kind is prefix | root |
+ * suffix | plain. Prefixes only before the first root, suffixes only after
+ * the last, at least one root - or the whole word comes back as one plain
+ * part. Fewest plain letters wins, then fewest pieces.
+ */
+function spellingParts(word) {
+  const w = String(word || '').toLowerCase();
+  const n = w.length;
+  const PLAIN = 3, PIECE = 1;
+  // phase 0: before any root; 1: after a root; 2: in the suffixes
+  const best = Array.from({ length: n + 1 }, () => [Infinity, Infinity, Infinity]);
+  const back = Array.from({ length: n + 1 }, () => [null, null, null]);
+  best[0][0] = 0;
+  const allowed = { prefix: [0], root: [0, 1], suffix: [1, 2] };
+  const next = { prefix: 0, root: 1, suffix: 2 };
+  for (let i = 0; i < n; i++) {
+    for (let ph = 0; ph < 3; ph++) {
+      const c = best[i][ph];
+      if (c === Infinity) continue;
+      // one plain letter, staying in this phase
+      if (c + PLAIN < best[i + 1][ph]) { best[i + 1][ph] = c + PLAIN; back[i + 1][ph] = { from: i, ph, kind: 'plain' }; }
+      for (const kind of ['prefix', 'root', 'suffix']) {
+        if (!allowed[kind].includes(ph)) continue;
+        for (const [m, meaning] of Object.entries(WORD_PARTS[kind])) {
+          if (!w.startsWith(m, i)) continue;
+          const j = i + m.length, np = next[kind];
+          if (c + PIECE < best[j][np]) { best[j][np] = c + PIECE; back[j][np] = { from: i, ph, kind, meaning }; }
+        }
+      }
+    }
+  }
+  // Must end after a root (phase 1 or 2).
+  const end = best[n][1] <= best[n][2] ? 1 : 2;
+  if (best[n][end] === Infinity) return [{ text: w, kind: 'plain', meaning: '' }];
+  const parts = [];
+  for (let i = n, ph = end; i > 0;) {
+    const b = back[i][ph];
+    const text = w.slice(b.from, i);
+    const last = parts[0];
+    if (b.kind === 'plain' && last && last.kind === 'plain') last.text = text + last.text;
+    else parts.unshift({ text, kind: b.kind, meaning: b.meaning || '' });
+    i = b.from; ph = b.ph;
+  }
+  return parts;
+}
+// ── end WORD PARTS ──────────────────────────────────────────────────
+
+/**
+ * Line a typed attempt up against the word, letter by letter (edit-distance
+ * alignment, so one missing letter does not turn the rest red).
+ * Returns [{ ch, mark }] over the CORRECT word: ok | wrong | missing,
+ * plus how many extra letters were typed.
+ */
+function letterMarks(typed, target) {
+  const a = String(typed || '').toLowerCase(), b = String(target || '').toLowerCase();
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => Array(b.length + 1).fill(0).map((_, j) => (i === 0 ? j : j === 0 ? i : 0)));
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(dp[i-1][j] + 1, dp[i][j-1] + 1, dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+  const marks = Array(b.length);
+  let extra = 0;
+  for (let i = a.length, j = b.length; i > 0 || j > 0;) {
+    if (i > 0 && j > 0 && dp[i][j] === dp[i-1][j-1] + (a[i-1] === b[j-1] ? 0 : 1)) {
+      marks[j-1] = { ch: b[j-1], mark: a[i-1] === b[j-1] ? 'ok' : 'wrong' }; i--; j--;
+    } else if (j > 0 && dp[i][j] === dp[i][j-1] + 1) {
+      marks[j-1] = { ch: b[j-1], mark: 'missing' }; j--;
+    } else { extra++; i--; }
+  }
+  return { marks, extra };
+}
+
+// ═══════════════════════════════════════════════════════════════════
+//  SPELLING LEARN
+//
+//  Jaden asked to be taught the words before being quizzed on them. Each
+//  word goes look-and-listen -> cover-and-write -> check, the method his
+//  class uses: see it split into its parts with what they mean, hear it,
+//  hear it spelled out, then write it from memory. A miss shows his attempt
+//  against the word letter by letter and sends him round again. Progress is
+//  kept on this device so he can stop and come back; nothing here is scored
+//  or recorded - the quiz is where that happens.
+// ═══════════════════════════════════════════════════════════════════
+const learn = { week: null, words: [], i: 0, stage: 'look', tries: 0, typed: '', firstTry: new Set(), missed: new Set() };
+const _learnKey = (week) => `learn:${week}`;
+function _learnSaved(week) {
+  try { return JSON.parse(localStorage.getItem(_learnKey(week)) || 'null') || { done: [], firstTry: [] }; }
+  catch (e) { return { done: [], firstTry: [] }; }
+}
+function _learnSave() {
+  try {
+    localStorage.setItem(_learnKey(learn.week), JSON.stringify({
+      done: learn.words.slice(0, learn.i), firstTry: [...learn.firstTry] }));
+  } catch (e) {}
+}
+
+function _renderLearnEntry() {
+  const box = document.getElementById('learn-entry');
+  if (!box) return;
+  const on = practiceSubject === 'Spelling' && !!practiceWeek;
+  box.classList.toggle('hidden', !on);
+  if (!on) return;
+  const w = spellingWeeks().find(x => x.name === practiceWeek);
+  const done = _learnSaved(practiceWeek).done.length;
+  document.getElementById('learn-entry-sub').textContent = !w ? ''
+    : done >= w.n ? `You've learned all ${w.n} - learn them again any time`
+    : done ? `${done} of ${w.n} learned - pick up where you left off`
+    : `${w.n} words, one at a time - then take the quiz`;
+}
+
+async function startLearn(week, only = null) {
+  if (!week || !guardLeave()) return;
+  setTrack('test_prep');
+  await ensureQuestionsLoaded('Spelling', 'All');
+  const pool = (Q_CACHE[_qKey('Spelling', 'All')] || []).filter(q => q.assignment === week);
+  let words = [...new Set(pool.map(q => String(q.correct || '').toLowerCase()).filter(Boolean))];
+  if (only) words = words.filter(w => only.includes(w));
+  if (!words.length) return;
+  Object.assign(learn, { week, words, i: 0, stage: 'look', tries: 0, typed: '',
+                         firstTry: new Set(), missed: new Set() });
+  if (!only) {
+    // Pick up where he left off, unless the whole week was already done.
+    const saved = _learnSaved(week);
+    const done = words.filter(w => saved.done.includes(w));
+    if (done.length && done.length < words.length) {
+      learn.words = [...done, ...words.filter(w => !done.includes(w))];
+      learn.i = done.length;
+      saved.firstTry.forEach(w => learn.firstTry.add(w));
+    }
+  }
+  document.getElementById('learn-title').textContent = `Learn: ${_weekOfName(week) || 'Spelling'}`;
+  show('learn-screen');
+  renderLearn();
+}
+
+function exitLearn() {
+  if (window.speechSynthesis) speechSynthesis.cancel();
+  switchSection('tests');
+  setPracticeSubject('Spelling');
+  if (learn.week) setPracticeWeek(learn.week);
+}
+
+function learnSay(word) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
+}
+function learnSpellOut(word) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(_utter(word, { rate: 0.8 }));
+  speechSynthesis.speak(_utter(word.toUpperCase().split('').join(', '), { rate: 0.7 }));
+}
+
+const _partsHtml = (word) => spellingParts(word).map(p =>
+  `<span class="wp wp-${p.kind}">${_esc(p.text)}</span>`).join('<span class="wp-dot">·</span>');
+const _meaningsHtml = (word) => spellingParts(word).filter(p => p.meaning).map(p =>
+  `<span class="wm wm-${p.kind}"><b>${_esc(p.text)}</b> = ${_esc(p.meaning)}</span>`).join('');
+
+function renderLearn() {
+  const body = document.getElementById('learn-body');
+  const n = learn.words.length;
+  document.getElementById('learn-dots').innerHTML = learn.words.map((w, k) =>
+    `<span class="ld ${k < learn.i ? (learn.firstTry.has(w) ? 'ld-star' : 'ld-done') : k === learn.i ? 'ld-now' : ''}"></span>`).join('');
+
+  if (learn.i >= n) {
+    _learnSave();
+    const stars = learn.words.filter(w => learn.firstTry.has(w)).length;
+    const tricky = learn.words.filter(w => !learn.firstTry.has(w));
+    document.getElementById('learn-count').textContent = '';
+    body.innerHTML = `<div class="learn-done">
+      <div class="learn-big">🎉</div>
+      <h3>You learned all ${n} words!</h3>
+      <p>⭐ ${stars} spelled right on the first try.</p>
+      ${tricky.length ? `<p class="learn-tricky">Worth another look: ${tricky.map(_esc).join(', ')}</p>` : ''}
+      <div class="learn-actions">
+        <button class="btn btn-primary btn-lg" onclick="learnQuiz()">Quiz me on these words</button>
+        ${tricky.length ? `<button class="btn btn-outlined" onclick='startLearn(${JSON.stringify(learn.week)}, ${JSON.stringify(tricky)})'>Learn the tricky ones again</button>` : ''}
+        <button class="btn btn-outlined" onclick='_learnRestart()'>Start over</button>
+      </div></div>`;
+    return;
+  }
+
+  const word = learn.words[learn.i];
+  document.getElementById('learn-count').textContent = `Word ${learn.i + 1} of ${n}`;
+  const say = `<button class="btn btn-outlined" onclick='learnSay(${JSON.stringify(word)})'>🔊 Hear it</button>`;
+
+  if (learn.stage === 'look') {
+    body.innerHTML = `<div class="learn-step">1 &middot; Look and listen</div>
+      <div class="learn-word">${_partsHtml(word)}</div>
+      <div class="learn-meanings">${_meaningsHtml(word)}</div>
+      <div class="learn-actions">${say}
+        <button class="btn btn-outlined" onclick='learnSpellOut(${JSON.stringify(word)})'>🔤 Spell it out</button></div>
+      <div class="learn-actions"><button class="btn btn-primary btn-lg" onclick="learnStage('write')">I'm ready - hide it &rarr;</button></div>`;
+    learnSay(word);
+    return;
+  }
+
+  if (learn.stage === 'write') {
+    body.innerHTML = `<div class="learn-step">2 &middot; Cover and write</div>
+      <div class="learn-hidden">${'_ '.repeat(word.length).trim()}</div>
+      <div class="learn-sub">${word.length} letters</div>
+      <div class="learn-actions">${say}</div>
+      <div class="learn-write">
+        <input class="spelling-input" id="learn-input" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder="Type the word" onkeydown="if(event.key==='Enter')learnCheck()">
+        <button class="btn btn-primary" onclick="learnCheck()">Check</button>
+      </div>`;
+    setTimeout(() => document.getElementById('learn-input')?.focus(), 50);
+    return;
+  }
+
+  // checked
+  const right = _normSpelling(learn.typed) === word;
+  if (right) {
+    body.innerHTML = `<div class="learn-step ok">${learn.tries === 0 ? '⭐ First try!' : '✓ Got it!'}</div>
+      <div class="learn-word">${_partsHtml(word)}</div>
+      <div class="learn-actions"><button class="btn btn-primary btn-lg" onclick="learnNext()">${learn.i + 1 < n ? 'Next word &rarr;' : 'Finish'}</button></div>`;
+    return;
+  }
+  const { marks, extra } = letterMarks(_normSpelling(learn.typed), word);
+  body.innerHTML = `<div class="learn-step bad">Not quite - here's how it's spelled</div>
+    <div class="learn-cmp"><span class="learn-cmp-l">You wrote</span><span class="learn-typed">${_esc(learn.typed) || '&mdash;'}</span></div>
+    <div class="learn-cmp"><span class="learn-cmp-l">The word</span><span class="learn-marks">${marks.map(m =>
+      `<span class="lm lm-${m.mark}">${_esc(m.ch)}</span>`).join('')}</span></div>
+    <div class="learn-sub">${extra ? `${extra} extra letter${extra > 1 ? 's' : ''} · ` : ''}<span class="lm lm-ok">a</span> right &nbsp;
+      <span class="lm lm-wrong">a</span> wrong &nbsp; <span class="lm lm-missing">a</span> missed</div>
+    <div class="learn-word small">${_partsHtml(word)}</div>
+    <div class="learn-actions">
+      <button class="btn btn-primary btn-lg" onclick="learnStage('write')">Try again</button>
+      <button class="btn btn-outlined" onclick="learnStage('look')">Look again</button>
+      ${learn.tries >= 2 ? `<button class="btn btn-outlined" onclick="learnNext()">Move on</button>` : ''}
+    </div>`;
+}
+
+function learnStage(stage) { learn.stage = stage; renderLearn(); }
+function learnCheck() {
+  const typed = (document.getElementById('learn-input')?.value || '').trim();
+  if (!typed) return;
+  const word = learn.words[learn.i];
+  learn.typed = typed;
+  const right = _normSpelling(typed) === word;
+  if (right && learn.tries === 0) learn.firstTry.add(word);
+  if (!right) { learn.tries++; learn.missed.add(word); }
+  learn.stage = 'checked';
+  renderLearn();
+  if (right && window.speechSynthesis) learnSay(word);
+}
+function learnNext() {
+  learn.i++; learn.stage = 'look'; learn.tries = 0; learn.typed = '';
+  _learnSave();
+  renderLearn();
+}
+function _learnRestart() {
+  try { localStorage.removeItem(_learnKey(learn.week)); } catch (e) {}
+  startLearn(learn.week);
+}
+function learnQuiz() {
+  practiceSubject = 'Spelling';
+  practiceWeek = learn.week;
+  practiceDomain = 'All';
+  startTimedPractice();
 }
 
 const _normSpelling = v => String(v ?? '').trim().toLowerCase().replace(/[^a-z'\-]/g, '');
@@ -5258,6 +5614,7 @@ async function loadAppData() {
   // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, DOMAIN_COUNTS, studentGrade,
                         SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric,
+                        spellingParts, letterMarks,
                         // offline layer (#75) - exported so the suite can drive it
                         _isDbUrl, _permanent, syncOutbox, odbAll, odbPut, odbDel, _rawFetch,
                         outboxCount: () => odbAll('outbox').then(r => (r || []).length) };
