@@ -770,6 +770,22 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'parts + meanings, word always reassembles';
   });
 
+  await test('Spelling is read with a real sentence, the way the teacher reads it', async () => {
+    const D = appIframe._mcapData;
+    assert(D.spellingSentence('The doctor tapped my knee to test my ___.', 'reflex') ===
+      'The doctor tapped my knee to test my reflex.', 'blank not filled');
+    assert(D.spellingSentence('___ the disc before you turn it off.', 'eject') === 'Eject the disc before you turn it off.',
+      'a sentence that opens with the word must start with a capital');
+    // The old stand-in is not a sentence; reading it aloud is what confused him.
+    assert(D.spellingSentence('Spell the word you hear. ___ (6 letters)', 'reflex') === '', 'stand-in read as a sentence');
+    const src = await fetch('/index.html').then(r => r.text());
+    // Recording first, device voice only as the fallback - and never both.
+    const sp = src.slice(src.indexOf('async function speakSpelling'));
+    assert(sp.indexOf("_playClip(_spellAudioUrl(word, 'full'))") < sp.indexOf('_speakTeacher('), 'recording must be tried first');
+    assert(sp.includes('mine === _spellSeq'), 'a stale failure must not start the device voice');
+    return 'sentence filled, stand-in skipped, recording before device voice';
+  });
+
   await test('Learn marks a miss letter by letter without cascading', async () => {
     const D = appIframe._mcapData;
     const show = (t, w) => D.letterMarks(t, w).marks.map(m => m.mark[0]).join('');
