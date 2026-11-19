@@ -1403,6 +1403,22 @@ create policy "Allow delete wrong_answers"  on wrong_answers for delete using (t
     return 'all waiting worksheets listed in the Parent Dashboard';
   });
 
+  await test('spelling practises one week at a time, newest first', async () => {
+    const src = await fetch('/index.html').then(r => r.text());
+    // Jaden is tested on one week's list, so Spelling lands on the newest
+    // week; past weeks and the whole bank stay one tap away.
+    assert(src.includes('function spellingWeeks()'), 'weeks come from the per-assignment counts');
+    assert(/sort\(\(a, b\) => b\.date\.localeCompare\(a\.date\)\)/.test(src), 'newest week first');
+    assert(src.includes("This week's words") && src.includes('Review a past week') && src.includes('All words'),
+      'this week, past weeks and all words are all offered');
+    // The pool is narrowed exactly like a classwork worksheet.
+    assert(src.includes("(activeTrack === 'classwork' || activeSubject === 'Spelling') && activeAssignment"),
+      'a chosen week must filter the pool');
+    // A week is kept for Play Again, so a repeat does not widen to every word.
+    assert(src.includes('practiceWeek    = lastSession.week'), 'Play Again keeps the week');
+    return 'weekly focus by default, past weeks and whole bank available';
+  });
+
   await test('every worksheet keeps its original file, viewable by a parent', async () => {
     const src = await fetch('/index.html').then(r => r.text());
     // Pages used to go to the model and be thrown away. The upload must save

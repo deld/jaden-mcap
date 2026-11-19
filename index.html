@@ -312,6 +312,9 @@
     .pick:focus-visible { outline:2px solid var(--acc); outline-offset:2px; }
     .pick.active { border-color:var(--acc); background:var(--acc); color:var(--acc-on); }
     .pick .ico { width:1.1em; height:1.1em; }
+    .pick .wk-sub { font-weight:500; opacity:.75; margin-left:4px; font-size:.85em; }
+    .wk-past-label { font-size:.78rem; color:var(--tx-3); margin:12px 0 6px; font-weight:600; }
+    #pick-topic.wk-mode { display:block; }
     .pick .cnt {
       font-family:var(--f-num); font-size:.7rem; font-weight:600; opacity:.75;
       font-variant-numeric:tabular-nums;
@@ -2109,8 +2112,8 @@ function updateStartScreen() {
 }
 
 function filteredQuestions() {
-  // Classwork is scoped to one worksheet at a time.
-  if (activeTrack === 'classwork' && activeAssignment && activeAssignment !== 'All') {
+  // Classwork is scoped to one worksheet at a time, and spelling to one week.
+  if ((activeTrack === 'classwork' || activeSubject === 'Spelling') && activeAssignment && activeAssignment !== 'All') {
     const pool = Q_CACHE[_qKey(activeSubject, 'All')] || [];
     return pool.filter(q => q.assignment === activeAssignment);
   }
@@ -2418,11 +2421,38 @@ let practiceSubject = 'Math';
 let practiceDomain  = 'All';
 let practiceMinutes = 10;
 let timedSession    = false;   // true while a timed practice session is live
-let lastSession     = null;    // { subject, domain, minutes } for Play Again
+let lastSession     = null;    // { subject, domain, minutes, week } for Play Again
+
+// Spelling is tested one week's list at a time, so it practises by WEEK, not
+// by topic. Each imported list is tagged "Spelling week of YYYY-MM-DD"; the
+// newest is picked by default, past weeks are one tap away for review, and
+// "All words" is still the whole bank.
+let practiceWeek;              // spelling only: an assignment name, null for all words, undefined = not chosen (-> newest)
+const _SPELL_WEEK = /^Spelling week of (\d{4}-\d{2}-\d{2})$/;
+
+/** [{ name, date, n }] newest first, from the per-assignment counts. */
+function spellingWeeks() {
+  const idx = ((ASSIGNMENT_INDEX || {}).test_prep || {}).Spelling || {};
+  return Object.entries(idx)
+    .map(([name, n]) => { const m = name.match(_SPELL_WEEK); return m ? { name, date: m[1], n } : null; })
+    .filter(Boolean)
+    .sort((a, b) => b.date.localeCompare(a.date));
+}
+const _weekLabel = (iso) =>
+  'Week of ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+const _weekOfName = (name) => { const m = String(name || '').match(_SPELL_WEEK); return m ? _weekLabel(m[1]) : ''; };
 
 function setPracticeSubject(subj) {
   practiceSubject = subj;
   practiceDomain  = 'All';
+  // Land on this week's words: that is what the weekly test is on. Left
+  // undefined so the newest week is picked even if the counts load later.
+  practiceWeek = undefined;
+  renderPracticeScreen();
+}
+function setPracticeWeek(name) {
+  practiceWeek = name || null;
+  practiceDomain = 'All';
   renderPracticeScreen();
 }
 function setPracticeDomain(dom) {
@@ -2442,6 +2472,27 @@ function renderPracticeScreen() {
 
   const doms   = domainsFor(practiceSubject);
   const counts = (TRACK_COUNTS.test_prep || {})[practiceSubject] || {};
+  const weeks  = practiceSubject === 'Spelling' ? spellingWeeks() : [];
+  document.getElementById('pick-topic').classList.toggle('wk-mode', weeks.length > 0);
+  if (weeks.length) {
+    const [latest, ...past] = weeks;
+    if (practiceWeek === undefined || (practiceWeek && !weeks.some(w => w.name === practiceWeek))) practiceWeek = latest.name;
+    const chip = (w, label) => `<button class="pick ${practiceWeek === w.name ? 'active' : ''}"
+        onclick="setPracticeWeek(${JSON.stringify(w.name).replace(/"/g, '&quot;')})">
+        ${icoSvg('ic-lang')}${label}<span class="cnt">${w.n}</span></button>`;
+    document.getElementById('pick-topic').innerHTML = `
+      <div class="pick-row">${chip(latest, `This week's words <span class="wk-sub">${_weekLabel(latest.date)}</span>`)}
+        <button class="pick ${practiceWeek ? '' : 'active'}" onclick="setPracticeWeek(null)">
+          ${icoSvg('ic-all')}All words<span class="cnt">${counts.All || 0}</span></button></div>
+      ${past.length ? `<div class="wk-past-label">Review a past week</div>
+      <div class="pick-row">${past.map(w => chip(w, _weekLabel(w.date))).join('')}</div>` : ''}`;
+    const which = practiceWeek
+      ? (practiceWeek === latest.name ? `This week's words (${_weekLabel(latest.date)})` : _weekOfName(practiceWeek))
+      : 'All words';
+    document.getElementById('practice-summary').innerHTML =
+      `<b>Spelling</b> &middot; <b>${which}</b> &middot; <b>${practiceMinutes} minutes</b>`;
+    return;
+  }
   document.getElementById('pick-topic').innerHTML = doms.map(d => {
     const n = d.id === 'All' ? (counts.All || 0) : (counts[d.id] || 0);
     const label = d.id === 'All' ? 'Everything' : d.label;
@@ -2459,9 +2510,12 @@ async function startTimedPractice() {
   setTrack('test_prep');
   activeSubject = practiceSubject;
   activeDomain  = practiceDomain;
-  activeAssignment = 'All';
+  // A spelling week narrows the pool the same way a classwork worksheet does.
+  if (practiceSubject === 'Spelling' && practiceWeek === undefined) practiceWeek = (spellingWeeks()[0] || {}).name || null;
+  activeAssignment = (practiceSubject === 'Spelling' && practiceWeek) ? practiceWeek : 'All';
   practiceQCount = 0;
-  lastSession = { subject: practiceSubject, domain: practiceDomain, minutes: practiceMinutes };
+  lastSession = { subject: practiceSubject, domain: practiceDomain, minutes: practiceMinutes,
+                  week: practiceSubject === 'Spelling' ? practiceWeek : null };
 
   await ensureQuestionsLoaded(activeSubject, activeDomain);
   buildNav();
@@ -2476,7 +2530,9 @@ async function startTimedPractice() {
   timedSession = true;
 
   const d = currentDomains().find(x => x.id === activeDomain);
-  await createAttempt(activeSubject, 'timed', d ? d.label : activeDomain, practiceMinutes);
+  await createAttempt(activeSubject, 'timed',
+    activeAssignment !== 'All' ? _weekOfName(activeAssignment) || activeAssignment : (d ? d.label : activeDomain),
+    practiceMinutes);
 
   testTotalTime = practiceMinutes * 60;
   testTimeLeft  = testTotalTime;
@@ -2507,6 +2563,7 @@ function restartLastSession() {
     practiceSubject = lastSession.subject;
     practiceDomain  = lastSession.domain;
     practiceMinutes = lastSession.minutes;
+    practiceWeek    = lastSession.week || null;
     startTimedPractice();
   } else {
     startGame(true);
@@ -2682,9 +2739,19 @@ async function showImportBanner() {
       <div class="import-banner-body">
         ${head}
         <div class="import-banner-words">${detail}</div>
+        ${ok && run.week_of ? `<div class="ib-actions"><button class="ib-primary"
+          onclick="practiceSpellingWeek('Spelling week of ${run.week_of}')">Practise these words</button></div>` : ''}
       </div>
       <button onclick="dismissImportBanner('${run.id}')" aria-label="Dismiss">&times;</button>
     </div>`;
+}
+
+// From the import banner straight to that week's words.
+function practiceSpellingWeek(name) {
+  if (!guardLeave()) return;
+  switchSection('tests');
+  setPracticeSubject('Spelling');
+  if (spellingWeeks().some(w => w.name === name)) setPracticeWeek(name);
 }
 
 // Worksheets emailed in are written by a model, so unlike spelling they never
