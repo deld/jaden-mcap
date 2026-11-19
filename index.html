@@ -338,6 +338,8 @@
     .wm-prefix b { color:var(--warn); } .wm-root b { color:var(--acc); } .wm-suffix b { color:var(--ok); }
     .learn-actions { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin:12px 0; }
     .learn-hidden { text-align:center; font-family:var(--f-num); font-size:1.8rem; letter-spacing:.1em; color:var(--tx-3); margin-top:8px; }
+    .learn-sentence { text-align:center; font-size:1rem; color:var(--tx-2); font-style:italic; margin:-4px 0 12px; }
+    .q-letters { font-size:.8em; color:var(--tx-3); white-space:nowrap; }
     .learn-sub { text-align:center; font-size:.8rem; color:var(--tx-3); margin:4px 0; }
     .learn-write { display:flex; gap:8px; justify-content:center; margin-top:10px; }
     .learn-write input { max-width:280px; }
@@ -3337,7 +3339,9 @@ function renderQuestion() {
     qScreen.classList.remove('has-passage');
   }
 
-  document.getElementById('q-text').innerHTML = q.text.replace(/\n/g,'<br>');
+  document.getElementById('q-text').innerHTML = q.text.replace(/\n/g,'<br>') +
+    // Imported sentences no longer carry "(N letters)"; spelling still shows it.
+    (q.type === 'spelling' && !/letters\)\s*$/.test(q.text) ? ` <span class="q-letters">(${String(q.correct).length} letters)</span>` : '');
 
   const noteEl = document.getElementById('q-note');
   if (q.note) { noteEl.textContent=q.note; noteEl.classList.remove('hidden'); }
@@ -3367,7 +3371,7 @@ function renderQuestion() {
   oa.innerHTML=''; na.classList.add('hidden'); sa.classList.add('hidden');
   ni.value=''; ni.className='numeric-input'; ni.disabled=false;
   si.value=''; si.className='spelling-input'; si.disabled=false;
-  window.speechSynthesis?.cancel();
+  _stopSpelling();
 
   const L='ABCDEFGHIJ';
   if (q.type==='spelling') {
@@ -3532,17 +3536,81 @@ function _utter(text, { rate = 0.9, pitch = 1.0 } = {}) {
   return u;
 }
 
-// Read like a spelling test: the word, the sentence with the word in it,
-// then the word again. Slower on the word itself.
+// Read like his teacher reads a spelling test: the word, a sentence that
+// uses it with the word stressed, then the word again.
+//
+// Each word has a recording made with a natural neural voice when it is
+// imported (spelling-media -> public spelling-audio bucket). That is played
+// when it exists. Otherwise the device voice reads the same script, slowing
+// down and lifting its pitch on the word inside the sentence so it stands
+// out the way the teacher stresses it.
+const _spellAudioUrl = (word, kind) =>
+  `${SUPABASE_URL}/storage/v1/object/public/spelling-audio/${encodeURIComponent(String(word).toLowerCase())}/${kind}.mp3`;
+let _spellAudio = null;
+let _spellSeq = 0;   // bumped on every new request, so a stale failure cannot start speaking
+function _stopSpelling() {
+  _spellSeq++;
+  try { _spellAudio?.pause(); } catch (e) {}
+  _spellAudio = null;
+  window.speechSynthesis?.cancel();
+}
+function _playClip(url) {
+  return new Promise((resolve, reject) => {
+    const a = new Audio(url);
+    _spellAudio = a;
+    a.onended = resolve;
+    a.onerror = () => reject(new Error('no recording'));
+    a.play().catch(reject);
+  });
+}
+
+/** The sentence for a spelling question, word filled in - '' if it has none yet. */
+function spellingSentence(text, word) {
+  const t = String(text || '');
+  if (/^spell the word you hear\b/i.test(t.trim())) return '';
+  const out = t.replace(/\s*\(\d+ letters\)\s*$/, '').replace(/_{2,}/, String(word)).trim();
+  return out.charAt(0).toUpperCase() + out.slice(1);   // "___ the disc" -> "Eject the disc"
+}
+
+function _speakTeacher(word, sentence) {
+  if (!window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
+  if (sentence) {
+    const i = sentence.toLowerCase().indexOf(word.toLowerCase());
+    if (i < 0) speechSynthesis.speak(_utter(sentence, { rate: 0.9 }));
+    else {
+      const before = sentence.slice(0, i).trim(), after = sentence.slice(i + word.length).trim();
+      if (before) speechSynthesis.speak(_utter(before, { rate: 0.9 }));
+      speechSynthesis.speak(_utter(word, { rate: 0.65, pitch: 1.15 }));   // the stress
+      if (after.replace(/[.!?,;]/g, '')) speechSynthesis.speak(_utter(after, { rate: 0.9 }));
+    }
+  }
+  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
+}
+
+/** Word, sentence, word: the recording if there is one, else the device voice. */
+async function speakSpelling(word, sentence) {
+  _stopSpelling();
+  const mine = _spellSeq;
+  try { await _playClip(_spellAudioUrl(word, 'full')); }
+  catch (e) { if (mine === _spellSeq) _speakTeacher(word, sentence); }
+}
+/** Just the word. */
+async function speakSpellingWord(word) {
+  _stopSpelling();
+  const mine = _spellSeq;
+  try { await _playClip(_spellAudioUrl(word, 'word')); }
+  catch (e) {
+    if (mine === _spellSeq && window.speechSynthesis) { speechSynthesis.cancel(); speechSynthesis.speak(_utter(word, { rate: 0.75 })); }
+  }
+}
+
 function speakCurrentWord() {
   const q = questions[currentQ];
-  if (!q || q.type !== 'spelling' || !window.speechSynthesis) return;
+  if (!q || q.type !== 'spelling') return;
   const word = String(q.correct);
-  const sentence = String(q.text || '').replace(/_{2,}/g, word);
-  speechSynthesis.cancel();
-  speechSynthesis.speak(_utter(word, { rate: 0.8 }));
-  if (sentence && sentence !== word) speechSynthesis.speak(_utter(sentence, { rate: 0.95 }));
-  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
+  speakSpelling(word, spellingSentence(q.text, word));
 }
 
 // ── WORD PARTS (spelling Learn) ─────────────────────────────────────
@@ -3694,6 +3762,7 @@ async function startLearn(week, only = null) {
   await ensureQuestionsLoaded('Spelling', 'All');
   const pool = (Q_CACHE[_qKey('Spelling', 'All')] || []).filter(q => q.assignment === week);
   let words = [...new Set(pool.map(q => String(q.correct || '').toLowerCase()).filter(Boolean))];
+  learn.sentences = Object.fromEntries(pool.map(q => [String(q.correct || '').toLowerCase(), spellingSentence(q.text, String(q.correct || ''))]));
   if (only) words = words.filter(w => only.includes(w));
   if (!words.length) return;
   Object.assign(learn, { week, words, i: 0, stage: 'look', tries: 0, typed: '',
@@ -3714,20 +3783,17 @@ async function startLearn(week, only = null) {
 }
 
 function exitLearn() {
-  if (window.speechSynthesis) speechSynthesis.cancel();
+  _stopSpelling();
   switchSection('tests');
   setPracticeSubject('Spelling');
   if (learn.week) setPracticeWeek(learn.week);
 }
 
-function learnSay(word) {
-  if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
-  speechSynthesis.speak(_utter(word, { rate: 0.75 }));
-}
+function learnSay(word) { speakSpellingWord(word); }
+function learnSentence(word) { speakSpelling(word, (learn.sentences || {})[word] || ''); }
 function learnSpellOut(word) {
   if (!window.speechSynthesis) return;
-  speechSynthesis.cancel();
+  _stopSpelling();
   speechSynthesis.speak(_utter(word, { rate: 0.8 }));
   speechSynthesis.speak(_utter(word.toUpperCase().split('').join(', '), { rate: 0.7 }));
 }
@@ -3764,12 +3830,14 @@ function renderLearn() {
   const word = learn.words[learn.i];
   document.getElementById('learn-count').textContent = `Word ${learn.i + 1} of ${n}`;
   const say = `<button class="btn btn-outlined" onclick='learnSay(${JSON.stringify(word)})'>🔊 Hear it</button>`;
+  const inSentence = `<button class="btn btn-outlined" onclick='learnSentence(${JSON.stringify(word)})'>🗣 In a sentence</button>`;
 
   if (learn.stage === 'look') {
     body.innerHTML = `<div class="learn-step">1 &middot; Look and listen</div>
       <div class="learn-word">${_partsHtml(word)}</div>
       <div class="learn-meanings">${_meaningsHtml(word)}</div>
-      <div class="learn-actions">${say}
+      ${(learn.sentences || {})[word] ? `<div class="learn-sentence">“${_esc(learn.sentences[word])}”</div>` : ''}
+      <div class="learn-actions">${say}${inSentence}
         <button class="btn btn-outlined" onclick='learnSpellOut(${JSON.stringify(word)})'>🔤 Spell it out</button></div>
       <div class="learn-actions"><button class="btn btn-primary btn-lg" onclick="learnStage('write')">I'm ready - hide it &rarr;</button></div>`;
     learnSay(word);
@@ -3780,7 +3848,7 @@ function renderLearn() {
     body.innerHTML = `<div class="learn-step">2 &middot; Cover and write</div>
       <div class="learn-hidden">${'_ '.repeat(word.length).trim()}</div>
       <div class="learn-sub">${word.length} letters</div>
-      <div class="learn-actions">${say}</div>
+      <div class="learn-actions">${say}${inSentence}</div>
       <div class="learn-write">
         <input class="spelling-input" id="learn-input" autocomplete="off" autocapitalize="off" spellcheck="false"
                placeholder="Type the word" onkeydown="if(event.key==='Enter')learnCheck()">
@@ -3824,7 +3892,7 @@ function learnCheck() {
   if (!right) { learn.tries++; learn.missed.add(word); }
   learn.stage = 'checked';
   renderLearn();
-  if (right && window.speechSynthesis) learnSay(word);
+  if (right) learnSay(word);
 }
 function learnNext() {
   learn.i++; learn.stage = 'look'; learn.tries = 0; learn.typed = '';
@@ -5614,7 +5682,7 @@ async function loadAppData() {
   // Expose for tests
   window._mcapData  = { PASSAGES, LESSON_MAP, PIN_CORRECT, DOMAIN_COUNTS, studentGrade,
                         SPELLING_DOMAINS, domainsFor, _normSpelling, _editDistance, gradeNumeric,
-                        spellingParts, letterMarks,
+                        spellingParts, letterMarks, spellingSentence,
                         // offline layer (#75) - exported so the suite can drive it
                         _isDbUrl, _permanent, syncOutbox, odbAll, odbPut, odbDel, _rawFetch,
                         outboxCount: () => odbAll('outbox').then(r => (r || []).length) };

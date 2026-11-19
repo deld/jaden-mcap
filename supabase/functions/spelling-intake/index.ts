@@ -18,6 +18,9 @@
 import {
   parseSpellingDoc, findDocCandidates, docExportUrl, triage, docWeekOf, gmailForwardingCode, linkedDocs,
 } from "./parse.js";
+import { enrichSpelling } from "../_shared/spelling-media.ts";
+
+declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
 const SUPABASE_URL  = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY   = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -218,10 +221,19 @@ Deno.serve(async (req) => {
       active: true, source: "packet", track: "test_prep",
       assignment: `Spelling week of ${week}`,
     }));
-    const ins = await db("questions", {
-      method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows),
+    const ins = await db("questions?select=id,correct,text", {
+      method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(rows),
     });
     if (!ins.ok) throw new Error(`Insert failed: HTTP ${ins.status} ${await ins.text()}`);
+
+    // A real sentence and a recorded reading for each new word. Slow (a model
+    // call, then two clips a word), so it runs after the reply; the words are
+    // already usable with the stand-in text, and spelling-media can redo any
+    // that fail.
+    const enrich = ins.json()
+      .then((inserted) => enrichSpelling(inserted))
+      .catch((e) => console.error("spelling enrichment failed:", e));
+    if (typeof EdgeRuntime !== "undefined") EdgeRuntime.waitUntil(enrich);
 
     await recordRun({ ...base, status: "published", week_of: week, group_name: group,
                       word_count: fresh.length, doc_url: docUrl,

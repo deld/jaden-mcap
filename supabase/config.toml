@@ -19,3 +19,8 @@ verify_jwt = false
 # weekly-report: called by pg_cron with REPORT_SECRET, not a Supabase JWT.
 [functions.weekly-report]
 verify_jwt = false
+
+# spelling-media: called with INTAKE_SECRET or the service-role key, not a
+# user JWT - same posture as the intake functions.
+[functions.spelling-media]
+verify_jwt = false
